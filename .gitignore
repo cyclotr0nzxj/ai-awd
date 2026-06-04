@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+logs/**/*.jsonl
+logs/**/*.log
+.DS_Store
+*.egg-info/
+.env
+.venv/
+venv/
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+# Electron
+client/out/
+# Docker evidence (generated)
+logs/target_lifecycle/

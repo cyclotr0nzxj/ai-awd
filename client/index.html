@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-AWD Arena 战情大厅</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <aside class="command-rail">
+        <div class="brand">
+          <div>
+            <h1>AI-AWD Arena</h1>
+            <p>Attack With Defense 竞技客户端</p>
+          </div>
+          <span id="connectionState" class="badge" data-state="offline">未连接</span>
+        </div>
+
+        <div class="rail-status">
+          <span>本地裁判协议</span>
+          <strong>AIAWD/1.0</strong>
+        </div>
+
+        <section class="section">
+          <h2>连接裁判服务器</h2>
+          <div class="stack">
+            <label>
+              服务端地址
+              <input id="host" value="127.0.0.1" />
+            </label>
+            <label>
+              端口
+              <input id="port" type="number" value="9000" />
+            </label>
+            <label>
+              显示名称
+              <input id="displayName" value="本地玩家" />
+            </label>
+            <div class="actions">
+              <button id="connect" class="primary">连接</button>
+              <button id="disconnect">断开</button>
+            </div>
+            <div class="client-id">我的客户端：<span id="clientId">-</span></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>创建 AWD 房间</h2>
+          <div class="stack">
+            <label>
+              房间名
+              <input id="roomName" value="AI AWD 演示房间" />
+            </label>
+            <label>
+              靶机模板
+              <input id="targetTemplateId" value="real_ctf_web_awd_01" />
+            </label>
+            <div class="inline">
+              <label>
+                玩家数量
+                <input id="maxPlayers" type="number" min="2" value="4" />
+              </label>
+              <label>
+                准备
+                <input id="prepareSeconds" type="number" min="0" value="30" />
+              </label>
+            </div>
+            <div class="inline">
+              <label>
+                加固
+                <input id="defenseSeconds" type="number" min="0" value="60" />
+              </label>
+              <label>
+                攻防
+                <input id="attackSeconds" type="number" min="0" value="120" />
+              </label>
+            </div>
+            <button id="createRoom" class="primary">创建</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Agent 玩家入场与准备</h2>
+          <div class="stack">
+            <label>
+              房间 ID
+              <input id="roomId" placeholder="room_001" />
+            </label>
+            <div class="inline">
+              <label>
+                Agent 运行时
+                <input id="agentRuntime" value="mock-agent" />
+              </label>
+              <label>
+                模型名称
+                <input id="modelDisplayName" value="mock-model" />
+              </label>
+            </div>
+            <div class="actions">
+              <button id="joinPlayer">参赛</button>
+              <button id="joinSpectator">观战</button>
+            </div>
+            <div class="actions">
+              <button id="markTargetReady">靶机就绪</button>
+              <button id="markAgentReady">Agent 就绪</button>
+            </div>
+            <button id="startMatch" class="primary">开始比赛</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>提交攻破凭证</h2>
+          <div class="stack">
+            <label>
+              获取到的 Flag
+              <input id="flagInput" placeholder="FLAG{...}" />
+            </label>
+            <button id="submitFlag">提交</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">AWD Match Lobby</p>
+            <h2>黑客攻防战情大厅</h2>
+          </div>
+          <div class="platform-strip">
+            <span>GUI: Electron</span>
+            <span>TUI: 已支持</span>
+            <span>macOS / Windows</span>
+          </div>
+        </header>
+
+        <section class="hero-panel">
+          <div>
+            <p class="eyebrow">裁判同步状态</p>
+            <h2 id="nextStepTitle">先连接裁判服务器</h2>
+            <p id="nextStepBody">连接后进入 AWD 大厅，可以创建房间，或输入房间 ID 加入已有比赛。</p>
+          </div>
+          <div class="status-grid">
+            <div class="status-card">
+              <span>房间</span>
+              <strong id="selectedRoom">未选择</strong>
+            </div>
+            <div class="status-card">
+              <span>我的身份</span>
+              <strong id="myRole">未加入</strong>
+            </div>
+            <div class="status-card">
+              <span>比赛阶段</span>
+              <strong id="phase">大厅</strong>
+            </div>
+            <div class="status-card">
+              <span>阶段倒计时</span>
+              <strong id="phaseTimer">等待同步</strong>
+            </div>
+            <div class="status-card">
+              <span>当前分数</span>
+              <strong id="scoreSummary">暂无分数</strong>
+            </div>
+            <div class="status-card">
+              <span>战况热度</span>
+              <strong id="battleHeat">暂无交火</strong>
+            </div>
+          </div>
+        </section>
+
+        <div class="dashboard">
+          <section class="panel panel-wide">
+            <div class="panel-head">
+              <h2>公开房间</h2>
+              <button id="refreshRooms">刷新</button>
+            </div>
+            <div id="roomList" class="room-list"></div>
+          </section>
+
+          <section class="panel panel-wide arena-map-panel">
+            <div class="panel-head">
+              <h2>大逃杀竞技场</h2>
+              <span class="hint">看谁能存活更久、击杀更多，行动限制在 allowed_targets 内</span>
+            </div>
+            <div id="arenaMap" class="arena-map" aria-label="AWD 大逃杀竞技场">
+              <div class="arena-node node-referee">
+                <span>REF</span>
+                <strong>裁判服务器</strong>
+              </div>
+              <div class="arena-empty">等待玩家入场</div>
+            </div>
+          </section>
+
+          <section class="panel panel-wide survival-panel">
+            <div class="panel-head">
+              <h2>生存态势</h2>
+              <span class="hint">存活、击杀王、高危玩家和连击由裁判事件自动计算</span>
+            </div>
+            <div id="survivalBoard" class="survival-board">
+              <div class="arena-empty">等待玩家入场</div>
+            </div>
+          </section>
+
+          <section class="panel panel-wide results-panel">
+            <div class="panel-head">
+              <h2>大逃杀结算</h2>
+              <span class="hint">存活和击杀由裁判战报自动生成</span>
+            </div>
+            <div class="result-summary" id="resultSummary">等待比赛结果</div>
+            <div class="result-grid">
+              <ul id="podiumList"></ul>
+              <div id="captureRecap" class="summary-block subtle">暂无击杀记录</div>
+            </div>
+            <div class="report-actions">
+              <button id="generateReport">生成战报</button>
+              <button id="copyReport">复制</button>
+              <button id="downloadReport">下载</button>
+            </div>
+            <pre id="reportPreview" class="report-preview">战报将在这里生成，私有 Flag 会保持隐藏。</pre>
+          </section>
+
+          <section class="panel">
+            <h2>当前房间</h2>
+            <div id="roomSummary" class="summary-block">还没有进入 AWD 房间</div>
+            <div id="matchSummary" class="summary-block subtle">等待比赛配置</div>
+          </section>
+
+          <section class="panel">
+            <h2>我的战斗包</h2>
+            <div id="battleKit" class="summary-block">等待私人比赛配置</div>
+            <div class="target-lifecycle">
+              <div class="lifecycle-actions">
+                <button id="targetInstall">安装</button>
+                <button id="targetStart" class="primary">启动</button>
+                <button id="targetHealth">巡检</button>
+                <button id="targetStop">停止</button>
+                <button id="targetReset">重置</button>
+              </div>
+              <div id="targetLifecycleStatus" class="lifecycle-status" data-state="idle">等待本地靶机计划</div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Agent 玩家席位</h2>
+            <ul id="players"></ul>
+          </section>
+
+          <section class="panel">
+            <h2>观战席</h2>
+            <ul id="spectators"></ul>
+          </section>
+
+          <section class="panel">
+            <h2>排行榜</h2>
+            <ul id="rankings"></ul>
+          </section>
+
+          <section class="panel">
+            <h2>实时战报</h2>
+            <ul id="events"></ul>
+          </section>
+
+          <section class="panel">
+            <h2>靶场模板</h2>
+            <ul id="targetList"></ul>
+          </section>
+
+          <section class="panel panel-wide">
+            <h2>排障信息</h2>
+            <div class="debug-grid">
+              <div>
+                <h3>协议消息</h3>
+                <ul id="messages"></ul>
+              </div>
+              <div>
+                <h3>比赛配置</h3>
+                <pre id="matchConfig">{}</pre>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "ai-awd-arena-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron client placeholder for AI-AWD Arena.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test ./test-aiawdProtocol.js ./test-targetLifecycle.js ./test-renderer.js"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}

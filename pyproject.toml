@@ -1,0 +1,5 @@
+[project]
+name = "ai-awd-arena"
+version = "0.1.0"
+description = "AI-AWD Arena C/S prototype with an asyncio referee server."
+requires-python = ">=3.11"
