@@ -10,6 +10,27 @@ const state = {
   isHost: false, iAmReady: false, _currentPage: "connect",
 };
 
+// ====== Provider Detection ======
+function detectProvider(apiKey) {
+  if (!apiKey || !apiKey.trim()) return null;
+  const k = apiKey.trim();
+  if (k.startsWith("sk-ant")) return "Anthropic";
+  if (k.startsWith("sk-or-")) return "OpenRouter";
+  if (k.startsWith("sk-")) return "OpenAI";
+  if (k.startsWith("anthropic-")) return "Anthropic";
+  if (k.startsWith("openai-")) return "OpenAI";
+  return "Custom";
+}
+
+function providerLabel(apiKey) {
+  const p = detectProvider(apiKey);
+  if (!p) return "";
+  if (p === "Anthropic") return "🔹 Anthropic";
+  if (p === "OpenAI") return "🟢 OpenAI";
+  if (p === "OpenRouter") return "🔶 OpenRouter";
+  return `🔧 ${p}`;
+}
+
 const els = {};
 
 // ====== Page Navigation ======
@@ -468,10 +489,14 @@ function renderRoomPage(phase) {
       if (isMe) cls += " is-self";
       if (ready) cls += " is-ready";
       if (isHost) cls += " is-host";
+      const prov = p.api_provider || (p.agent_runtime === "openclaw" ? "OpenClaw" : p.agent_runtime === "hermes" ? "Hermes" : p.agent_runtime === "codex" ? "Codex" : "") || "";
+      const model = p.model_display_name || "";
+      const providerBadge = prov ? `<span class="slot-provider">${escapeHtml(prov)}</span>` : "";
       return `<div class="${cls}">
         <div class="slot-avatar">${(p.display_name||"?").charAt(0).toUpperCase()}</div>
         <strong>${escapeHtml(p.display_name||p.team_id||"-")}</strong>
-        <small class="slot-model">${escapeHtml(p.model_display_name||p.agent_runtime||"未配置")}</small>
+        ${providerBadge}
+        ${model ? `<small class="slot-model">${escapeHtml(model)}</small>` : ""}
         <span class="slot-status ${ready?'ready':'waiting'}">${ready?'已准备':'等待中'}</span>
         ${isHost ? '<small>房主</small>' : ''}
       </div>`;
@@ -542,8 +567,9 @@ function renderArenaMap(phase, players) {
     const nodeLabel = isSelf && isLeader ? "我方领先" : isSelf ? "我方" : isLeader ? "领先" : "Agent";
     const score = teamScore(teamId);
     const readyText = `${player.target_ready ? "靶机已好" : "靶机待确认"} · ${player.agent_ready ? "Agent已好" : "Agent待确认"}`;
-    const modelText = player.model_display_name ? `模型 ${player.model_display_name}` : "";
-    const playerText = [player.display_name || "-", modelText].filter(Boolean).join(" · ");
+    const agentName = player.agent_runtime === "openclaw" ? "OpenClaw" : player.agent_runtime === "hermes" ? "Hermes" : player.agent_runtime === "codex" ? "Codex" : player.agent_runtime || "";
+    const modelName = player.model_display_name || "";
+    const providerInfo = [agentName, modelName].filter(Boolean).join(" · ");
     const isBreached = breachCount(teamId) > 0;
     const readiness = readinessPercent(player);
     const popup = state.scorePopup;
@@ -552,7 +578,7 @@ function renderArenaMap(phase, players) {
     return `<button type="button" class="arena-combatant${isSelf?" is-self":""}${isLeader?" is-leader":""}${isBreached?" is-breached":""}${isFocused?" is-focused":""}${isAttacker?" is-attacker":""}${isTarget?" is-target":""}" data-team-id="${escapeHtml(teamId)}">
       ${scorePopupHtml}
       <div class="combatant-head"><div class="combatant-avatar" data-status="${escapeHtml(isBreached?"breached":"alive")}">${escapeHtml(combatantInitials(player, teamId))}</div><div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div></div>
-      <small>${escapeHtml(playerText)}</small>
+      <small>${escapeHtml(providerInfo || player.display_name || "-")}</small>
       <div class="combatant-stats"><em>${escapeHtml(score===null?"暂无分数":`${score} 分`)}</em><b>${escapeHtml(captureCount(teamId))}攻陷 · ${escapeHtml(breachCount(teamId))}失守</b></div>
       <div class="readiness-track"><span style="width:${readiness}%"></span></div>
       <i style="font-size:11px;color:var(--muted)">${escapeHtml(combatMetricText(teamId))}</i>

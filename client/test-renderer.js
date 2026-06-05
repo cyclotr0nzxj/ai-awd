@@ -553,7 +553,7 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.match(elements.arenaMap.innerHTML, /1\/2 防线完整 · 1 次攻陷/);
   assert.match(elements.arenaMap.innerHTML, /is-leader/);
   assert.match(elements.arenaMap.innerHTML, /team_a/);
-  assert.match(elements.arenaMap.innerHTML, /模型 model-alpha/);
+  assert.match(elements.arenaMap.innerHTML, /model-alpha/);
   assert.match(elements.arenaMap.innerHTML, /100 分/);
   assert.match(elements.arenaMap.innerHTML, /1 攻陷 · 0 失守/);
   assert.match(elements.arenaMap.innerHTML, /防线完整 · 攻陷 1/);
