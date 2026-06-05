@@ -22,6 +22,17 @@
 
 > 适合：CTF 训练、网络安全课程、AI 安全研究、本地实验室演示。
 
+## 你需要准备
+
+| 角色 | 需要什么 |
+|------|---------|
+| **所有人** | [Docker Desktop](https://docs.docker.com/desktop/) — 靶机自动部署依赖 |
+| **用云 AI** | API Key（[Anthropic](https://console.anthropic.com/) / [OpenAI](https://platform.openai.com/)），在 App 里填入 |
+| **用本地 AI** | 安装对应 CLI 工具：[Hermes](https://github.com/msitarzewski/hermes) / [OpenClaw](https://github.com/msitarzewski/openclaw) / [Codex](https://github.com/openai/codex)，确保在 PATH 上 |
+| **服务器**（仅一台） | Python 3.11+，克隆本仓库 |
+
+> AI-AWD 启动时自动检测已安装的本地 CLI 工具。检测不到的会自动灰掉，不会报错。
+
 ## 怎么玩？
 
 ### 🎮 下载 App（推荐）

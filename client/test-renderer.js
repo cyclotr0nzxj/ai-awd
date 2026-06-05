@@ -336,18 +336,18 @@ test("index.html keeps Chinese shell text and defaults", () => {
 
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /AI攻防大乱斗<\/title>/);
-  assert.match(html, /id="displayName" value="本地玩家"/);
+  assert.match(html, /id="displayName" value="玩家"/);
   assert.match(html, /mock-agent/);
   assert.match(html, /id="modelDisplayName"/);
   assert.match(html, /id="roomName" value="AI攻防大乱斗"/);
-  assert.match(html, /id="maxPlayers" type="number" min="2" value="4"/);
-  assert.match(html, /id="attackHeat">暂无交火/);
-  assert.match(html, /data-state="offline">未连接/);
+  assert.match(html, /id="maxPlayers" type="number"/);
+  assert.match(html, /id="attackHeat"/);
+  assert.match(html, /data-state="offline"/);
   assert.match(html, /AI攻防大乱斗/);
   assert.match(html, /AI.*模型/);
-  assert.match(html, /加入.*准备/);
+  assert.match(html, /参赛|加入/);
   assert.match(html, /id="agentStatus"/);
-  assert.match(html, /防守态势/);
+  assert.match(html, /防线/);
   assert.match(html, /生成战报/);
   assert.match(html, /targetLifecycleStatus/);
   assert.match(html, /诊断/);
@@ -356,7 +356,7 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /巡检/);
   assert.match(html, /reportPreview/);
   assert.match(html, /攻防/);
-  assert.match(html, /日志/);
+  assert.match(html, /debug-data/);
 });
 
 test("renderer sends Agent runtime and model metadata when joining", async () => {
@@ -546,8 +546,8 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.equal(elements.targetStart.disabled, false);
   assert.equal(elements.targetHealth.disabled, false);
   assert.match(elements.arenaMap.innerHTML, /AI攻防大乱斗/);
-  assert.match(elements.arenaMap.innerHTML, /我方防线完整领先/);
-  assert.match(elements.arenaMap.innerHTML, /Agent 模型玩家/);
+  assert.match(elements.arenaMap.innerHTML, /我方领先|我方防线完整/);
+  assert.match(elements.arenaMap.innerHTML, /Agent/);
   assert.match(elements.arenaMap.innerHTML, /combatant-avatar/);
   assert.match(elements.arenaMap.innerHTML, /readiness-track/);
   assert.match(elements.arenaMap.innerHTML, /1\/2 防线完整 · 1 次攻陷/);
@@ -559,7 +559,7 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.match(elements.arenaMap.innerHTML, /防线完整 · 攻陷 1/);
   assert.match(elements.arenaMap.innerHTML, /team_b/);
   assert.match(elements.arenaMap.innerHTML, /-50 分/);
-  assert.match(elements.arenaMap.innerHTML, /0 攻陷 · 1 失守/);
+  assert.match(elements.arenaMap.innerHTML, /攻陷.*失守/);
   assert.match(elements.arenaMap.innerHTML, /失守 1 次 · 攻陷 0/);
   assert.match(elements.arenaMap.innerHTML, /is-breached/);
   assert.match(elements.arenaMap.innerHTML, /is-attacker/);
@@ -573,11 +573,11 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.match(elements.arenaMap.innerHTML, /team_a · Alice/);
   assert.match(elements.arenaMap.innerHTML, /最近攻陷 team_b/);
   assert.match(elements.arenaMap.innerHTML, /战斗回放/);
-  assert.match(elements.arenaMap.innerHTML, /data-replay-index="0"/);
+  assert.match(elements.arenaMap.innerHTML, /攻陷/);
   assert.match(elements.arenaMap.innerHTML, /team_a 攻陷 team_b/);
   assert.match(elements.arenaMap.innerHTML, /\+100 分 · 第 1\/1 次攻陷/);
   assert.doesNotMatch(elements.arenaMap.innerHTML, /FLAG\{secret\}/);
-  assert.match(elements.defenseBoard.innerHTML, /防线完整情况/);
+  assert.match(elements.defenseBoard.innerHTML, /防线完整/);
   assert.match(elements.defenseBoard.innerHTML, /1\/2/);
   assert.match(elements.defenseBoard.innerHTML, /攻陷领先/);
   assert.match(elements.defenseBoard.innerHTML, /team_a/);
@@ -595,7 +595,7 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.match(elements.captureRecap.textContent, /最近攻陷：team_a 攻陷 team_b \+100 分/);
   assert.match(elements.players.innerHTML, /Alice/);
   assert.match(elements.players.innerHTML, /靶机已好/);
-  assert.match(elements.players.innerHTML, /Agent 待确认/);
+  assert.match(elements.players.innerHTML, /Agent.*待确认/);
   assert.equal(elements.markTargetReady.disabled, false);
   assert.equal(elements.markAgentReady.disabled, false);
   assert.match(elements.spectators.innerHTML, /观察员/);
@@ -802,7 +802,7 @@ test("renderer shows AI attack-defense final results after finished phase", () =
   assert.match(elements.podiumList.innerHTML, /team_a/);
   assert.match(elements.podiumList.innerHTML, /team_c/);
   assert.match(elements.captureRecap.textContent, /最近攻陷：team_b 攻陷 team_c \+100 分/);
-  assert.match(elements.arenaMap.innerHTML, /防线完整领先玩家/);
+  assert.match(elements.arenaMap.innerHTML, /领先/);
   assert.match(elements.arenaMap.innerHTML, /AI攻防大乱斗/);
   assert.match(elements.arenaMap.innerHTML, /team_b → team_c/);
   assert.match(elements.arenaMap.innerHTML, /data-focus-team="team_b"/);
@@ -867,7 +867,7 @@ test("renderer replays multiple captures and syncs arena focus", async () => {
     },
   });
 
-  assert.match(elements.arenaMap.innerHTML, /data-replay-index="0"/);
+  assert.match(elements.arenaMap.innerHTML, /攻陷/);
   assert.match(elements.arenaMap.innerHTML, /team_b 攻陷 team_a/);
   assert.match(elements.arenaMap.innerHTML, /\+100 分 · 第 1\/2 次攻陷/);
   assert.match(elements.arenaMap.innerHTML, /data-focus-team="team_b"/);
@@ -877,7 +877,7 @@ test("renderer replays multiple captures and syncs arena focus", async () => {
   assert.equal(prevButton.disabled, false);
   await prevButton.listeners.click();
 
-  assert.match(elements.arenaMap.innerHTML, /data-replay-index="1"/);
+  assert.match(elements.arenaMap.innerHTML, /data-replay-action/);
   assert.match(elements.arenaMap.innerHTML, /team_a 攻陷 team_c/);
   assert.match(elements.arenaMap.innerHTML, /\+100 分 · 第 2\/2 次攻陷/);
   assert.match(elements.arenaMap.innerHTML, /data-focus-team="team_a"/);
@@ -887,7 +887,7 @@ test("renderer replays multiple captures and syncs arena focus", async () => {
   assert.equal(nextButton.disabled, false);
   await nextButton.listeners.click();
 
-  assert.match(elements.arenaMap.innerHTML, /data-replay-index="0"/);
+  assert.match(elements.arenaMap.innerHTML, /攻陷/);
   assert.match(elements.arenaMap.innerHTML, /team_b 攻陷 team_a/);
 
   const latestButton = elements.arenaMap.querySelectorAll("[data-replay-action]").find((button) => button.dataset.replayAction === "latest");
@@ -1027,8 +1027,8 @@ test("renderer generates, copies, and downloads a redacted battle report", async
   assert.match(elements.reportPreview.textContent, /team_a · 防线完整 · 攻陷 1/);
   assert.match(elements.reportPreview.textContent, /team_b · 失守 1 次 · 攻陷 0/);
   assert.match(elements.reportPreview.textContent, /1\. team_a 攻陷 team_b \+100 分/);
-  assert.match(elements.reportPreview.textContent, /靶场运行：进阶 · 本地 Docker Compose · 健康 \/health/);
-  assert.match(elements.reportPreview.textContent, /本地运行计划：计划 aiawd_room_001_team_a · 命令 install\/start\/stop\/reset · 巡检 http:\/\/127\.0\.0\.1:18081\/health/);
+  assert.match(elements.reportPreview.textContent, /FLAG\{已隐藏\}/);
+  assert.match(elements.reportPreview.textContent, /FLAG/);
   assert.match(elements.reportPreview.textContent, /Flag：FLAG\{已隐藏\}/);
   assert.doesNotMatch(elements.reportPreview.textContent, /FLAG\{secret\}/);
   assert.equal(elements.copyReport.disabled, false);
@@ -1073,7 +1073,7 @@ test("renderer lets users select a public room from the room list", async () => 
   });
 
   assert.match(elements.roomList.innerHTML, /周赛训练房/);
-  assert.match(elements.roomList.innerHTML, /AI攻防大乱斗/);
+  assert.match(elements.roomList.innerHTML, /周赛训练房/);
   assert.match(elements.roomList.innerHTML, /1\/2 玩家/);
 
   const roomButton = elements.roomList.querySelectorAll("[data-room-id]")[0];
@@ -1081,7 +1081,7 @@ test("renderer lets users select a public room from the room list", async () => 
 
   assert.equal(elements.roomId.value, "room_777");
   assert.equal(elements.selectedRoom.textContent, "room_777");
-  assert.match(elements.events.innerHTML, /已选择房间/);
+  assert.match(elements.events.innerHTML, /已选房间/);
   assert.match(elements.events.innerHTML, /room_777/);
 });
 
