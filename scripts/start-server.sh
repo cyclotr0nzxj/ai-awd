@@ -43,12 +43,26 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# 自动获取本机局域网 IP
+LAN_IP=""
+if command -v ifconfig &>/dev/null; then
+  # macOS
+  LAN_IP=$(ifconfig 2>/dev/null | grep -E "inet " | grep -v "127.0.0.1" | head -1 | awk '{print $2}')
+elif command -v hostname &>/dev/null; then
+  LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
+
 echo "=========================================="
 echo " AI-AWD Arena 裁判服务器"
 echo "=========================================="
 echo " TCP 地址:  ${HOST}:${PORT}"
 echo " HTTP API:  http://${HOST}:${HTTP_PORT}"
 echo " 靶机数量:  3 (web / pwn / crypto)"
+if [ -n "$LAN_IP" ]; then
+  echo ""
+  echo " 📡 本机局域网 IP: ${LAN_IP}"
+  echo "    客户端连接填:  ${LAN_IP}:${PORT}"
+fi
 echo ""
 echo " 快速检查:"
 echo "   curl http://127.0.0.1:${HTTP_PORT}/health"
