@@ -1,18 +1,18 @@
 == AI-AWD TUI 脚本演示 ==
-裁判服务器：127.0.0.1:58109
+裁判服务器：127.0.0.1:56015
 
 -- Alice 创建 2 玩家 AWD 房间 --
 已连接：client_0001
 > create "TUI AWD Demo" real_ctf_web_awd_01 2 0 0 2
 房间已创建
-== AI-AWD 战情状态 ==
+== AI攻防大乱斗状态 ==
 客户端：client_0001 · Alice
 房间：room_001
 身份：Agent 玩家
 阶段：大厅
 
-== 大逃杀房间战况 ==
-room_001 · TUI AWD Demo · 大逃杀 · 大厅 · 1/2 玩家 · 靶场 real_ctf_web_awd_01
+== AI攻防乱斗房间战局 ==
+room_001 · TUI AWD Demo · AI攻防乱斗 · 大厅 · 1/2 玩家 · 靶场 real_ctf_web_awd_01
 玩家ID  名称   模型         靶机    Agent   分数
 ------  -----  -----------  ------  ------  ----
 team_a  Alice  model-alpha  未就绪  未就绪  0   
@@ -22,14 +22,14 @@ team_a  Alice  model-alpha  未就绪  未就绪  0
 已连接：client_0002
 > join room_001 player
 已进入房间
-== AI-AWD 战情状态 ==
+== AI攻防大乱斗状态 ==
 客户端：client_0002 · Bob
 房间：room_001
 身份：Agent 玩家
 阶段：大厅
 
-== 大逃杀房间战况 ==
-room_001 · TUI AWD Demo · 大逃杀 · 大厅 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
+== AI攻防乱斗房间战局 ==
+room_001 · TUI AWD Demo · AI攻防乱斗 · 大厅 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
 玩家ID  名称   模型         靶机    Agent   分数
 ------  -----  -----------  ------  ------  ----
 team_a  Alice  model-alpha  未就绪  未就绪  0   
@@ -40,14 +40,14 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 已连接：client_0003
 > join room_001 spectator
 已进入房间
-== AI-AWD 战情状态 ==
+== AI攻防大乱斗状态 ==
 客户端：client_0003 · Carol 观战
 房间：room_001
 身份：观战席
 阶段：大厅
 
-== 大逃杀房间战况 ==
-room_001 · TUI AWD Demo · 大逃杀 · 大厅 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
+== AI攻防乱斗房间战局 ==
+room_001 · TUI AWD Demo · AI攻防乱斗 · 大厅 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
 玩家ID  名称   模型         靶机    Agent   分数
 ------  -----  -----------  ------  ------  ----
 team_a  Alice  model-alpha  未就绪  未就绪  0   
@@ -59,14 +59,14 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 已连接：client_0001
 > start
 比赛已开始
-== AI-AWD 战情状态 ==
+== AI攻防大乱斗状态 ==
 客户端：client_0001 · Alice
 房间：room_001
 身份：Agent 玩家
 阶段：准备
 
-== 大逃杀房间战况 ==
-room_001 · TUI AWD Demo · 大逃杀 · 准备 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
+== AI攻防乱斗房间战局 ==
+room_001 · TUI AWD Demo · AI攻防乱斗 · 准备 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
 玩家ID  名称   模型         靶机    Agent   分数
 ------  -----  -----------  ------  ------  ----
 team_a  Alice  model-alpha  未就绪  未就绪  0   
@@ -79,7 +79,7 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 1     team_a  Alice  0   
 2     team_b  Bob    0   
 
-== 私人大逃杀战斗包 ==
+== 私人AI攻防乱斗战斗包 ==
 玩家：team_a · 靶机：Web AWD 演示靶机
 运行：专业 · Docker Compose · 健康 /health
 计划：aiawd_room_001_team_a · install/start/stop/reset · 巡检 http://127.0.0.1:18081/health
@@ -90,14 +90,14 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 team_b  http://127.0.0.1:18082
 
 -- Bob 收到私人战斗包 --
-== AI-AWD 战情状态 ==
+== AI攻防大乱斗状态 ==
 客户端：client_0002 · Bob
 房间：room_001
 身份：Agent 玩家
 阶段：准备
 
-== 大逃杀房间战况 ==
-room_001 · TUI AWD Demo · 大逃杀 · 准备 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
+== AI攻防乱斗房间战局 ==
+room_001 · TUI AWD Demo · AI攻防乱斗 · 准备 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
 玩家ID  名称   模型         靶机    Agent   分数
 ------  -----  -----------  ------  ------  ----
 team_a  Alice  model-alpha  未就绪  未就绪  0   
@@ -105,7 +105,7 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 观战席：Carol 观战
 排行：暂无分数
 
-== 私人大逃杀战斗包 ==
+== 私人AI攻防乱斗战斗包 ==
 玩家：team_b · 靶机：Web AWD 演示靶机
 运行：专业 · Docker Compose · 健康 /health
 计划：aiawd_room_001_team_b · install/start/stop/reset · 巡检 http://127.0.0.1:18082/health
@@ -122,14 +122,14 @@ team_a  http://127.0.0.1:18081
 已连接：client_0001
 > submit FLAG{已隐藏}
 提交结果已返回
-== AI-AWD 战情状态 ==
+== AI攻防大乱斗状态 ==
 客户端：client_0001 · Alice
 房间：room_001
 身份：Agent 玩家
 阶段：攻防
 
-== 大逃杀房间战况 ==
-room_001 · TUI AWD Demo · 大逃杀 · 攻防 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
+== AI攻防乱斗房间战局 ==
+room_001 · TUI AWD Demo · AI攻防乱斗 · 攻防 · 2/2 玩家 · 靶场 real_ctf_web_awd_01
 玩家ID  名称   模型         靶机    Agent   分数
 ------  -----  -----------  ------  ------  ----
 team_a  Alice  model-alpha  未就绪  未就绪  0   
@@ -142,7 +142,7 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 1     team_a  Alice  100 
 2     team_b  Bob    -50 
 
-== 私人大逃杀战斗包 ==
+== 私人AI攻防乱斗战斗包 ==
 玩家：team_a · 靶机：Web AWD 演示靶机
 运行：专业 · Docker Compose · 健康 /health
 计划：aiawd_room_001_team_a · install/start/stop/reset · 巡检 http://127.0.0.1:18081/health
@@ -153,6 +153,6 @@ team_b  Bob    model-beta   未就绪  未就绪  0
 team_b  http://127.0.0.1:18082
 
 == 最近战报 ==
-事件           提交方  目标    结果  分值
+事件           攻陷方  目标    结果  分值
 -------------  ------  ------  ----  ----
 FLAG_CAPTURED  team_a  team_b  OK    100 

@@ -6,6 +6,8 @@ from tempfile import TemporaryDirectory
 
 from aiawd_server.protocol import Message
 from tui.aiawd_tui import (
+    AgentStart,
+    AgentStop,
     AiawdTuiClient,
     CommandError,
     OutgoingRequest,
@@ -208,7 +210,7 @@ class TuiClientTest(unittest.TestCase):
         self.assertEqual(client.role, "player")
         self.assertEqual(client.match_id, "match_001")
         self.assertIn("攻防", "\n".join(client.status_lines()))
-        self.assertIn("大逃杀", "\n".join(client.status_lines()))
+        self.assertIn("AI攻防乱斗", "\n".join(client.status_lines()))
         self.assertIn("team_a", "\n".join(client.status_lines()))
 
     def test_private_config_is_redacted_from_status(self) -> None:
@@ -296,7 +298,7 @@ class TuiClientTest(unittest.TestCase):
         compact_status = "\n".join(compact.status_lines())
 
         self.assertLess(len(compact.status_lines()), len(wide.status_lines()))
-        self.assertIn("== AI-AWD 状态 ==", compact_status)
+        self.assertIn("AI攻防乱斗状态", compact_status)
         self.assertIn("排行：1.team_a 100分", compact_status)
         self.assertIn("FLAG{已隐藏}", compact_status)
         self.assertNotIn("FLAG{secret}", compact_status)
@@ -347,6 +349,113 @@ class TuiClientTest(unittest.TestCase):
     def test_script_transcript_redacts_submit_command(self) -> None:
         self.assertEqual(redact_command_for_transcript("submit FLAG{secret}"), "submit FLAG{已隐藏}")
         self.assertEqual(redact_command_for_transcript("rooms"), "rooms")
+
+    def test_builds_agent_start_stop_status_commands(self) -> None:
+        client = AiawdTuiClient(display_name="Alice")
+        result = client.build_request("agent status")
+        self.assertIsInstance(result, str)
+        self.assertIn("未启动", result)
+        result2 = client.build_request("agent start echo FLAG{test}")
+        self.assertIsInstance(result2, AgentStart)
+        self.assertEqual(result2.command, ["echo", "FLAG{test}"])
+        result3 = client.build_request("agent stop")
+        self.assertIsInstance(result3, AgentStop)
+
+    def test_agent_start_rejects_shell_tokens(self) -> None:
+        client = AiawdTuiClient(display_name="Alice")
+        with self.assertRaises(CommandError):
+            client.build_request("agent start ls; rm -rf /")
+
+    def test_agent_status_text_not_configured(self) -> None:
+        client = AiawdTuiClient(display_name="Alice")
+        text = client._agent_status_text()
+        self.assertIn("未启动", text)
+
+    def test_replay_list_formats_all_capture_events(self) -> None:
+        client = AiawdTuiClient(display_name="Alice")
+        # feed three FLAG_CAPTURED events via handle_message
+        for payload in [
+            {"event_type": "FLAG_CAPTURED", "event": {"submitter_team_id": "team_a", "target_team_id": "team_b", "score_delta": 100, "code": "OK"}},
+            {"event_type": "FLAG_CAPTURED", "event": {"submitter_team_id": "team_b", "target_team_id": "team_a", "score_delta": 50, "code": "OK"}},
+            {"event_type": "FLAG_CAPTURED", "event": {"submitter_team_id": "team_c", "target_team_id": "team_a", "score_delta": 200, "code": "OK"}},
+        ]:
+            client.handle_message(Message(type="EVENT", payload=payload))
+        # events are inserted at index 0, so order is newest-first: team_c, team_b, team_a
+
+        result = client.build_request("replay list")
+        self.assertIsInstance(result, str)
+        self.assertIn("== 攻陷事件列表 ==", result)
+        self.assertIn("team_c", result)
+        self.assertIn("team_b", result)
+        self.assertIn("team_a", result)
+        self.assertIn("+200分", result)
+        self.assertIn("+100分", result)
+        self.assertIn("+50分", result)
+
+    def test_replay_prev_next_latest_navigate_correctly(self) -> None:
+        client = AiawdTuiClient(display_name="Alice")
+        for payload in [
+            {"event_type": "FLAG_CAPTURED", "event": {"submitter_team_id": "team_a", "target_team_id": "team_b", "score_delta": 100, "code": "OK"}},
+            {"event_type": "FLAG_CAPTURED", "event": {"submitter_team_id": "team_b", "target_team_id": "team_a", "score_delta": 50, "code": "OK"}},
+            {"event_type": "FLAG_CAPTURED", "event": {"submitter_team_id": "team_c", "target_team_id": "team_a", "score_delta": 200, "code": "OK"}},
+        ]:
+            client.handle_message(Message(type="EVENT", payload=payload))
+        # events order: [0]=team_c (newest), [1]=team_b, [2]=team_a (oldest)
+
+        self.assertEqual(client.replay_index, 0)
+
+        latest = client.build_request("replay latest")
+        self.assertIn("team_c", str(latest))
+        self.assertIn("200", str(latest))
+        self.assertEqual(client.replay_index, 0)
+
+        nxt = client.build_request("replay next")
+        self.assertIn("team_b", str(nxt))
+        self.assertEqual(client.replay_index, 1)
+
+        nxt2 = client.build_request("replay next")
+        self.assertIn("team_a", str(nxt2))
+        self.assertEqual(client.replay_index, 2)
+
+        # wrap forward
+        nxt3 = client.build_request("replay next")
+        self.assertIn("team_c", str(nxt3))
+        self.assertEqual(client.replay_index, 0)
+
+        # wrap backward
+        prv = client.build_request("replay prev")
+        self.assertIn("team_a", str(prv))
+        self.assertEqual(client.replay_index, 2)
+
+        prv2 = client.build_request("replay prev")
+        self.assertIn("team_b", str(prv2))
+        self.assertEqual(client.replay_index, 1)
+
+    def test_replay_chinese_aliases_and_empty_events(self) -> None:
+        client = AiawdTuiClient(display_name="Alice")
+
+        # empty state
+        self.assertEqual(client.build_request("replay list"), "暂无攻陷事件")
+        self.assertEqual(client.build_request("回放 latest"), "暂无攻陷事件")
+
+        # add one event
+        client.handle_message(Message(type="EVENT", payload={
+            "event_type": "FLAG_CAPTURED",
+            "event": {"submitter_team_id": "team_x", "target_team_id": "team_y", "score_delta": 300, "code": "OK"},
+        }))
+
+        ch_list = client.build_request("回放 列表")
+        self.assertIn("team_x", str(ch_list))
+        self.assertIn("+300分", str(ch_list))
+
+        ch_prev = client.build_request("回放 上一攻")
+        self.assertIn("team_x", str(ch_prev))
+
+        ch_next = client.build_request("回放 下一攻")
+        self.assertIn("team_x", str(ch_next))
+
+        ch_latest = client.build_request("回放 最新")
+        self.assertIn("team_x", str(ch_latest))
 
 
 def target_runtime_config() -> dict[str, object]:

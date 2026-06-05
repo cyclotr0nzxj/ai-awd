@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI-AWD Arena 战情大厅</title>
+    <title>AI-AWD AI攻防大乱斗</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -46,11 +46,11 @@
         </section>
 
         <section class="section">
-          <h2>创建 AWD 房间</h2>
+          <h2>创建AI攻防房间</h2>
           <div class="stack">
             <label>
               房间名
-              <input id="roomName" value="AI AWD 演示房间" />
+              <input id="roomName" value="AI-AWD AI攻防乱斗演示房间" />
             </label>
             <label>
               靶机模板
@@ -110,7 +110,22 @@
         </section>
 
         <section class="section">
-          <h2>提交攻破凭证</h2>
+          <h2>Agent 自动攻击</h2>
+          <div class="stack">
+            <label>
+              Agent 命令
+              <input id="agentCommand" placeholder="echo FLAG{...}" value="echo FLAG{test}" />
+            </label>
+            <div class="actions">
+              <button id="agentStart">启动 Agent</button>
+              <button id="agentStop">停止 Agent</button>
+            </div>
+            <p id="agentStatus" class="status-text">Agent 未启动</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>提交攻陷凭证</h2>
           <div class="stack">
             <label>
               获取到的 Flag
@@ -124,10 +139,11 @@
       <section class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">AWD Match Lobby</p>
+            <p class="eyebrow">AI攻防大乱斗</p>
             <h2>黑客攻防战情大厅</h2>
           </div>
           <div class="platform-strip">
+            <button id="startOnboarding" title="重新观看新手教程">🎓 新手教程</button>
             <span>GUI: Electron</span>
             <span>TUI: 已支持</span>
             <span>macOS / Windows</span>
@@ -138,7 +154,7 @@
           <div>
             <p class="eyebrow">裁判同步状态</p>
             <h2 id="nextStepTitle">先连接裁判服务器</h2>
-            <p id="nextStepBody">连接后进入 AWD 大厅，可以创建房间，或输入房间 ID 加入已有比赛。</p>
+            <p id="nextStepBody">连接后进入AI攻防乱斗大厅，可以创建房间，或输入房间 ID 加入已有比赛。</p>
           </div>
           <div class="status-grid">
             <div class="status-card">
@@ -162,8 +178,8 @@
               <strong id="scoreSummary">暂无分数</strong>
             </div>
             <div class="status-card">
-              <span>战况热度</span>
-              <strong id="battleHeat">暂无交火</strong>
+              <span>战局热度</span>
+              <strong id="attackHeat">暂无交火</strong>
             </div>
           </div>
         </section>
@@ -179,10 +195,10 @@
 
           <section class="panel panel-wide arena-map-panel">
             <div class="panel-head">
-              <h2>大逃杀竞技场</h2>
-              <span class="hint">看谁能存活更久、击杀更多，行动限制在 allowed_targets 内</span>
+              <h2>AI攻防大乱斗</h2>
+              <span class="hint">看谁能防线完整更久、攻陷更多，行动限制在 allowed_targets 内</span>
             </div>
-            <div id="arenaMap" class="arena-map" aria-label="AWD 大逃杀竞技场">
+            <div id="arenaMap" class="arena-map" aria-label="AI攻防大乱斗">
               <div class="arena-node node-referee">
                 <span>REF</span>
                 <strong>裁判服务器</strong>
@@ -193,23 +209,23 @@
 
           <section class="panel panel-wide survival-panel">
             <div class="panel-head">
-              <h2>生存态势</h2>
-              <span class="hint">存活、击杀王、高危玩家和连击由裁判事件自动计算</span>
+              <h2>AI攻防态势</h2>
+              <span class="hint">防线完整、攻陷领先、失守最多和连续攻陷由裁判事件自动计算</span>
             </div>
-            <div id="survivalBoard" class="survival-board">
+            <div id="defenseBoard" class="survival-board">
               <div class="arena-empty">等待玩家入场</div>
             </div>
           </section>
 
           <section class="panel panel-wide results-panel">
             <div class="panel-head">
-              <h2>大逃杀结算</h2>
-              <span class="hint">存活和击杀由裁判战报自动生成</span>
+              <h2>AI攻防大乱斗结算</h2>
+              <span class="hint">防线完整和攻陷由裁判战报自动生成</span>
             </div>
             <div class="result-summary" id="resultSummary">等待比赛结果</div>
             <div class="result-grid">
               <ul id="podiumList"></ul>
-              <div id="captureRecap" class="summary-block subtle">暂无击杀记录</div>
+              <div id="captureRecap" class="summary-block subtle">暂无攻陷记录</div>
             </div>
             <div class="report-actions">
               <button id="generateReport">生成战报</button>
@@ -221,15 +237,16 @@
 
           <section class="panel">
             <h2>当前房间</h2>
-            <div id="roomSummary" class="summary-block">还没有进入 AWD 房间</div>
+            <div id="roomSummary" class="summary-block">还没有进入AI攻防乱斗房间</div>
             <div id="matchSummary" class="summary-block subtle">等待比赛配置</div>
           </section>
 
           <section class="panel">
             <h2>我的战斗包</h2>
-            <div id="battleKit" class="summary-block">等待私人比赛配置</div>
+            <div id="attackKit" class="summary-block">等待私人战斗包</div>
             <div class="target-lifecycle">
               <div class="lifecycle-actions">
+                <button id="targetDoctor">诊断</button>
                 <button id="targetInstall">安装</button>
                 <button id="targetStart" class="primary">启动</button>
                 <button id="targetHealth">巡检</button>
@@ -282,6 +299,15 @@
       </section>
     </main>
 
+    <!-- Onboarding / 新手教程 overlay -->
+    <div id="onboardingOverlay" class="onboarding-overlay" style="display:none" aria-label="新手教程">
+      <div class="onboarding-backdrop"></div>
+      <div id="onboardingSpotlight" class="onboarding-spotlight" style="display:none"></div>
+      <div id="onboardingTooltip" class="onboarding-tooltip"></div>
+      <div id="onboardingProgress" class="onboarding-progress"></div>
+    </div>
+
+    <script src="./onboarding.js"></script>
     <script src="./renderer.js"></script>
   </body>
 </html>

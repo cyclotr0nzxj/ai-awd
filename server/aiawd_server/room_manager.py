@@ -47,7 +47,11 @@ class RoomManager:
             },
         )
         self.rooms[room_id] = room
-        self.join_room(owner, room_id, Role.PLAYER, payload)
+        try:
+            self.join_room(owner, room_id, Role.PLAYER, payload)
+        except Exception:
+            del self.rooms[room_id]
+            raise
         return room
 
     def join_room(

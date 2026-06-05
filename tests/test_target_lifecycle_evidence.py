@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from examples.target_lifecycle_evidence import DEMO_FLAG, run_evidence
+from examples.target_lifecycle_evidence import DEMO_FLAG, run_all_evidence, run_evidence
 
 
 class TargetLifecycleEvidenceTest(unittest.TestCase):
@@ -51,6 +51,22 @@ class TargetLifecycleEvidenceTest(unittest.TestCase):
         self.assertEqual(calls[1][-2:], ["up", "-d"])
         self.assertEqual(calls[-1][-1], "down")
         self.assertNotIn(DEMO_FLAG, evidence)
+
+    def test_all_targets_dry_run_writes_each_template_without_flag_output(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            result = run_all_evidence(live=False, log_dir=Path(temp_dir))
+            evidence = result.evidence_path.read_text(encoding="utf-8")
+            transcript = result.transcript_path.read_text(encoding="utf-8")
+
+        self.assertTrue(result.ok)
+        self.assertEqual(result.mode, "dry-run-all")
+        self.assertEqual(result.summary["target_count"], 3)
+        for template_id in ("real_ctf_web_awd_01", "pwn_awd_echo_01", "crypto_awd_oracle_01"):
+            self.assertIn(template_id, evidence)
+            self.assertIn(template_id, transcript)
+        self.assertEqual(evidence.count('"action": "health"'), 3)
+        self.assertNotIn(DEMO_FLAG, evidence)
+        self.assertNotIn(DEMO_FLAG, transcript)
 
 
 if __name__ == "__main__":

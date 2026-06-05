@@ -39,3 +39,18 @@ class SessionManager:
         if session:
             session.writer = None
         return session
+
+    def cleanup_stale(self, max_age_sec: float = 3600) -> list[str]:
+        """Remove sessions that haven't been seen in max_age_sec seconds.
+
+        Returns the list of removed client IDs.
+        """
+        now = time()
+        stale_ids = [
+            cid
+            for cid, session in self.sessions.items()
+            if now - session.last_seen_at > max_age_sec
+        ]
+        for cid in stale_ids:
+            del self.sessions[cid]
+        return stale_ids

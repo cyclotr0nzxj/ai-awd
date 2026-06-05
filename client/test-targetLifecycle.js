@@ -65,6 +65,39 @@ test("runs an allowed docker compose action and injects the private flag locally
   assert.doesNotMatch(JSON.stringify(result), /FLAG\{secret\}/);
 });
 
+test("doctor checks Docker readiness without running target commands or leaking flags", async () => {
+  const seen = [];
+  const result = await runTargetAction(
+    {
+      action: "doctor",
+      runtime: runtimeFixture(),
+      flag: "FLAG{secret}",
+    },
+    {
+      runner: async () => {
+        throw new Error("target lifecycle command should not run");
+      },
+      doctorRunner: async (argv) => {
+        seen.push(argv);
+        if (argv.join(" ") === "docker info") {
+          return { status: 1, stdout: "", stderr: "Cannot connect to Docker daemon FLAG{secret}" };
+        }
+        return { status: 0, stdout: `${argv.join(" ")} ok`, stderr: "" };
+      },
+    },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.message, "本地靶机诊断发现问题：Docker daemon");
+  assert.deepEqual(seen, [
+    ["docker", "--version"],
+    ["docker", "compose", "version"],
+    ["docker", "info"],
+  ]);
+  assert.doesNotMatch(JSON.stringify(result), /FLAG\{secret\}/);
+  assert.match(JSON.stringify(result), /FLAG\{已隐藏\}/);
+});
+
 test("rejects out-of-scope health checks", async () => {
   await assert.rejects(
     () =>

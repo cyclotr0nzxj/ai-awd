@@ -40,13 +40,13 @@ class FrameDecoder {
       }
 
       const body = this.buffer.subarray(HEADER_BYTES, HEADER_BYTES + frameLength);
-      this.buffer = this.buffer.subarray(HEADER_BYTES + frameLength);
       let parsed;
       try {
         parsed = JSON.parse(body.toString("utf8"));
       } catch (error) {
         throw new ProtocolError(`Invalid JSON body: ${error.message}`);
       }
+      this.buffer = this.buffer.subarray(HEADER_BYTES + frameLength);
       messages.push(parsed);
     }
 
@@ -62,6 +62,8 @@ class AiawdClient extends EventEmitter {
     this.seq = 1;
     this.clientId = null;
     this.connected = false;
+    this._heartbeatInterval = null;
+    this._heartbeatTimer = null;
   }
 
   connect({ host, port, displayName }) {
@@ -92,11 +94,16 @@ class AiawdClient extends EventEmitter {
 
       socket.on("data", (chunk) => {
         try {
-          for (const message of this.decoder.feed(chunk)) {
+          const messages = this.decoder.feed(chunk);
+          if (messages.length > 0) {
+            this._resetHeartbeatTimer();
+          }
+          for (const message of messages) {
             if (message.type === "WELCOME") {
               this.clientId = message.payload?.client_id || message.client_id;
               if (!settled) {
                 settled = true;
+                this._startHeartbeat();
                 resolve(this.snapshot());
               }
             }
@@ -140,6 +147,7 @@ class AiawdClient extends EventEmitter {
   }
 
   disconnect() {
+    this._stopHeartbeat();
     if (this.socket) {
       this.socket.end();
       this.socket.destroy();
@@ -148,6 +156,35 @@ class AiawdClient extends EventEmitter {
     this.connected = false;
     this.clientId = null;
     this.decoder = new FrameDecoder();
+  }
+
+  _startHeartbeat() {
+    this._stopHeartbeat();
+    this._heartbeatInterval = setInterval(() => {
+      this.send("PING", {}).catch(() => {});
+    }, 30_000);
+    this._resetHeartbeatTimer();
+  }
+
+  _resetHeartbeatTimer() {
+    if (this._heartbeatTimer) {
+      clearTimeout(this._heartbeatTimer);
+    }
+    this._heartbeatTimer = setTimeout(() => {
+      this.emit("timeout");
+      this.disconnect();
+    }, 60_000);
+  }
+
+  _stopHeartbeat() {
+    if (this._heartbeatInterval) {
+      clearInterval(this._heartbeatInterval);
+      this._heartbeatInterval = null;
+    }
+    if (this._heartbeatTimer) {
+      clearTimeout(this._heartbeatTimer);
+      this._heartbeatTimer = null;
+    }
   }
 
   snapshot() {

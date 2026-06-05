@@ -16,6 +16,7 @@ if str(SERVER) not in sys.path:
     sys.path.insert(0, str(SERVER))
 
 from aiawd_server.protocol import Message, read_message, write_message
+from tui.agent_runtime import AgentManager, CustomCommandAdapter, sanitize_command
 from tui.target_lifecycle import (
     TargetLifecycleError,
     format_target_action_result,
@@ -46,6 +47,16 @@ class WaitCondition:
 @dataclass(frozen=True, slots=True)
 class TargetAction:
     action: str
+
+
+@dataclass(frozen=True, slots=True)
+class AgentStart:
+    command: list[str]
+
+
+@dataclass(frozen=True, slots=True)
+class AgentStop:
+    pass
 
 
 class AiawdTuiClient:
@@ -82,6 +93,8 @@ class AiawdTuiClient:
         self.configs: list[dict[str, Any]] = []
         self._reader_task: asyncio.Task[None] | None = None
         self._running = False
+        self._agent_manager: AgentManager | None = None
+        self.replay_index = 0
 
     @property
     def connected(self) -> bool:
@@ -224,6 +237,10 @@ class AiawdTuiClient:
                 room_id=self._require_room_id(),
                 role="player",
             )
+        if command in {"agent", "智能体"}:
+            return self._build_agent_request(parts)
+        if command in {"replay", "回放"}:
+            return self._build_replay_request(parts)
         raise CommandError(f"未知命令：{parts[0]}")
 
     def handle_message(self, message: Message) -> str:
@@ -317,7 +334,7 @@ class AiawdTuiClient:
         if self.layout == "compact":
             ranking = format_rankings(self.rankings) if self.rankings else "暂无分数"
             lines = [
-                "== AI-AWD 状态 ==",
+                "== AI攻防乱斗状态 ==",
                 f"{self.client_id or '-'} · {self.display_name} · {room_label} · {role_label} · {format_phase(str(phase))}",
                 f"排行：{ranking}",
             ]
@@ -347,7 +364,7 @@ class AiawdTuiClient:
                 lines.append(f"最近战报：{event_type}")
             return lines
         lines = [
-            "== AI-AWD 战情状态 ==",
+            "== AI攻防大乱斗状态 ==",
             f"客户端：{self.client_id or '-'} · {self.display_name}",
             f"房间：{room_label}",
             f"身份：{role_label}",
@@ -377,7 +394,7 @@ class AiawdTuiClient:
         while self._running:
             try:
                 message = await read_message(self.reader)
-            except asyncio.IncompleteReadError:
+            except (asyncio.IncompleteReadError, ConnectionResetError, BrokenPipeError, OSError):
                 break
             print(f"\n{self.handle_message(message)}")
 
@@ -401,6 +418,91 @@ class AiawdTuiClient:
             raise CommandError("需要先加入或创建房间")
         return self.room_id
 
+    def _build_agent_request(self, parts: list[str]) -> AgentStart | AgentStop | str:
+        sub = parts[1].lower() if len(parts) >= 2 else "status"
+        if sub in {"start", "启动", "攻击"}:
+            command = parts[2:] if len(parts) >= 3 else ["echo", "No agent command configured"]
+            if not sanitize_command(command):
+                raise CommandError("Agent 命令包含不安全的 shell 控制符")
+            return AgentStart(command=command)
+        if sub in {"stop", "停止"}:
+            return AgentStop()
+        if sub in {"status", "状态", "info"}:
+            return self._agent_status_text()
+        raise CommandError("用法：agent start|stop|status [命令...]")
+
+    async def start_agent(self, command: list[str]) -> str:
+        if not self.configs:
+            raise CommandError("等待比赛配置下发")
+        if self.role == "spectator":
+            raise CommandError("观战席不能启动 Agent")
+        config = self.configs[0]
+        room_status = self.match.get("phase") if self.match else self.room.get("status") if self.room else "LOBBY"
+        manager = AgentManager(CustomCommandAdapter(command))
+        manager.configure(config, str(room_status))
+
+        loop = asyncio.get_running_loop()
+
+        def submit_flag(flag: str, target_url: str) -> dict[str, Any]:
+            if not self.writer or not self.client_id:
+                return {"ok": False, "code": "NOT_CONNECTED"}
+            future = asyncio.run_coroutine_threadsafe(
+                self.send_request(
+                    OutgoingRequest(
+                        "SUBMIT_FLAG_REQ",
+                        {"match_id": self.match_id, "flag": flag, "source": "agent"},
+                        room_id=self._require_room_id(),
+                        role="player",
+                    )
+                ),
+                loop,
+            )
+            try:
+                future.result(timeout=5)
+            except Exception:
+                return {"ok": False, "code": "SEND_FAILED"}
+            return {"ok": True, "code": "SUBMITTED"}
+
+        result = await loop.run_in_executor(None, lambda: manager.run_attack(submit=submit_flag))
+        self._agent_manager = manager
+        return self._format_agent_result(result)
+
+    async def stop_agent(self) -> str:
+        if not self._agent_manager:
+            return "Agent 未在运行"
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._agent_manager.stop)
+        self._agent_manager = None
+        return "Agent 已停止"
+
+    def _agent_status_text(self) -> str:
+        if self._agent_manager is None:
+            return "Agent 未启动"
+        last = self._agent_manager.last_result
+        if last is None:
+            return "Agent 已配置，尚未执行"
+        return self._format_agent_result(last)
+
+    def _format_agent_result(self, result: AgentResult) -> str:
+        lines = [
+            f"Agent 结果：{'成功' if result.ok else '失败'}",
+            f"耗时：{result.elapsed_ms}ms",
+            f"捕获 Flag：{len(result.flags_captured)} 个",
+        ]
+        if result.flags_captured:
+            lines.append("Flags：")
+            for f in result.flags_captured:
+                lines.append(f"  {f}")
+        if result.error:
+            lines.append(f"错误：{result.error}")
+        if result.actions:
+            for action in result.actions:
+                status = "成功" if action.ok else "超时/失败"
+                target = action.target_url or "-"
+                flag_info = f" · Flag：{action.flag}" if action.flag else ""
+                lines.append(f"  攻击 {target}：{status}{flag_info}")
+        return "\n".join(lines)
+
     def _infer_role(self) -> str | None:
         if not self.room or not self.client_id:
             return None
@@ -409,6 +511,75 @@ class AiawdTuiClient:
         if any(member.get("client_id") == self.client_id for member in self.room.get("spectators", [])):
             return "spectator"
         return None
+
+    def _capture_events(self) -> list[dict[str, Any]]:
+        """返回所有 FLAG_CAPTURED 事件（最新在前）。"""
+        return [e for e in self.events if e.get("event_type") == "FLAG_CAPTURED"]
+
+    def _format_replay(self, index: int) -> str:
+        """格式化单个攻陷事件的重放详情。"""
+        events = self._capture_events()
+        if not events:
+            return "暂无攻陷事件"
+        if index < 0 or index >= len(events):
+            return f"无效索引：{index}（共 {len(events)} 个事件）"
+        event = events[index]
+        ev = event.get("event") or event
+        submitter = ev.get("submitter_team_id", "-")
+        target = ev.get("target_team_id", "-")
+        score = ev.get("score_delta", 0)
+        code = ev.get("code", "-")
+        return (
+            f"== 攻陷回放 #{index + 1}/{len(events)} ==\n"
+            f"攻陷方：{submitter}\n"
+            f"目标：{target}\n"
+            f"得分：{score}\n"
+            f"结果：{code}"
+        )
+
+    def _replay_index(self) -> int:
+        """返回当前重放索引。"""
+        return self.replay_index
+
+    def _build_replay_request(self, parts: list[str]) -> str:
+        """处理回放命令，返回格式化字符串。"""
+        sub_aliases = {
+            "prev": "prev",
+            "上一攻": "prev",
+            "上一攻陷": "prev",
+            "next": "next",
+            "下一攻": "next",
+            "下一攻陷": "next",
+            "latest": "latest",
+            "最新": "latest",
+            "list": "list",
+            "列表": "list",
+        }
+        sub = parts[1].lower() if len(parts) >= 2 else "latest"
+        sub = sub_aliases.get(sub) or sub_aliases.get(parts[1].strip()) or sub
+
+        events = self._capture_events()
+        if sub == "list":
+            if not events:
+                return "暂无攻陷事件"
+            lines = ["== 攻陷事件列表 =="]
+            for i, event in enumerate(events):
+                ev = event.get("event") or event
+                submitter = ev.get("submitter_team_id", "-")
+                target = ev.get("target_team_id", "-")
+                score = ev.get("score_delta", 0)
+                lines.append(f"#{i + 1} {submitter} → {target}  +{score}分")
+            return "\n".join(lines)
+        if sub in {"prev", "next"}:
+            if not events:
+                return "暂无攻陷事件"
+            if sub == "prev":
+                self.replay_index = self.replay_index - 1 if self.replay_index > 0 else len(events) - 1
+            else:
+                self.replay_index = self.replay_index + 1 if self.replay_index < len(events) - 1 else 0
+        else:
+            self.replay_index = 0
+        return self._format_replay(self.replay_index)
 
 
 def help_text() -> str:
@@ -423,7 +594,9 @@ def help_text() -> str:
             "  start",
             "  submit FLAG{...}",
             "  target doctor|status|检查|诊断|install|start|health|stop|reset",
+            "  agent start|stop|status [命令...]",
             "  wait-phase PHASE|大厅|准备|防御|攻防|结束 [秒]",
+            "  replay prev|next|latest|list|上一攻|下一攻|最新|列表",
             "  status",
             "  quit",
         ]
@@ -520,9 +693,9 @@ def format_room_panel(room: dict[str, Any]) -> str:
     players = list(room.get("players", []))
     spectators = list(room.get("spectators", []))
     header = (
-        "== 大逃杀房间战况 ==\n"
+        "== AI攻防乱斗房间战局 ==\n"
         f"{room.get('room_id', '-')} · {room.get('room_name', '-')} · "
-        "大逃杀 · "
+        "AI攻防乱斗 · "
         f"{format_phase(str(room.get('status', '-')))} · "
         f"{len(players)}/{room.get('max_players', '-')} 玩家 · "
         f"靶场 {room.get('target_template_id', '-')}"
@@ -558,7 +731,7 @@ def format_battle_kit(config: dict[str, Any]) -> str:
     health_path = healthcheck.get("path") or "-"
     runtime_plan = format_runtime_plan(redacted.get("target_runtime") or {})
     lines = [
-        "== 私人大逃杀战斗包 ==",
+        "== 私人AI攻防乱斗战斗包 ==",
         f"玩家：{redacted.get('team_id', '-')} · 靶机：{target_name}",
         f"运行：{target_difficulty} · {target_runtime} · 健康 {health_path}",
         f"计划：{runtime_plan}" if runtime_plan else "计划：等待本地靶机计划",
@@ -615,7 +788,7 @@ def format_events(events: list[dict[str, Any]]) -> str:
             rows.append([event_type, submitter, target, code, delta])
         else:
             rows.append([event_type, "-", "-", "-", "-"])
-    return "== 最近战报 ==\n" + format_table(["事件", "提交方", "目标", "结果", "分值"], rows)
+    return "== 最近战报 ==\n" + format_table(["事件", "攻陷方", "目标", "结果", "分值"], rows)
 
 
 def format_message_summary(message: Message) -> str:
@@ -729,6 +902,10 @@ async def repl(client: AiawdTuiClient) -> None:
                 print(await client.wait_for_phase(result.phase, timeout=result.timeout))
             elif isinstance(result, TargetAction):
                 print(await client.run_target_action(result.action))
+            elif isinstance(result, AgentStart):
+                print(await client.start_agent(result.command))
+            elif isinstance(result, AgentStop):
+                print(await client.stop_agent())
             else:
                 await client.send_request(result)
         except CommandError as exc:
@@ -751,6 +928,10 @@ async def run_script(client: AiawdTuiClient, commands: list[str]) -> list[str]:
             transcript.append(await client.wait_for_phase(result.phase, timeout=result.timeout))
         elif isinstance(result, TargetAction):
             transcript.append(await client.run_target_action(result.action))
+        elif isinstance(result, AgentStart):
+            transcript.append(await client.start_agent(result.command))
+        elif isinstance(result, AgentStop):
+            transcript.append(await client.stop_agent())
         else:
             await client.send_request(result)
             transcript.append(await client.read_response_for(result))

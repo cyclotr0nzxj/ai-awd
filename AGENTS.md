@@ -38,21 +38,26 @@ Implemented:
 - AIAWD/1.0 length-prefixed JSON protocol.
 - `HELLO/WELCOME`, `PING/PONG`, target list, room creation, player/spectator joins.
 - Owner-only match start, `MATCH_CONFIG`, phase sync.
-- Target registry exposes Docker Compose manifest metadata; `MATCH_CONFIG` includes `target_manifest` for players.
+- Target registry with 3 Docker Compose target templates (web, pwn, crypto) with TCP and HTTP healthcheck support.
 - Generated per-team flags, attack-phase submit, self/duplicate/invalid rejection, scoring and ranking.
+- Client-side Agent Runtime module (Python + Node) with `AgentManager`, `CustomCommandAdapter`, flag extraction, safe command validation.
+- Multi-provider agent adapters: BasicHTTP, Hermes, OpenClaw, OpenCLI, Codex, Pi, CustomPython, and custom shell commands via a unified `adapter_for()` factory. Keep real-CLI verification claims tied to captured evidence for each binary.
+- Client-side ScopeGuard safety boundary: network scope (localhost + allowlist), file scope (project root), process safety (shell injection prevention), env allowlist, timeout enforcement, audit trail.
+- Agent Runtime TUI integration: `agent start/stop/status` commands with Chinese aliases, cross-thread flag submission.
+- Agent Runtime Electron integration: IPC handlers in main process, preload API, renderer UI controls (start/stop button, command input, status display).
+- Server HTTP API layer: read-only REST endpoints alongside TCP (health, targets, rooms, rankings, events, matches), CORS headers, recursive flag redaction, stdlib only.
+- Packet capture evidence collector: PCAP + JSON output, room-scoped filtering, flag path redaction, standard libpcap format.
+- Cross-platform packaging configs: electron-builder for macOS (DMG, arm64/x64) and Windows (NSIS, portable).
 - Headless three-client demo in `examples/three_clients_demo.py`.
-- Standard-library `unittest` tests under `tests/`.
-- Electron shell under `client/` with main-process TCP bridge, preload API, Chinese AWD battle dashboard, phase timer, click-to-select room list, private battle kit summary, ready controls, score-gap rankings, event tone states, and headless renderer smoke tests.
-- Cross-platform standard-library TUI under `tui/` with interactive commands, Chinese role/readiness/phase aliases, readable match tables, compact/wide status layouts, scripted `--script` / `--cmd` mode, redacted transcript output, standalone demo, and integration coverage.
+- Electron protocol-bridge evidence script in `client/electronE2eEvidence.js`; starts a local server and drives three Electron-side protocol clients through create/join/spectate/start/submit/ranking with flag redaction.
+- Electron BrowserWindow evidence script in `client/electronWindowEvidence.js`; starts a live local server, opens Alice/Bob/Carol windows, captures redacted screenshots, and verifies the AI攻防大乱斗 attack-phase arena, attack replay controls/highlights, click-to-focus, and private flag redaction.
+- Electron first-run onboarding under `client/onboarding.js`; auto-starts once, can be relaunched from the `新手教程` button, highlights setup/replay/report steps, and persists completion in localStorage.
+- Standard-library `unittest` tests under `tests/` (144 Python + 89 Node tests).
+- Cross-platform standard-library TUI under `tui/` with interactive commands, Chinese role/readiness/phase/agent/replay aliases, readable match tables, compact/wide status layouts, battle replay commands (prev/next/latest/list), scripted `--script` / `--cmd` mode, redacted transcript output, standalone demo, and integration coverage.
 
-Not implemented yet:
+Known product gaps:
 
-- Electron end-to-end screenshots with a live server and three app windows.
-- Actual Docker target install, compose startup, and health checks.
-- Hermes/OpenClaw/Pi/custom-command runtime adapters.
-- ScopeGuard network/file enforcement.
-- Packet capture evidence.
-- macOS/Windows packaging.
+- macOS `.app` bundle verified (builds and launches). Windows NSIS/portable configs need a Windows build host for verification.
 
 ## Development Strategy
 
@@ -83,14 +88,16 @@ Recommended milestone order:
 Run tests:
 
 ```bash
-python3 -m unittest discover -s tests -t . -v
+/usr/local/Caskroom/miniforge/base/bin/python3 -m unittest discover -s tests -t . -v
 ```
 
 If imports fail:
 
 ```bash
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v
+PYTHONPATH=server /usr/local/Caskroom/miniforge/base/bin/python3 -m unittest discover -s tests -t . -v
 ```
+
+The Python suite requires Python 3.11+; `/usr/bin/python3` on this Mac is 3.9 and fails on `dataclass(slots=True)`.
 
 Start server:
 
@@ -151,6 +158,7 @@ The local TCP tests and demo bind `127.0.0.1`; sandboxed runs may need approval.
 - `SUBMIT_FLAG_REQ` is only valid in `ATTACK`.
 - One flag can score only once globally per room.
 - Keep generated runtime logs under `logs/`; do not commit JSONL/log runtime artifacts.
+- User-facing product language is `AI攻防大乱斗`: prefer `攻陷`, `失守`, `防线完整`, `AI攻防态势`; do not reintroduce `大逃杀`, `击杀`, or `生存态势` as primary UI/documentation wording.
 
 ## Verification Gates
 
@@ -166,29 +174,40 @@ For Electron/UI work:
 - Server remains authoritative.
 - UI shows connection, room list, create/join/spectate, phase, event stream, and ranking.
 - UI shows target difficulty/runtime and player target/Agent ready status.
-- `client/test-renderer.js` covers Chinese offline state, protocol update rendering, phase timer, battle kit summary, room selection, score-gap rankings, event tone states, raw protocol message display, and private flag redaction.
+- `client/test-renderer.js` covers Chinese offline state, protocol update rendering, phase timer, battle kit summary, AI攻防大乱斗 arena/replay state, first-run onboarding, room selection, score-gap rankings, event tone states, raw protocol message display, and private flag redaction.
 - Main process owns AIAWD TCP; renderer only uses `window.aiawd`.
 - Capture screenshot evidence after significant UI milestones.
 
 For TUI work:
 
 - TUI uses the same AIAWD/1.0 protocol helpers as the server.
-- `tests/test_tui_client.py` and `tests/test_tui_integration.py` pass.
+- `tests/test_tui_client.py`, `tests/test_tui_integration.py`, and `tests/test_agent_runtime.py` pass.
 - Private `MATCH_CONFIG.flag` is redacted from status/transcripts unless explicitly debugging a private player view.
 - `examples/tui_script_demo.py` produces a readable Alice/Bob/Carol transcript under `logs/tui/`.
 
-For Docker/Agent work:
+For Agent/Adapter work:
 
-- Add negative tests for out-of-scope targets and secrets.
-- Do not claim Hermes/OpenClaw/Pi support until a real command is launched, logs are captured, and flag submission helper flow is proven.
+- `tests/test_adapters.py` and `tests/test_scopeguard.py` pass.
+- Agent adapters implement the `AgentAdapter` interface: `configure()`, `run(submit=)`, `stop()`.
+- Agent commands are validated through `sanitize_command()` before execution.
+- Do not claim a named adapter is verified with a real CLI binary until logs or evidence capture an actual launch and flag-submission flow. Keep OpenClaw tests aligned to `openclaw infer model run`.
+
+For HTTP API work:
+
+- `tests/test_http_api.py` passes all 14 endpoint tests.
+- Server starts with `--http-port 9001`, responds to `curl http://127.0.0.1:9001/health`.
+- All responses are read-only GET, no private flags exposed.
+- CORS headers present on all responses.
+
+For ScopeGuard work:
+
+- All agent runs are gated through `ScopeGuard.guard_agent_run()`.
+- Network targets must be in `allowed_targets` and localhost-only.
+- File paths must resolve within project root.
+- Environment variables must be in the allowlist.
 
 ## Next Best Slices
 
-- Build Electron end-to-end evidence around the existing tested protocol:
-
-1. Start the Python server.
-2. Launch three Electron clients.
-3. Capture screenshots for Alice creating a room, Bob joining as player, Carol joining as spectator, phase sync, and ranking update.
-4. Add a GUI/Electron smoke test once Electron dependencies are installed.
-
-- Continue TUI polish with interactive prompts for room IDs/template IDs and clearer script authoring ergonomics.
+1. Build and launch packaged Windows artifacts from the existing electron-builder config (macOS `.app` already verified).
+2. Add real-CLI agent smoke tests (Hermes/Pi/OpenCLI/Codex) against live Docker targets when Docker Desktop is available.
+3. Refresh live Docker all-target evidence (`--live --all-targets`) when Docker daemon is running.

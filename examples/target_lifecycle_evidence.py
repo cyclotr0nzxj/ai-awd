@@ -24,7 +24,12 @@ from aiawd_server.target_runtime import TargetCommand, TargetInstance, TargetRun
 DEFAULT_LOG_DIR = ROOT / "logs" / "target_lifecycle"
 DEFAULT_ROOM_ID = "room_evidence"
 DEFAULT_TEAM_ID = "team_a"
-DEFAULT_PORT = 18081
+DEFAULT_TEMPLATE_ID = "real_ctf_web_awd_01"
+DEFAULT_TARGET_PORTS = {
+    "real_ctf_web_awd_01": 18081,
+    "pwn_awd_echo_01": 31337,
+    "crypto_awd_oracle_01": 4444,
+}
 DEMO_FLAG = "FLAG{target_lifecycle_evidence_secret}"
 
 
@@ -43,40 +48,147 @@ def run_evidence(
     log_dir: Path = DEFAULT_LOG_DIR,
     room_id: str = DEFAULT_ROOM_ID,
     team_id: str = DEFAULT_TEAM_ID,
-    port: int = DEFAULT_PORT,
+    template_id: str = DEFAULT_TEMPLATE_ID,
+    port: int | None = None,
     runner: Callable[..., Any] | None = None,
     opener: Callable[..., Any] | None = None,
 ) -> EvidenceResult:
     log_dir.mkdir(parents=True, exist_ok=True)
     runtime = TargetRuntime(root=ROOT)
-    template = TargetRegistry().get("real_ctf_web_awd_01")
-    instance = runtime.plan_instance(template, room_id=room_id, team_id=team_id, flag=DEMO_FLAG, port=port)
     mode = "live" if live else "dry-run"
     transcript: list[str] = [
         "== AI-AWD Target Lifecycle Evidence ==",
         f"mode: {mode}",
-        f"template: {template.template_id}",
+        "scope: local-only Docker Compose + localhost healthcheck",
+    ]
+    live_runner = runner or (subprocess.run if live else dry_run_runner)
+    live_opener = opener or None
+
+    if live and runner is None:
+        assert_docker_available()
+    summary, target_lines = collect_template_evidence(
+        runtime=runtime,
+        registry=TargetRegistry(),
+        template_id=template_id,
+        live=live,
+        room_id=room_id,
+        team_id=team_id,
+        port=port,
+        runner=live_runner,
+        opener=live_opener,
+    )
+    transcript.extend(target_lines)
+    ok = bool(summary["ok"])
+    summary = redact_summary(summary)
+    transcript.append("")
+    transcript.append("summary: " + ("ok" if ok else "failed"))
+    transcript_text = redact_text("\n".join(transcript) + "\n")
+    evidence_path = log_dir / "target_lifecycle_evidence.json"
+    transcript_path = log_dir / "target_lifecycle_evidence.txt"
+    evidence_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    transcript_path.write_text(transcript_text, encoding="utf-8")
+    return EvidenceResult(ok=ok, mode=mode, evidence_path=evidence_path, transcript_path=transcript_path, summary=summary)
+
+
+def run_all_evidence(
+    *,
+    live: bool = False,
+    log_dir: Path = DEFAULT_LOG_DIR,
+    room_id: str = DEFAULT_ROOM_ID,
+    team_id: str = DEFAULT_TEAM_ID,
+    runner: Callable[..., Any] | None = None,
+    opener: Callable[..., Any] | None = None,
+) -> EvidenceResult:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    runtime = TargetRuntime(root=ROOT)
+    registry = TargetRegistry()
+    mode = "live-all" if live else "dry-run-all"
+    transcript: list[str] = [
+        "== AI-AWD All Target Lifecycle Evidence ==",
+        f"mode: {mode}",
+        f"targets: {len(registry.templates)}",
+        "scope: local-only Docker Compose + localhost healthcheck",
+    ]
+    live_runner = runner or (subprocess.run if live else dry_run_runner)
+    live_opener = opener or None
+    if live and runner is None:
+        assert_docker_available()
+
+    targets = []
+    for template_id, template in registry.templates.items():
+        target_summary, target_lines = collect_template_evidence(
+            runtime=runtime,
+            registry=registry,
+            template_id=template_id,
+            live=live,
+            room_id=room_id,
+            team_id=f"{team_id}_{template.category}",
+            port=DEFAULT_TARGET_PORTS.get(template_id),
+            runner=live_runner,
+            opener=live_opener,
+        )
+        targets.append(target_summary)
+        transcript.append("")
+        transcript.extend(target_lines)
+
+    ok = all(target["ok"] for target in targets)
+    summary = redact_summary(
+        {
+            "ok": ok,
+            "mode": mode,
+            "target_count": len(targets),
+            "targets": targets,
+        }
+    )
+    transcript.append("")
+    transcript.append("summary: " + ("ok" if ok else "failed"))
+    transcript_text = redact_text("\n".join(transcript) + "\n")
+    evidence_path = log_dir / "target_lifecycle_all_evidence.json"
+    transcript_path = log_dir / "target_lifecycle_all_evidence.txt"
+    evidence_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    transcript_path.write_text(transcript_text, encoding="utf-8")
+    return EvidenceResult(ok=ok, mode=mode, evidence_path=evidence_path, transcript_path=transcript_path, summary=summary)
+
+
+def collect_template_evidence(
+    *,
+    runtime: TargetRuntime,
+    registry: TargetRegistry,
+    template_id: str,
+    live: bool,
+    room_id: str,
+    team_id: str,
+    port: int | None,
+    runner: Callable[..., Any],
+    opener: Callable[..., Any] | None,
+) -> tuple[dict[str, Any], list[str]]:
+    template = registry.get(template_id)
+    instance = runtime.plan_instance(
+        template,
+        room_id=room_id,
+        team_id=team_id,
+        flag=DEMO_FLAG,
+        port=port or DEFAULT_TARGET_PORTS.get(template_id, 18081),
+    )
+    transcript = [
+        f"== Target {template.template_id} ==",
+        f"name: {template.name}",
+        f"category: {template.category}",
         f"project: {instance.project_name}",
         f"base_url: {instance.base_url}",
         f"health_url: {instance.health_url}",
-        "scope: local-only Docker Compose + localhost healthcheck",
     ]
     actions: list[dict[str, Any]] = []
-    live_runner = runner or (subprocess.run if live else dry_run_runner)
-    live_opener = opener or None
     ok = True
     started = False
-
     try:
-        if live and runner is None:
-            assert_docker_available()
         for action in ["install", "start"]:
-            result = run_command_action(runtime, instance.commands[action], runner=live_runner)
+            result = run_command_action(runtime, instance.commands[action], runner=runner)
             actions.append(result)
             transcript.append(format_action_line(action, result))
             if action == "start" and result["ok"]:
                 started = True
-        health = wait_for_health(runtime, instance, live=live, opener=live_opener)
+        health = wait_for_health(runtime, instance, live=live, opener=opener)
         actions.append(health)
         transcript.append(format_action_line("health", health))
         ok = all(action["ok"] for action in actions)
@@ -88,31 +200,23 @@ def run_evidence(
     finally:
         if live and started:
             try:
-                stopped = run_command_action(runtime, instance.commands["stop"], runner=live_runner)
+                stopped = run_command_action(runtime, instance.commands["stop"], runner=runner)
             except Exception as exc:
                 stopped = {"action": "stop", "ok": False, "message": str(exc), "steps": []}
             actions.append(stopped)
             transcript.append(format_action_line("stop", stopped))
 
-    summary = redact_summary(
-        {
-            "ok": ok,
-            "mode": mode,
-            "template_id": template.template_id,
-            "project_name": instance.project_name,
-            "base_url": instance.base_url,
-            "health_url": instance.health_url,
-            "actions": actions,
-        }
-    )
-    transcript.append("")
-    transcript.append("summary: " + ("ok" if ok else "failed"))
-    transcript_text = redact_text("\n".join(transcript) + "\n")
-    evidence_path = log_dir / "target_lifecycle_evidence.json"
-    transcript_path = log_dir / "target_lifecycle_evidence.txt"
-    evidence_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    transcript_path.write_text(transcript_text, encoding="utf-8")
-    return EvidenceResult(ok=ok, mode=mode, evidence_path=evidence_path, transcript_path=transcript_path, summary=summary)
+    return {
+        "ok": ok,
+        "mode": "live" if live else "dry-run",
+        "template_id": template.template_id,
+        "name": template.name,
+        "category": template.category,
+        "project_name": instance.project_name,
+        "base_url": instance.base_url,
+        "health_url": instance.health_url,
+        "actions": actions,
+    }, transcript
 
 
 def run_command_action(runtime: TargetRuntime, command: TargetCommand, *, runner: Callable[..., Any]) -> dict[str, Any]:
@@ -141,7 +245,7 @@ def wait_for_health(
     *,
     live: bool,
     opener: Callable[..., Any] | None,
-    attempts: int = 20,
+    attempts: int = 40,
     delay: float = 0.5,
 ) -> dict[str, Any]:
     if not live and opener is None:
@@ -208,19 +312,30 @@ def format_action_line(action: str, result: dict[str, Any]) -> str:
 async def async_main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Collect local target lifecycle evidence for AI-AWD Arena")
     parser.add_argument("--live", action="store_true", help="Actually run Docker Compose install/start/health/stop")
+    parser.add_argument("--all-targets", action="store_true", help="Collect evidence for every registered target template")
+    parser.add_argument("--template-id", default=DEFAULT_TEMPLATE_ID)
     parser.add_argument("--log-dir", type=Path, default=DEFAULT_LOG_DIR)
     parser.add_argument("--room-id", default=DEFAULT_ROOM_ID)
     parser.add_argument("--team-id", default=DEFAULT_TEAM_ID)
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--port", type=int, default=None)
     args = parser.parse_args(argv)
 
-    result = run_evidence(
-        live=args.live,
-        log_dir=args.log_dir,
-        room_id=args.room_id,
-        team_id=args.team_id,
-        port=args.port,
-    )
+    if args.all_targets:
+        result = run_all_evidence(
+            live=args.live,
+            log_dir=args.log_dir,
+            room_id=args.room_id,
+            team_id=args.team_id,
+        )
+    else:
+        result = run_evidence(
+            live=args.live,
+            log_dir=args.log_dir,
+            room_id=args.room_id,
+            team_id=args.team_id,
+            template_id=args.template_id,
+            port=args.port,
+        )
     print(f"mode: {result.mode}")
     print(f"ok: {result.ok}")
     print(f"evidence: {result.evidence_path}")

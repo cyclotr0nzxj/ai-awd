@@ -91,7 +91,121 @@ class TargetRegistry:
                         "allowed_scope": "room_only",
                     },
                 },
-            )
+            ),
+            "pwn_awd_echo_01": TargetTemplate(
+                template_id="pwn_awd_echo_01",
+                name="PWN 二进制漏洞利用靶机",
+                description="模拟二进制溢出漏洞利用的 AWD 靶机，通过 TCP 协议交互，需要构造特定溢出载荷获取 flag。",
+                version="0.1.0",
+                category="pwn",
+                difficulty="intermediate",
+                runtime="docker-compose",
+                manifest={
+                    "id": "pwn_awd_echo_01",
+                    "name": "PWN 二进制漏洞利用靶机",
+                    "version": "0.1.0",
+                    "category": "pwn",
+                    "difficulty": "intermediate",
+                    "runtime": "docker-compose",
+                    "description": "模拟二进制溢出漏洞利用的 AWD 靶机，通过 TCP 协议交互，需要构造特定溢出载荷获取 flag。",
+                    "ports": {
+                        "tcp": {
+                            "default": 31337,
+                            "env": "AIAWD_HTTP_PORT",
+                        }
+                    },
+                    "flag": {
+                        "mode": "server_generated",
+                        "inject": {
+                            "method": "env",
+                            "env": "AIAWD_FLAG",
+                        },
+                        "visible_to_agent": False,
+                    },
+                    "healthcheck": {
+                        "type": "tcp",
+                        "send": "HEALTH",
+                        "expect": "OK",
+                        "timeout_sec": 10,
+                    },
+                    "commands": {
+                        "install": "docker compose build",
+                        "start": "docker compose up -d",
+                        "stop": "docker compose down",
+                        "reset": "docker compose down -v && docker compose up -d",
+                    },
+                    "compose": {
+                        "file": "targets/pwn_awd_echo_01/docker-compose.yml",
+                        "project_prefix": "aiawd",
+                        "services": ["pwn"],
+                    },
+                    "logs": [
+                        {"service": "pwn"},
+                    ],
+                    "security": {
+                        "network": "aiawd_match_network",
+                        "no_public_targets": True,
+                        "allowed_scope": "room_only",
+                    },
+                },
+            ),
+            "crypto_awd_oracle_01": TargetTemplate(
+                template_id="crypto_awd_oracle_01",
+                name="Crypto 解密预言机靶机",
+                description="模拟密码学 Oracle 攻击的 AWD 靶机，通过 TCP 协议交互，需要逆向 XOR 密钥获取 flag。",
+                version="0.1.0",
+                category="crypto",
+                difficulty="intermediate",
+                runtime="docker-compose",
+                manifest={
+                    "id": "crypto_awd_oracle_01",
+                    "name": "Crypto 解密预言机靶机",
+                    "version": "0.1.0",
+                    "category": "crypto",
+                    "difficulty": "intermediate",
+                    "runtime": "docker-compose",
+                    "description": "模拟密码学 Oracle 攻击的 AWD 靶机，通过 TCP 协议交互，需要逆向 XOR 密钥获取 flag。",
+                    "ports": {
+                        "tcp": {
+                            "default": 4444,
+                            "env": "AIAWD_HTTP_PORT",
+                        }
+                    },
+                    "flag": {
+                        "mode": "server_generated",
+                        "inject": {
+                            "method": "env",
+                            "env": "AIAWD_FLAG",
+                        },
+                        "visible_to_agent": False,
+                    },
+                    "healthcheck": {
+                        "type": "tcp",
+                        "send": "HEALTH",
+                        "expect": "OK",
+                        "timeout_sec": 10,
+                    },
+                    "commands": {
+                        "install": "docker compose build",
+                        "start": "docker compose up -d",
+                        "stop": "docker compose down",
+                        "reset": "docker compose down -v && docker compose up -d",
+                    },
+                    "compose": {
+                        "file": "targets/crypto_awd_oracle_01/docker-compose.yml",
+                        "project_prefix": "aiawd",
+                        "services": ["oracle"],
+                    },
+                    "logs": [
+                        {"service": "oracle"},
+                    ],
+                    "security": {
+                        "network": "aiawd_match_network",
+                        "no_public_targets": True,
+                        "allowed_scope": "room_only",
+                    },
+                },
+            ),
         }
 
     def list_targets(self) -> list[dict[str, Any]]:

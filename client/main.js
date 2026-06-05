@@ -2,9 +2,12 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { AiawdClient } = require("./aiawdProtocol");
 const { runTargetAction } = require("./targetLifecycle");
+const { CustomCommandAdapter, AgentManager, sanitizeCommand } = require("./agentRuntime");
 
 let mainWindow = null;
 const client = new AiawdClient();
+/** @type {AgentManager|null} */
+let agentManager = null;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -86,6 +89,39 @@ ipcMain.handle("aiawd:submitFlag", (_event, request) =>
   ),
 );
 ipcMain.handle("aiawd:targetAction", (_event, request) => runTargetAction(request));
+
+ipcMain.handle("aiawd:agentStart", async (_event, request) => {
+  if (!sanitizeCommand(request.command)) {
+    return { ok: false, error: "Agent 命令包含不安全的 shell 控制符", flagsCaptured: [], actions: [], elapsedMs: 0 };
+  }
+  const adapter = new CustomCommandAdapter(request.command);
+  agentManager = new AgentManager(adapter);
+  agentManager.configure(request.matchConfig || {}, request.roomStatus || "LOBBY");
+  const result = await agentManager.runAttackAsync((flag, targetUrl) => {
+    client.send(
+      "SUBMIT_FLAG_REQ",
+      { match_id: request.matchId, flag, source: "electron-agent", claimed_target_team_id: targetUrl },
+      { roomId: request.roomId, role: "player" },
+    );
+    return { ok: true };
+  });
+  sendToRenderer("aiawd:agentResult", result);
+  return result;
+});
+
+ipcMain.handle("aiawd:agentStop", () => {
+  if (agentManager) {
+    agentManager.stop();
+    agentManager = null;
+    return { ok: true, message: "Agent 已停止" };
+  }
+  return { ok: true, message: "Agent 未在运行" };
+});
+
+ipcMain.handle("aiawd:agentStatus", () => {
+  if (!agentManager) return { running: false, lastResult: null };
+  return { running: agentManager.running, lastResult: agentManager.lastResult };
+});
 
 app.whenReady().then(createWindow);
 

@@ -3,8 +3,9 @@ const http = require("node:http");
 const path = require("node:path");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
-const ACTIONS = new Set(["install", "start", "stop", "reset", "health"]);
+const ACTIONS = new Set(["doctor", "install", "start", "stop", "reset", "health"]);
 const ACTION_LABELS = {
+  doctor: "诊断",
   install: "安装",
   start: "启动",
   stop: "停止",
@@ -36,6 +37,9 @@ class TargetLifecycleError extends Error {
 async function runTargetAction(request, options = {}) {
   const action = validateAction(request?.action);
   const runtime = validateRuntime(request?.runtime);
+  if (action === "doctor") {
+    return runDoctor(runtime, options);
+  }
   if (action === "health") {
     const ok = await checkTargetHealth(runtime, options);
     return {
@@ -61,8 +65,64 @@ async function runTargetAction(request, options = {}) {
     });
     if (exitCode !== 0) {
       throw new TargetLifecycleError("COMMAND_FAILED", `${ACTION_LABELS[action]}失败：${argv.join(" ")}`);
-    }
   }
+}
+
+async function runDoctor(runtime, options = {}) {
+  const checks = [];
+  checks.push({
+    name: "target_runtime",
+    label: "运行计划",
+    ok: true,
+    message: `计划 ${runtime.project_name} 有效`,
+  });
+  for (const [name, label, argv] of [
+    ["docker_cli", "Docker CLI", ["docker", "--version"]],
+    ["docker_compose", "Docker Compose", ["docker", "compose", "version"]],
+    ["docker_daemon", "Docker daemon", ["docker", "info"]],
+  ]) {
+    checks.push(await runDoctorCheck(name, label, argv, options.doctorRunner || spawnCheck));
+  }
+  const ok = checks.every((check) => check.ok);
+  const failed = checks.filter((check) => !check.ok).map((check) => check.label).join("、");
+  return {
+    ok,
+    action: "doctor",
+    label: ACTION_LABELS.doctor,
+    checks,
+    message: ok ? "本地靶机诊断通过" : `本地靶机诊断发现问题：${failed}`,
+  };
+}
+
+async function runDoctorCheck(name, label, argv, runner) {
+  try {
+    const result = await runner(argv);
+    const exitCode = Number(result.status ?? result.exitCode ?? result.code ?? 0);
+    const stdout = outputTail(result.stdout);
+    const stderr = outputTail(result.stderr);
+    return {
+      name,
+      label,
+      command: argv.join(" "),
+      ok: exitCode === 0,
+      exitCode,
+      stdout,
+      stderr,
+      message: outputTail(stdout || stderr || (exitCode === 0 ? "通过" : "未通过")),
+    };
+  } catch (error) {
+    return {
+      name,
+      label,
+      command: argv.join(" "),
+      ok: false,
+      exitCode: null,
+      stdout: "",
+      stderr: outputTail(error.message || ""),
+      message: outputTail(error.message || "检查失败"),
+    };
+  }
+}
   return {
     ok: true,
     action,
@@ -221,8 +281,26 @@ function spawnStep(argv, options) {
   });
 }
 
+function spawnCheck(argv) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(argv[0], argv.slice(1), {
+      shell: false,
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (chunk) => {
+      stdout = outputTail(stdout + chunk.toString());
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr = outputTail(stderr + chunk.toString());
+    });
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ status: code, stdout, stderr }));
+  });
+}
+
 function outputTail(value) {
-  const text = String(value || "");
+  const text = String(value || "").replace(/FLAG\{[^}]*\}/g, "FLAG{已隐藏}");
   return text.length > MAX_OUTPUT ? text.slice(-MAX_OUTPUT) : text;
 }
 

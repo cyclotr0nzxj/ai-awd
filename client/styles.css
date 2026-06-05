@@ -496,25 +496,90 @@ aside {
   font-size: 18px;
 }
 
+.arena-core.is-replay {
+  animation: arena-core-pulse 1800ms ease-in-out infinite;
+}
+
+.arena-core.is-autoplay {
+  animation: arena-core-pulse 900ms ease-in-out infinite;
+  box-shadow: 0 0 24px var(--accent), 0 0 48px color-mix(in srgb, var(--accent) 40%, transparent);
+  border-color: var(--accent);
+}
+
+@keyframes core-autoplay-glow {
+  0%, 100% { box-shadow: 0 0 16px var(--accent), 0 0 32px color-mix(in srgb, var(--accent) 30%, transparent); }
+  50% { box-shadow: 0 0 32px var(--accent), 0 0 64px color-mix(in srgb, var(--accent) 60%, transparent); }
+}
+
+.arena-core.is-autoplay {
+  animation: arena-core-pulse 900ms ease-in-out infinite, core-autoplay-glow 1800ms ease-in-out infinite;
+}
+
+/* Auto-play button state */
+.replay-actions button.is-paused {
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: combatant-attacker-pulse 1200ms ease-in-out infinite;
+}
+
 .arena-battlefield {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 10px;
 }
 
+.arena-field {
+  display: grid;
+  gap: 10px;
+}
+
 .arena-combatant {
+  position: relative;
   display: grid;
   gap: 5px;
-  min-height: 112px;
+  width: 100%;
+  min-height: 148px;
   border: 1px solid #345260;
   border-radius: 8px;
   background: rgb(12 18 24 / 0.88);
   padding: 10px;
+  text-align: left;
+}
+
+.combatant-head {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.combatant-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #2c7a5e;
+  border-radius: 50%;
+  background: radial-gradient(circle, #12372d 0%, #0c1218 68%);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.combatant-avatar[data-status="breached"] {
+  border-color: #8b3d3d;
+  background: radial-gradient(circle, #35131a 0%, #0c1218 68%);
+  color: var(--bad);
 }
 
 .arena-combatant strong {
+  display: block;
+  overflow: hidden;
   color: var(--text);
   font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .arena-combatant em {
@@ -522,6 +587,37 @@ aside {
   font-size: 13px;
   font-style: normal;
   font-weight: 800;
+}
+
+.combatant-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.combatant-stats b {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readiness-track {
+  overflow: hidden;
+  height: 6px;
+  border-radius: 999px;
+  background: #101820;
+}
+
+.readiness-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cyan), var(--accent-strong));
 }
 
 .arena-combatant.is-self {
@@ -540,6 +636,22 @@ aside {
 
 .arena-combatant.is-leader em {
   color: var(--accent-strong);
+}
+
+.arena-combatant.is-focused {
+  box-shadow:
+    inset 0 0 0 1px rgb(56 189 248 / 0.34),
+    0 0 0 3px rgb(56 189 248 / 0.12);
+}
+
+.arena-combatant.is-attacker {
+  border-color: var(--accent-strong);
+  animation: combatant-attacker-pulse 1500ms ease-in-out infinite;
+}
+
+.arena-combatant.is-target {
+  border-color: var(--bad);
+  animation: combatant-target-pulse 1500ms ease-in-out infinite;
 }
 
 .arena-combatant.is-breached {
@@ -568,6 +680,314 @@ aside {
 .arena-lane.alert {
   background: var(--amber);
   box-shadow: 0 0 12px rgb(242 184 75 / 0.42);
+}
+
+.arena-threats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 8px;
+}
+
+.threat-lane {
+  display: grid;
+  gap: 3px;
+  min-height: 62px;
+  border: 1px solid #284b59;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgb(56 189 248 / 0.12), transparent 70%),
+    #0c1218;
+  padding: 8px 10px;
+}
+
+.threat-lane span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.threat-lane strong {
+  overflow: hidden;
+  color: var(--cyan);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threat-lane em {
+  color: var(--amber);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.threat-lane.is-latest {
+  border-color: var(--amber);
+  background:
+    linear-gradient(90deg, rgb(242 184 75 / 0.14), transparent 72%),
+    #0c1218;
+}
+
+.threat-lane.is-replay {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--accent-strong);
+}
+
+.threat-lane.is-replay::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0%, rgb(54 226 168 / 0.18) 42%, transparent 72%);
+  animation: threat-scan 1400ms ease-in-out infinite;
+  content: "";
+  pointer-events: none;
+}
+
+.threat-lane.is-idle strong {
+  color: var(--muted);
+}
+
+.arena-focus {
+  display: grid;
+  gap: 4px;
+  min-height: 88px;
+  border: 1px solid #284b59;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgb(18 184 134 / 0.12), transparent 68%),
+    #0c1218;
+  padding: 10px 12px;
+}
+
+.arena-focus span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.arena-focus strong {
+  overflow: hidden;
+  color: var(--accent-strong);
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-focus em,
+.arena-focus small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-focus em {
+  color: var(--amber);
+  font-weight: 800;
+}
+
+.arena-replay {
+  display: grid;
+  gap: 5px;
+  min-height: 104px;
+  border: 1px solid #345260;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgb(56 189 248 / 0.11), transparent 64%),
+    #0c1218;
+  padding: 10px 12px;
+}
+
+.arena-replay span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.arena-replay strong {
+  overflow: hidden;
+  color: var(--cyan);
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-replay em,
+.arena-replay small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-replay em {
+  color: var(--amber);
+  font-weight: 800;
+}
+
+.replay-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.replay-actions button {
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* --- timeline scrubber --- */
+.replay-timeline {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.timeline-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.timeline-track {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.timeline-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  padding: 0;
+  transition: all 200ms ease;
+  position: relative;
+}
+
+.timeline-dot:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+  transform: scale(1.2);
+}
+
+.timeline-dot.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.timeline-dot.is-active.is-pulsing {
+  animation: timeline-pulse 600ms ease-in-out infinite;
+}
+
+.timeline-dot.is-latest {
+  border-color: var(--accent);
+  border-width: 3px;
+}
+
+.timeline-dot.is-latest::after {
+  content: "最新";
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+@keyframes timeline-pulse {
+  0%, 100% { box-shadow: 0 0 4px var(--accent); }
+  50% { box-shadow: 0 0 14px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 30%, transparent); }
+}
+
+@keyframes arena-core-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgb(54 226 168 / 0);
+  }
+
+  50% {
+    box-shadow: 0 0 26px rgb(54 226 168 / 0.22);
+  }
+}
+
+@keyframes combatant-attacker-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgb(54 226 168 / 0.18);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 1px rgb(54 226 168 / 0.34), 0 0 18px rgb(54 226 168 / 0.18);
+  }
+}
+
+@keyframes combatant-target-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgb(240 95 95 / 0.16);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 1px rgb(240 95 95 / 0.34), 0 0 18px rgb(240 95 95 / 0.18);
+  }
+}
+
+@keyframes threat-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.score-popup {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 10;
+  font-weight: 900;
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  animation: score-float 2s ease-out forwards;
+  pointer-events: none;
+}
+
+.score-popup.is-gain {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid var(--accent);
+}
+
+.score-popup.is-loss {
+  color: var(--danger, #ef4444);
+  background: color-mix(in srgb, var(--danger, #ef4444) 15%, transparent);
+  border: 1px solid var(--danger, #ef4444);
+}
+
+@keyframes score-float {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-32px); }
 }
 
 ul {
@@ -915,5 +1335,246 @@ pre {
 
   .brand {
     align-items: flex-start;
+  }
+}
+
+/* ============================================================
+   Onboarding / 新手教程 Overlay
+   ============================================================ */
+
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.onboarding-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* When on a center step (welcome / done), darken fully */
+.onboarding-overlay.is-center .onboarding-backdrop {
+  background: rgb(0 0 0 / 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* —— spotlight cut-out —— */
+.onboarding-spotlight {
+  position: absolute;
+  z-index: 2;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 9999px rgb(0 0 0 / 0.72),
+    0 0 28px rgb(18 184 134 / 0.28);
+  border: 2px solid var(--accent);
+  background: transparent;
+  pointer-events: none;
+  transition: all 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.onboarding-overlay.is-center .onboarding-spotlight {
+  display: none !important;
+}
+
+/* —— tooltip card —— */
+.onboarding-tooltip {
+  position: absolute;
+  z-index: 3;
+  min-width: 280px;
+  max-width: 380px;
+  border: 1px solid var(--accent-strong);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #111820 0%, #17232a 100%);
+  box-shadow:
+    0 0 0 1px rgb(54 226 168 / 0.14),
+    0 24px 64px rgb(0 0 0 / 0.55);
+  padding: 20px 22px;
+  animation: onboarding-tooltip-in 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes onboarding-tooltip-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-tooltip-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.onboarding-step-badge {
+  flex: 0 0 auto;
+  display: inline-block;
+  min-width: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 3px 8px;
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.onboarding-tooltip h3 {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.onboarding-tooltip p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* —— tooltip positioning —— */
+.onboarding-pos-center {
+  position: fixed;
+  transform: translate(-50%, -50%);
+}
+
+.onboarding-pos-right,
+.onboarding-pos-left,
+.onboarding-pos-top,
+.onboarding-pos-bottom {
+  position: absolute;
+}
+
+/* —— actions row —— */
+.onboarding-tooltip-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.onboarding-nav-group {
+  display: flex;
+  gap: 8px;
+}
+
+.onboarding-btn {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0c1218;
+  color: var(--text);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.onboarding-btn:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgb(18 184 134 / 0.12);
+}
+
+.onboarding-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.onboarding-btn-primary {
+  border-color: #249a75;
+  background: var(--accent);
+  color: #06110e;
+  font-weight: 800;
+}
+
+.onboarding-btn-primary:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 3px rgb(18 184 134 / 0.2);
+}
+
+.onboarding-btn-skip {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.onboarding-btn-skip:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+/* —— progress dots —— */
+.onboarding-progress {
+  position: absolute;
+  z-index: 4;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.onboarding-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: rgb(255 255 255 / 0.08);
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.onboarding-dot.is-active {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 8px rgb(18 184 134 / 0.5);
+}
+
+.onboarding-dot.is-done {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.onboarding-dot:hover {
+  border-color: var(--accent-strong);
+  transform: scale(1.3);
+}
+
+/* —— responsive —— */
+@media (max-width: 760px) {
+  .onboarding-tooltip {
+    min-width: 0;
+    max-width: calc(100vw - 32px);
+    left: 16px !important;
+    right: 16px !important;
+  }
+
+  .onboarding-tooltip-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .onboarding-nav-group {
+    justify-content: stretch;
+  }
+
+  .onboarding-nav-group button {
+    flex: 1;
   }
 }

@@ -75,7 +75,7 @@ class DemoClient:
                 self.transcript.append(f"{self.name} <- {message.type} {message.payload}")
                 return self.inbox.pop(index)
         while True:
-            message = await asyncio.wait_for(read_message(self.reader), timeout=3)
+            message = await asyncio.wait_for(read_message(self.reader), timeout=10)
             if predicate(message):
                 self.transcript.append(f"{self.name} <- {message.type} {message.payload}")
                 return message

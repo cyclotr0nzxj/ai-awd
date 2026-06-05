@@ -47,6 +47,7 @@ class TargetInstance:
     compose_file: Path
     base_url: str
     health_url: str
+    healthcheck: dict[str, Any]
     env: dict[str, str]
     commands: dict[str, TargetCommand]
 
@@ -59,6 +60,7 @@ class TargetInstance:
             "compose_file": str(self.compose_file),
             "base_url": self.base_url,
             "health_url": self.health_url,
+            "healthcheck": self.healthcheck,
             "commands": {name: command.public_snapshot() for name, command in self.commands.items()},
         }
 
@@ -96,8 +98,10 @@ class TargetRuntime:
             raise TargetRuntimeError("MISSING_COMPOSE", "compose 文件不存在")
         project_name = f"{compose.get('project_prefix', 'aiawd')}_{room_id}_{team_id}"
         base_url = f"http://{host}:{port}"
-        health_path = manifest["healthcheck"]["path"]
-        health_url = f"{base_url}{health_path}"
+        healthcheck = manifest.get("healthcheck") or {}
+        hc_type = healthcheck.get("type", "http")
+        health_path = healthcheck.get("path", "/")
+        health_url = f"{base_url}{health_path}" if hc_type == "http" else f"tcp://{host}:{port}"
         env = {
             "AIAWD_ROOM_ID": room_id,
             "AIAWD_TEAM_ID": team_id,
@@ -127,6 +131,7 @@ class TargetRuntime:
             compose_file=compose_file,
             base_url=base_url,
             health_url=health_url,
+            healthcheck=healthcheck,
             env=env,
             commands=commands,
         )
@@ -143,11 +148,36 @@ class TargetRuntime:
 
     def check_health(self, instance: TargetInstance, *, opener: Callable[..., Any] = urlopen, timeout: float | None = None) -> bool:
         parsed = urlparse(instance.health_url)
+        if parsed.scheme == "tcp":
+            return self._check_tcp_health(instance, timeout=timeout)
         if parsed.scheme != "http" or parsed.hostname not in LOCAL_HOSTS:
-            raise TargetRuntimeError("OUT_OF_SCOPE_HEALTHCHECK", "健康检查只能访问本机 HTTP 靶机")
+            raise TargetRuntimeError("OUT_OF_SCOPE_HEALTHCHECK", "健康检查只能访问本机靶机")
         response = opener(instance.health_url, timeout=timeout or 5)
         status = getattr(response, "status", 200)
         return 200 <= int(status) < 300
+
+    def _check_tcp_health(self, instance: TargetInstance, *, timeout: float | None = None) -> bool:
+        import socket
+
+        parsed = urlparse(instance.health_url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 0
+        if host not in LOCAL_HOSTS or port <= 0:
+            raise TargetRuntimeError("OUT_OF_SCOPE_HEALTHCHECK", "TCP 健康检查只能访问本机")
+        try:
+            sock = socket.create_connection((host, port), timeout=timeout or 5)
+            sock.settimeout(timeout or 5)
+            try:
+                send_text = str(instance.healthcheck.get("send", "HEALTH"))
+                sock.sendall(send_text.encode("utf-8"))
+                data = sock.recv(1024)
+                ok_prefix = data.decode("utf-8", errors="replace").strip()
+                expect = str(instance.healthcheck.get("expect", "OK"))
+                return ok_prefix.startswith(expect)
+            finally:
+                sock.close()
+        except OSError:
+            return False
 
     def _compose_argv(self, project_name: str, compose_file: Path, steps: list[list[str]]) -> list[list[str]]:
         prefix = ["docker", "compose", "-p", project_name, "-f", str(compose_file)]
@@ -161,8 +191,15 @@ class TargetRuntime:
         if security.get("no_public_targets") is not True or security.get("allowed_scope") != "room_only":
             raise TargetRuntimeError("UNSAFE_TARGET", "靶机必须声明 room_only 且禁止 public targets")
         healthcheck = manifest.get("healthcheck") or {}
-        if healthcheck.get("type") != "http" or not str(healthcheck.get("path", "")).startswith("/"):
-            raise TargetRuntimeError("BAD_HEALTHCHECK", "靶机必须声明本机 HTTP healthcheck path")
+        hc_type = healthcheck.get("type")
+        if hc_type == "http":
+            if not str(healthcheck.get("path", "")).startswith("/"):
+                raise TargetRuntimeError("BAD_HEALTHCHECK", "HTTP 健康检查必须声明 path")
+        elif hc_type == "tcp":
+            if not healthcheck.get("send") or not healthcheck.get("expect"):
+                raise TargetRuntimeError("BAD_HEALTHCHECK", "TCP 健康检查必须声明 send 和 expect")
+        else:
+            raise TargetRuntimeError("BAD_HEALTHCHECK", "靶机必须声明本机 HTTP 或 TCP healthcheck")
         compose = manifest.get("compose") or {}
         if not compose.get("file"):
             raise TargetRuntimeError("BAD_COMPOSE", "靶机缺少 compose 文件配置")

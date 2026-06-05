@@ -57,13 +57,13 @@ async def run_demo(
 
         append_block(transcript, "Alice 开始比赛", await run_script(alice, ["start"]))
 
-        bob_config = await bob.read_until(lambda message: message.type == "MATCH_CONFIG", timeout=3)
+        bob_config = await bob.read_until(lambda message: message.type == "MATCH_CONFIG", timeout=10)
         bob.handle_message(bob_config)
-        bob_phase = await bob.read_until(lambda message: message.type == "PHASE_SYNC", timeout=3)
+        bob_phase = await bob.read_until(lambda message: message.type == "PHASE_SYNC", timeout=10)
         bob.handle_message(bob_phase)
         append_block(transcript, "Bob 收到私人战斗包", bob.status_lines())
 
-        append_block(transcript, "Alice 等待进入攻防阶段", [await alice.wait_for_phase("ATTACK", timeout=3)])
+        append_block(transcript, "Alice 等待进入攻防阶段", [await alice.wait_for_phase("ATTACK", timeout=15)])
 
         flag = bob_config.payload["flag"]
         append_block(transcript, "Alice 提交 Bob 的 flag", await run_script(alice, [f"submit {flag}"]))

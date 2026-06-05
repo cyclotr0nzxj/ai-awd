@@ -17,7 +17,10 @@ venv/
 *~
 .vscode/
 .idea/
+.claude/
 # Electron
 client/out/
 # Docker evidence (generated)
 logs/target_lifecycle/
+# Electron evidence (generated)
+logs/electron/

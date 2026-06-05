@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld("aiawd", {
   markAgentReady: (request) => ipcRenderer.invoke("aiawd:markAgentReady", request),
   submitFlag: (request) => ipcRenderer.invoke("aiawd:submitFlag", request),
   runTargetAction: (request) => ipcRenderer.invoke("aiawd:targetAction", request),
+  agentStart: (request) => ipcRenderer.invoke("aiawd:agentStart", request),
+  agentStop: () => ipcRenderer.invoke("aiawd:agentStop"),
+  agentStatus: () => ipcRenderer.invoke("aiawd:agentStatus"),
   snapshot: () => ipcRenderer.invoke("aiawd:snapshot"),
   onMessage: (callback) => {
     const listener = (_event, message) => callback(message);

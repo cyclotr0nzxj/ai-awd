@@ -16,6 +16,17 @@ const state = {
     state: "idle",
     message: "等待本地靶机计划",
   },
+  agentStatus: {
+    state: "idle",
+    message: "Agent 未启动",
+  },
+  captureCounts: {},
+  breachCounts: {},
+  scorePopup: null,
+  focusedTeamId: null,
+  replayIndex: 0,
+  autoPlayActive: false,
+  autoPlayTimer: null,
 };
 
 const els = {};
@@ -56,20 +67,21 @@ window.addEventListener("DOMContentLoaded", () => {
     "phase",
     "phaseTimer",
     "scoreSummary",
-    "battleHeat",
+    "attackHeat",
     "nextStepTitle",
     "nextStepBody",
     "roomSummary",
     "matchSummary",
-    "battleKit",
+    "attackKit",
     "targetLifecycleStatus",
+    "targetDoctor",
     "targetInstall",
     "targetStart",
     "targetHealth",
     "targetStop",
     "targetReset",
     "arenaMap",
-    "survivalBoard",
+    "defenseBoard",
     "resultSummary",
     "podiumList",
     "captureRecap",
@@ -81,6 +93,11 @@ window.addEventListener("DOMContentLoaded", () => {
     "events",
     "messages",
     "matchConfig",
+    "agentCommand",
+    "agentStart",
+    "agentStop",
+    "agentStatus",
+    "startOnboarding",
   ]) {
     els[id] = document.getElementById(id);
   }
@@ -95,14 +112,36 @@ window.addEventListener("DOMContentLoaded", () => {
   els.markAgentReady.addEventListener("click", () => markReady("AGENT_READY"));
   els.startMatch.addEventListener("click", startMatch);
   els.submitFlag.addEventListener("click", submitFlag);
+  els.targetDoctor.addEventListener("click", () => runTargetLifecycle("doctor"));
   els.targetInstall.addEventListener("click", () => runTargetLifecycle("install"));
   els.targetStart.addEventListener("click", () => runTargetLifecycle("start"));
   els.targetHealth.addEventListener("click", () => runTargetLifecycle("health"));
   els.targetStop.addEventListener("click", () => runTargetLifecycle("stop"));
   els.targetReset.addEventListener("click", () => runTargetLifecycle("reset"));
+  if (els.agentStart) els.agentStart.addEventListener("click", agentStart);
+  if (els.agentStop) els.agentStop.addEventListener("click", agentStop);
   els.generateReport.addEventListener("click", generateReport);
   els.copyReport.addEventListener("click", copyReport);
   els.downloadReport.addEventListener("click", downloadReport);
+
+  // —— Onboarding / 新手教程 ——
+  if (typeof OnboardingEngine !== "undefined") {
+    OnboardingEngine.init();
+    // Auto-start on first visit (after a short delay so the UI paints first)
+    setTimeout(() => {
+      if (OnboardingEngine.autoStart()) {
+        addEvent("ONBOARDING_STARTED", {});
+        render();
+      }
+    }, 600);
+    if (els.startOnboarding) {
+      els.startOnboarding.addEventListener("click", () => {
+        OnboardingEngine.start();
+        addEvent("ONBOARDING_STARTED", { replay: true });
+        render();
+      });
+    }
+  }
 
   window.aiawd = window.aiawd || unavailableBridge();
   window.aiawd.onMessage(handleMessage);
@@ -147,7 +186,7 @@ async function disconnect() {
 async function createRoom() {
   await action("CREATE_ROOM", () =>
     window.aiawd.createRoom({
-      roomName: els.roomName.value.trim() || "AI AWD 演示房间",
+      roomName: els.roomName.value.trim() || "AI-AWD AI攻防乱斗演示房间",
       maxPlayers: Number(els.maxPlayers.value || 2),
       targetTemplateId: els.targetTemplateId.value.trim() || "real_ctf_web_awd_01",
       displayName: els.displayName.value.trim() || "本地玩家",
@@ -244,6 +283,57 @@ async function runTargetLifecycle(actionName) {
   render();
 }
 
+async function agentStart() {
+  const config = state.configs[0];
+  if (!config) {
+    addEvent("AGENT_SKIPPED", { message: "等待比赛配置" });
+    render();
+    return;
+  }
+  const command = els.agentCommand.value.trim().split(/\s+/).filter(Boolean);
+  if (!command.length) {
+    addEvent("AGENT_SKIPPED", { message: "需要指定 Agent 命令" });
+    render();
+    return;
+  }
+  state.agentStatus = { state: "running", message: "Agent 攻击中..." };
+  render();
+  try {
+    const result = await window.aiawd.agentStart({
+      command,
+      matchConfig: config,
+      roomStatus: state.match?.phase || state.room?.status || "LOBBY",
+      matchId: state.matchId,
+      roomId: state.roomId,
+    });
+    state.agentStatus = {
+      state: result.ok ? "ok" : "warn",
+      message: result.ok
+        ? `Agent 完成 · ${result.flagsCaptured?.length || 0} Flag · ${result.elapsedMs}ms`
+        : result.error || "Agent 执行失败",
+    };
+    if (result.flagsCaptured?.length) {
+      addEvent("AGENT_FLAGS_FOUND", { flags: result.flagsCaptured, elapsedMs: result.elapsedMs });
+    } else {
+      addEvent("AGENT_DONE", { message: state.agentStatus.message });
+    }
+  } catch (error) {
+    state.agentStatus = { state: "bad", message: error.message || "Agent 失败" };
+    addEvent("AGENT_FAILED", { message: state.agentStatus.message });
+  }
+  render();
+}
+
+async function agentStop() {
+  try {
+    await window.aiawd.agentStop();
+    state.agentStatus = { state: "idle", message: "Agent 已停止" };
+  } catch (error) {
+    state.agentStatus = { state: "idle", message: `停止失败: ${error.message}` };
+  }
+  render();
+}
+
 async function listRooms() {
   await action("LIST_ROOMS", () => window.aiawd.listRooms());
 }
@@ -277,6 +367,7 @@ function handleMessage(message) {
         state.roomId = state.room.room_id;
         els.roomId.value = state.roomId;
         state.role = message.role || inferRoleFromRoom(state.room) || state.role;
+        syncArenaFocus();
       }
       if (message.role) {
         state.role = message.role;
@@ -295,6 +386,7 @@ function handleMessage(message) {
       state.room = message.payload?.room || state.room;
       state.roomId = state.room?.room_id || state.roomId;
       state.role = inferRoleFromRoom(state.room) || state.role;
+      syncArenaFocus();
       if (state.roomId) {
         els.roomId.value = state.roomId;
       }
@@ -314,10 +406,33 @@ function handleMessage(message) {
       break;
     case "RANKING_UPDATE":
       state.rankings = message.payload?.rankings || [];
+      syncArenaFocus();
       break;
-    case "EVENT":
-      addEvent(message.payload?.event_type || "EVENT", message.payload?.event || message.payload);
+    case "EVENT": {
+      const eventType = message.payload?.event_type;
+      const eventPayload = message.payload?.event || message.payload;
+      addEvent(eventType || "EVENT", eventPayload);
+      if (eventType === "FLAG_CAPTURED" && eventPayload) {
+        const submitter = eventPayload.submitter_team_id;
+        const target = eventPayload.target_team_id;
+        if (submitter) {
+          state.captureCounts[submitter] = (state.captureCounts[submitter] || 0) + 1;
+        }
+        if (target) {
+          state.breachCounts[target] = (state.breachCounts[target] || 0) + 1;
+        }
+        if (submitter) {
+          state.focusedTeamId = submitter;
+        }
+        state.scorePopup = {
+          teamId: submitter,
+          delta: eventPayload.score_delta || 0,
+          timestamp: Date.now(),
+        };
+        state.replayIndex = 0;
+      }
       break;
+    }
     case "ERROR":
       addEvent("ERROR", message.payload || {});
       break;
@@ -390,7 +505,7 @@ function render() {
   els.selectedRoom.textContent = state.roomId || "未选择";
   els.myRole.textContent = displayRole(state.role);
   els.scoreSummary.textContent = myScoreSummary();
-  els.battleHeat.textContent = battleHeatSummary();
+  els.attackHeat.textContent = attackHeatSummary();
   renderGuidance(phase, players);
   renderSummaries(phase, players, spectators);
   renderBattleKit();
@@ -398,6 +513,7 @@ function render() {
   renderArenaMap(phase, players);
   renderSurvivalBoard(phase, players);
   renderResultsPanel(phase);
+  renderAgentStatus();
 
   els.connect.disabled = state.connected;
   els.disconnect.disabled = !state.connected;
@@ -463,6 +579,10 @@ function refreshPhaseTimer() {
   if (els.phaseTimer) {
     els.phaseTimer.textContent = phaseTimerSummary();
   }
+  if (state.scorePopup && Date.now() - state.scorePopup.timestamp > 2000) {
+    state.scorePopup = null;
+    render();
+  }
 }
 
 function renderGuidance(phase, players) {
@@ -471,12 +591,12 @@ function renderGuidance(phase, players) {
 
   if (!state.connected) {
     els.nextStepTitle.textContent = "先连接裁判服务器";
-    els.nextStepBody.textContent = "连接后进入 AWD 大厅，可以创建房间，或输入房间 ID 加入已有比赛。";
+    els.nextStepBody.textContent = "连接后进入AI攻防乱斗大厅，可以创建房间，或输入房间 ID 加入已有比赛。";
     return;
   }
   if (!state.roomId) {
-    els.nextStepTitle.textContent = "选择一场攻防赛";
-    els.nextStepBody.textContent = "房主创建 AWD 房间；玩家从公开房间选择后参赛或观战。";
+    els.nextStepTitle.textContent = "选择一场AI攻防乱斗";
+    els.nextStepBody.textContent = "房主创建AI攻防房间；玩家从公开房间选择后参赛或观战。";
     return;
   }
   if (state.role === "spectator") {
@@ -485,18 +605,18 @@ function renderGuidance(phase, players) {
     return;
   }
   if (phase === "LOBBY") {
-    els.nextStepTitle.textContent = "大逃杀入场准备";
-    els.nextStepBody.textContent = `房间内全员互为目标，目标是尽量保持存活并完成更多击杀。已加入 ${players.length} 位玩家，靶机 ${targetReadyCount}/${players.length}，Agent ${agentReadyCount}/${players.length}。`;
+    els.nextStepTitle.textContent = "AI攻防大乱斗入场准备";
+    els.nextStepBody.textContent = `房间内全员互为目标，目标是尽量保持防线完整并完成更多攻陷。已加入 ${players.length} 位玩家，靶机 ${targetReadyCount}/${players.length}，Agent ${agentReadyCount}/${players.length}。`;
     return;
   }
   if (phase === "ATTACK") {
-    els.nextStepTitle.textContent = "大逃杀攻防已开启";
-    els.nextStepBody.textContent = "每位玩家都可在 allowed_targets 内攻击对手靶机，拿到 Flag 后提交击杀凭证刷新排行。";
+    els.nextStepTitle.textContent = "AI攻防大乱斗已开启";
+    els.nextStepBody.textContent = "每位玩家都可在 allowed_targets 内攻击对手靶机，拿到 Flag 后提交攻陷凭证刷新排行。";
     return;
   }
   if (phase === "FINISHED") {
-    els.nextStepTitle.textContent = "大逃杀结算完成";
-    els.nextStepBody.textContent = "比赛已结束，查看冠军、前三名、存活情况和击杀回放，准备导出报告或复盘。";
+    els.nextStepTitle.textContent = "AI攻防大乱斗结算完成";
+    els.nextStepBody.textContent = "比赛已结束，查看冠军、前三名、防线完整情况和攻陷回放，准备导出报告或复盘。";
     return;
   }
   els.nextStepTitle.textContent = `${displayPhase(phase)}阶段进行中`;
@@ -505,10 +625,10 @@ function renderGuidance(phase, players) {
 
 function renderSummaries(phase, players, spectators) {
   if (!state.room) {
-    els.roomSummary.textContent = "还没有进入 AWD 房间";
+    els.roomSummary.textContent = "还没有进入AI攻防乱斗房间";
   } else {
     const roomName = state.room.room_name || state.room.room_id;
-    els.roomSummary.textContent = `${roomName} · 大逃杀 · ${players.length}/${state.room.max_players || "-"} 位玩家 · ${spectators.length} 位观战`;
+    els.roomSummary.textContent = `${roomName} · AI攻防大乱斗 · ${players.length}/${state.room.max_players || "-"} 位玩家 · ${spectators.length} 位观战`;
   }
 
   if (!state.matchId) {
@@ -521,14 +641,14 @@ function renderSummaries(phase, players, spectators) {
 function renderBattleKit() {
   const config = state.configs[0];
   if (!config) {
-    els.battleKit.textContent = "等待私人比赛配置";
+    els.attackKit.textContent = "等待私人战斗包";
     return;
   }
   const opponentCount = Array.isArray(config.opponents) ? config.opponents.length : 0;
   const allowedCount = Array.isArray(config.allowed_targets) ? config.allowed_targets.length : 0;
   const targetMeta = targetMetaParts(config);
   const runtimePlan = targetRuntimePlanText(config);
-  els.battleKit.textContent = `大逃杀战斗包 · 玩家 ${config.team_id || "-"} · ${targetMeta.join(" · ")}${runtimePlan ? ` · ${runtimePlan}` : ""} · 对手 ${opponentCount} 个 · 允许目标 ${allowedCount} 个`;
+  els.attackKit.textContent = `私人战斗包 · 玩家 ${config.team_id || "-"} · ${targetMeta.join(" · ")}${runtimePlan ? ` · ${runtimePlan}` : ""} · 对手 ${opponentCount} 个 · 允许目标 ${allowedCount} 个`;
 }
 
 function renderTargetLifecycle() {
@@ -539,11 +659,21 @@ function renderTargetLifecycle() {
   els.targetLifecycleStatus.dataset.state = state.targetActionStatus.state || "idle";
 }
 
+function renderAgentStatus() {
+  if (!els.agentStatus) return;
+  els.agentStatus.textContent = state.agentStatus?.message || "Agent 未启动";
+  els.agentStatus.dataset.state = state.agentStatus?.state || "idle";
+  const hasConfig = Boolean(state.configs[0]);
+  const isAttack = (state.match?.phase || "") === "ATTACK";
+  if (els.agentStart) els.agentStart.disabled = !state.connected || !hasConfig || !isAttack || state.role === "spectator";
+  if (els.agentStop) els.agentStop.disabled = state.agentStatus?.state !== "running";
+}
+
 function setTargetLifecycleDisabled() {
   const hasRuntime = Boolean(state.configs[0]?.target_runtime?.project_name);
   const isRunning = state.targetActionStatus.state === "running";
   const disabled = !hasRuntime || isRunning || state.role === "spectator";
-  for (const button of [els.targetInstall, els.targetStart, els.targetHealth, els.targetStop, els.targetReset]) {
+  for (const button of [els.targetDoctor, els.targetInstall, els.targetStart, els.targetHealth, els.targetStop, els.targetReset]) {
     button.disabled = disabled;
   }
 }
@@ -562,65 +692,103 @@ function renderArenaMap(phase, players) {
 
   const ownTeamId = state.configs[0]?.team_id;
   const leaderTeamId = state.rankings[0]?.team_id;
+  const focusedTeamId = selectedArenaTeamId(players);
+  const replay = currentReplay();
+  const replayPayload = replay ? capturePayload(replay) : {};
   const combatants = players
     .map((player, index) => {
       const teamId = player.team_id || `slot_${index + 1}`;
       const isSelf = (ownTeamId && teamId === ownTeamId) || player.client_id === state.clientId;
       const isLeader = leaderTeamId && teamId === leaderTeamId;
-      const nodeLabel = isSelf && isLeader ? "我方存活王" : isSelf ? "我方玩家" : isLeader ? "存活王玩家" : "对手玩家";
+      const isFocused = focusedTeamId && teamId === focusedTeamId;
+      const isAttacker = replayPayload.submitter_team_id && teamId === replayPayload.submitter_team_id;
+      const isTarget = replayPayload.target_team_id && teamId === replayPayload.target_team_id;
+      const nodeLabel = isSelf && isLeader ? "我方防线完整领先" : isSelf ? "我方 Agent 模型玩家" : isLeader ? "防线完整领先玩家" : "Agent 模型玩家";
       const score = teamScore(teamId);
       const readyText = `${player.target_ready ? "靶机已好" : "靶机待确认"} · ${player.agent_ready ? "Agent 已好" : "Agent 待确认"}`;
       const modelText = player.model_display_name ? `模型 ${player.model_display_name}` : "";
       const playerText = [player.display_name || "-", modelText].filter(Boolean).join(" · ");
-      const isBreached = deathCount(teamId) > 0;
-      return `<div class="arena-combatant${isSelf ? " is-self" : ""}${isLeader ? " is-leader" : ""}${isBreached ? " is-breached" : ""}">
-        <span>${escapeHtml(nodeLabel)}</span>
-        <strong>${escapeHtml(teamId)}</strong>
+      const isBreached = breachCount(teamId) > 0;
+      const readiness = readinessPercent(player);
+      const popup = state.scorePopup;
+      const showScorePopup = popup && popup.teamId === teamId && Date.now() - popup.timestamp < 2000;
+      const scorePopupHtml = showScorePopup
+        ? `<div class="score-popup${popup.delta > 0 ? " is-gain" : " is-loss"}">${popup.delta > 0 ? "+" : ""}${popup.delta}</div>`
+        : "";
+      return `<button type="button" class="arena-combatant${isSelf ? " is-self" : ""}${isLeader ? " is-leader" : ""}${isBreached ? " is-breached" : ""}${isFocused ? " is-focused" : ""}${isAttacker ? " is-attacker" : ""}${isTarget ? " is-target" : ""}" data-team-id="${escapeHtml(teamId)}">
+        ${scorePopupHtml}
+        <div class="combatant-head">
+          <div class="combatant-avatar" data-status="${escapeHtml(isBreached ? "breached" : "alive")}">${escapeHtml(combatantInitials(player, teamId))}</div>
+          <div>
+            <span>${escapeHtml(nodeLabel)}</span>
+            <strong>${escapeHtml(teamId)}</strong>
+          </div>
+        </div>
         <small>${escapeHtml(playerText)}</small>
-        <em>${escapeHtml(score === null ? "暂无分数" : `${score} 分`)}</em>
+        <div class="combatant-stats">
+          <em>${escapeHtml(score === null ? "暂无分数" : `${score} 分`)}</em>
+          <b>${escapeHtml(captureCount(teamId))} 攻陷 · ${escapeHtml(breachCount(teamId))} 失守</b>
+        </div>
+        <div class="readiness-track" title="靶机和 Agent 就绪度"><span style="width: ${readiness}%"></span></div>
         <i>${escapeHtml(combatMetricText(teamId))}</i>
         <small>${escapeHtml(readyText)}</small>
-      </div>`;
+      </button>`;
     })
     .join("");
+  const captures = captureEvents();
+  normalizeReplayIndex(captures);
+  const threatLanes = captures.length
+    ? captures.slice(0, 4).map((event, index) => threatLane(event, index, index === state.replayIndex)).join("")
+    : `<div class="threat-lane is-idle">
+        <span>等待首次攻陷</span>
+        <strong>REF</strong>
+        <em>${escapeHtml(players.length)} 位 Agent 模型玩家待交火</em>
+      </div>`;
 
   els.arenaMap.innerHTML = `
-    <div class="arena-core">
+    <div class="arena-core${replay ? " is-replay" : ""}${state.autoPlayActive ? " is-autoplay" : ""}">
       <span>${escapeHtml(displayPhase(phase))}</span>
-      <strong>生存战场</strong>
-      <small>REFEREE LOCK</small>
+      <strong>AI攻防大乱斗</strong>
+      <small>${escapeHtml(aliveCount(players))}/${escapeHtml(players.length)} 防线完整 · ${escapeHtml(captures.length)} 次攻陷</small>
     </div>
-    <div class="arena-battlefield">${combatants}</div>
+    <div class="arena-field">
+      <div class="arena-battlefield">${combatants}</div>
+      <div class="arena-threats">${threatLanes}</div>
+      ${arenaFocusPanel(players, focusedTeamId)}
+      ${arenaReplayPanel(captures)}
+    </div>
   `;
+  bindArenaFocus();
+  bindArenaReplay();
 }
 
 function renderSurvivalBoard(phase, players) {
   if (!players.length) {
-    els.survivalBoard.innerHTML = "<div class=\"arena-empty\">等待玩家入场</div>";
+    els.defenseBoard.innerHTML = "<div class=\"arena-empty\">等待玩家入场</div>";
     return;
   }
 
   const stats = teamStats(players);
-  const alive = stats.filter((stat) => stat.deaths === 0).length;
-  const killLeader = killLeaderStat(stats);
+  const alive = stats.filter((stat) => stat.breaches === 0).length;
+  const captureLeader = captureLeaderStat(stats);
   const highRisk = highRiskStat(stats);
   const streak = captureStreak();
   const latest = captureEvents()[0];
 
-  els.survivalBoard.innerHTML = `
+  els.defenseBoard.innerHTML = `
     <div class="survival-metrics">
-      ${survivalMetric("存活", `${alive}/${stats.length}`, `${escapeHtml(displayPhase(phase))} · ${captureEvents().length} 次击杀`, "ok")}
-      ${survivalMetric("击杀王", killLeader ? killLeader.teamId : "暂无", killLeader ? `击杀 ${killLeader.kills} · ${killLeader.score} 分` : "等待首杀", "hot")}
-      ${survivalMetric("高危玩家", highRisk ? highRisk.teamId : "暂无", highRisk ? `被击破 ${highRisk.deaths} 次` : "全员仍存活", highRisk ? "danger" : "ok")}
-      ${survivalMetric("连击", streak ? `${streak.teamId} x${streak.count}` : "暂无", latest ? captureRoute(latest) : "等待交火", streak && streak.count >= 2 ? "hot" : "")}
+      ${defenseMetric("防线完整情况", `${alive}/${stats.length}`, `${escapeHtml(displayPhase(phase))} · ${captureEvents().length} 次攻陷`, "ok")}
+      ${defenseMetric("攻陷领先", captureLeader ? captureLeader.teamId : "暂无", captureLeader ? `攻陷 ${captureLeader.captures} · ${captureLeader.score} 分` : "等待首次攻陷", "hot")}
+      ${defenseMetric("失守最多", highRisk ? highRisk.teamId : "暂无", highRisk ? `失守 ${highRisk.breaches} 次` : "全员防线完整", highRisk ? "danger" : "ok")}
+      ${defenseMetric("连续攻陷", streak ? `${streak.teamId} x${streak.count}` : "暂无", latest ? captureRoute(latest) : "等待交火", streak && streak.count >= 2 ? "hot" : "")}
     </div>
     <div class="survival-roster">
-      ${stats.map(survivalRosterItem).join("")}
+      ${stats.map(defenseRosterItem).join("")}
     </div>
   `;
 }
 
-function survivalMetric(label, value, detail, tone = "") {
+function defenseMetric(label, value, detail, tone = "") {
   return `<div class="survival-metric${tone ? ` is-${escapeHtml(tone)}` : ""}">
     <span>${escapeHtml(label)}</span>
     <strong>${escapeHtml(value)}</strong>
@@ -628,15 +796,15 @@ function survivalMetric(label, value, detail, tone = "") {
   </div>`;
 }
 
-function survivalRosterItem(stat) {
-  const status = stat.deaths ? `被击破 ${stat.deaths} 次` : "存活";
+function defenseRosterItem(stat) {
+  const status = stat.breaches ? `失守 ${stat.breaches} 次` : "防线完整";
   const model = stat.model ? `模型 ${stat.model}` : "";
   const ready = `${stat.targetReady ? "靶机已好" : "靶机待确认"} · ${stat.agentReady ? "Agent 已好" : "Agent 待确认"}`;
   const detail = [stat.name, model, ready].filter(Boolean).join(" · ");
-  return `<div class="survival-team${stat.deaths ? " is-breached" : ""}">
+  return `<div class="defense-team${stat.breaches ? " is-breached" : ""}">
     <span>${escapeHtml(status)}</span>
     <strong>${escapeHtml(stat.teamId)}</strong>
-    <em>${escapeHtml(stat.kills)} 击杀 · ${escapeHtml(stat.score)} 分</em>
+    <em>${escapeHtml(stat.captures)} 攻陷 · ${escapeHtml(stat.score)} 分</em>
     <small>${escapeHtml(detail || "-")}</small>
   </div>`;
 }
@@ -646,14 +814,14 @@ function renderResultsPanel(phase) {
   if (!state.rankings.length) {
     els.resultSummary.textContent = "等待比赛结果";
     els.podiumList.innerHTML = "<li>排行榜同步后生成结算</li>";
-    els.captureRecap.textContent = "暂无击杀记录";
+    els.captureRecap.textContent = "暂无攻陷记录";
     return;
   }
 
   const leader = state.rankings[0];
   const leaderTeamId = leader.team_id || "";
-  const title = phase === "FINISHED" ? "冠军" : "当前存活王";
-  els.resultSummary.textContent = `${title} ${leaderTeamId || "-"} · ${leader.display_name || "-"} · ${leader.score ?? 0} 分 · 击杀 ${killCount(leaderTeamId)} · ${survivalText(leaderTeamId)}`;
+  const title = phase === "FINISHED" ? "冠军" : "当前防线完整王";
+  els.resultSummary.textContent = `${title} ${leaderTeamId || "-"} · ${leader.display_name || "-"} · ${leader.score ?? 0} 分 · 攻陷 ${captureCount(leaderTeamId)} · ${defenseText(leaderTeamId)}`;
   els.podiumList.innerHTML = state.rankings
     .slice(0, 3)
     .map(
@@ -661,11 +829,11 @@ function renderResultsPanel(phase) {
         `<li class="podium-row" data-rank="${index + 1}">
           <span>${escapeHtml(index === 0 ? "冠军" : `第 ${index + 1} 名`)}</span>
           <strong>${escapeHtml(row.team_id || "-")}</strong>
-          <em>${escapeHtml(row.score ?? 0)} 分 · 击杀 ${escapeHtml(killCount(row.team_id || ""))} · ${escapeHtml(survivalText(row.team_id || ""))}</em>
+          <em>${escapeHtml(row.score ?? 0)} 分 · 攻陷 ${escapeHtml(captureCount(row.team_id || ""))} · ${escapeHtml(defenseText(row.team_id || ""))}</em>
         </li>`,
     )
     .join("");
-  els.captureRecap.textContent = captures.length ? `最近击杀：${captureRoute(captures[0])}` : "暂无击杀记录";
+  els.captureRecap.textContent = captures.length ? `最近攻陷：${captureRoute(captures[0])}` : "暂无攻陷记录";
 }
 
 function buildReportText() {
@@ -676,7 +844,7 @@ function buildReportText() {
   const captures = captureEvents();
   const config = state.configs[0] ? redactMatchConfig(state.configs[0]) : null;
   const lines = [
-    "# AI-AWD Arena 大逃杀战报",
+    "# AI-AWD Arena AI攻防大乱斗战报",
     "",
     `- 房间：${roomName}`,
     `- 房间 ID：${state.roomId || "-"}`,
@@ -684,19 +852,19 @@ function buildReportText() {
     `- 阶段：${displayPhase(phase)}`,
     `- 参赛玩家：${players.length}/${state.room?.max_players || "-"}`,
     `- 观战席：${spectators.length}`,
-    `- 击杀次数：${captures.length}`,
-    `- 存活玩家：${aliveCount(players)}/${players.length}`,
-    `- 击杀王：${reportKillLeader(players)}`,
+    `- 攻陷次数：${captures.length}`,
+    `- 防线完整玩家：${aliveCount(players)}/${players.length}`,
+    `- 攻陷领先：${reportKillLeader(players)}`,
     `- 范围边界：仅限房间下发的 allowed_targets，本报告不包含私有 Flag 明文。`,
     "",
     "## 排名",
     ...reportRankingLines(),
     "",
-    "## 存活情况",
+    "## 防线完整情况",
     ...reportSurvivalLines(players),
     "",
-    "## 击杀回放",
-    ...(captures.length ? captures.map((event, index) => `${index + 1}. ${captureRoute(event)}`) : ["- 暂无击杀记录"]),
+    "## 攻陷回放",
+    ...(captures.length ? captures.map((event, index) => `${index + 1}. ${captureRoute(event)}`) : ["- 暂无攻陷记录"]),
   ];
   if (config) {
     lines.push(
@@ -720,7 +888,7 @@ function reportRankingLines() {
   }
   return state.rankings.map(
     (row, index) =>
-      `${index + 1}. ${row.team_id || "-"} · ${row.display_name || "-"} · ${row.score ?? 0} 分 · 击杀 ${killCount(row.team_id || "")} · ${survivalText(row.team_id || "")}`,
+      `${index + 1}. ${row.team_id || "-"} · ${row.display_name || "-"} · ${row.score ?? 0} 分 · 攻陷 ${captureCount(row.team_id || "")} · ${defenseText(row.team_id || "")}`,
   );
 }
 
@@ -730,17 +898,244 @@ function reportSurvivalLines(players) {
   }
   return players.map((player) => {
     const teamId = player.team_id || "-";
-    return `- ${teamId} · ${survivalText(teamId)} · 击杀 ${killCount(teamId)}`;
+    return `- ${teamId} · ${defenseText(teamId)} · 攻陷 ${captureCount(teamId)}`;
   });
 }
 
 function reportKillLeader(players) {
-  const leader = killLeaderStat(teamStats(players));
-  return leader ? `${leader.teamId} · 击杀 ${leader.kills}` : "暂无";
+  const leader = captureLeaderStat(teamStats(players));
+  return leader ? `${leader.teamId} · 攻陷 ${leader.captures}` : "暂无";
 }
 
 function aliveCount(players) {
-  return players.filter((player) => deathCount(player.team_id || "-") === 0).length;
+  return players.filter((player) => breachCount(player.team_id || "-") === 0).length;
+}
+
+function syncArenaFocus() {
+  const players = state.room?.players || [];
+  if (!players.length) {
+    state.focusedTeamId = null;
+    state.replayIndex = 0;
+    return;
+  }
+  normalizeReplayIndex(captureEvents());
+  if (state.focusedTeamId && players.some((player) => player.team_id === state.focusedTeamId)) {
+    return;
+  }
+  state.focusedTeamId = selectedArenaTeamId(players);
+}
+
+function selectedArenaTeamId(players) {
+  if (state.focusedTeamId && players.some((player) => player.team_id === state.focusedTeamId)) {
+    return state.focusedTeamId;
+  }
+  const replaySubmitter = capturePayload(currentReplay() || {}).submitter_team_id;
+  if (replaySubmitter && players.some((player) => player.team_id === replaySubmitter)) {
+    return replaySubmitter;
+  }
+  const leaderTeamId = state.rankings[0]?.team_id;
+  if (leaderTeamId && players.some((player) => player.team_id === leaderTeamId)) {
+    return leaderTeamId;
+  }
+  const ownTeamId = state.configs[0]?.team_id;
+  if (ownTeamId && players.some((player) => player.team_id === ownTeamId)) {
+    return ownTeamId;
+  }
+  return players[0]?.team_id || null;
+}
+
+function bindArenaFocus() {
+  for (const button of els.arenaMap.querySelectorAll("[data-team-id]")) {
+    button.addEventListener("click", () => {
+      state.focusedTeamId = button.dataset.teamId;
+      render();
+    });
+  }
+}
+
+function bindArenaReplay() {
+  for (const button of els.arenaMap.querySelectorAll("[data-replay-action]")) {
+    button.addEventListener("click", () => {
+      const captures = captureEvents();
+      if (!captures.length) {
+        return;
+      }
+      const action = button.dataset.replayAction;
+      if (action === "autoplay") {
+        toggleAutoPlay(captures);
+        return;
+      }
+      if (action === "jump") {
+        const target = parseInt(button.dataset.replayTarget, 10);
+        if (!isNaN(target) && target >= 0 && target < captures.length) {
+          stopAutoPlay();
+          state.replayIndex = target;
+          const payload = capturePayload(captures[target] || {});
+          if (payload.submitter_team_id) {
+            state.focusedTeamId = payload.submitter_team_id;
+          }
+        }
+        render();
+        return;
+      }
+      stopAutoPlay();
+      dispatchReplayAction(action, captures);
+      render();
+    });
+  }
+}
+
+function dispatchReplayAction(action, captures) {
+  if (action === "prev") {
+    state.replayIndex = Math.min(captures.length - 1, state.replayIndex + 1);
+  } else if (action === "next") {
+    state.replayIndex = Math.max(0, state.replayIndex - 1);
+  } else {
+    state.replayIndex = 0;
+  }
+  const payload = capturePayload(captures[state.replayIndex] || {});
+  if (payload.submitter_team_id) {
+    state.focusedTeamId = payload.submitter_team_id;
+  }
+}
+
+function toggleAutoPlay(captures) {
+  if (state.autoPlayActive) {
+    stopAutoPlay();
+    render();
+    return;
+  }
+  state.autoPlayActive = true;
+  state.replayIndex = captures.length - 1;
+  state.focusedTeamId = capturePayload(captures[state.replayIndex] || {}).submitter_team_id || null;
+  state.autoPlayTimer = setInterval(() => {
+    if (state.replayIndex <= 0) {
+      stopAutoPlay();
+      render();
+      return;
+    }
+    state.replayIndex -= 1;
+    const payload = capturePayload(captures[state.replayIndex] || {});
+    if (payload.submitter_team_id) {
+      state.focusedTeamId = payload.submitter_team_id;
+    }
+    render();
+  }, 2000);
+  render();
+}
+
+function stopAutoPlay() {
+  if (state.autoPlayTimer) {
+    clearInterval(state.autoPlayTimer);
+    state.autoPlayTimer = null;
+  }
+  state.autoPlayActive = false;
+}
+
+function arenaFocusPanel(players, focusedTeamId) {
+  const focused = players.find((player) => player.team_id === focusedTeamId) || players[0];
+  if (!focused) {
+    return "";
+  }
+  const teamId = focused.team_id || "-";
+  const model = focused.model_display_name || focused.agent_runtime || "模型未标注";
+  const readiness = readinessPercent(focused);
+  const score = teamScore(teamId);
+  return `<div class="arena-focus" data-focus-team="${escapeHtml(teamId)}">
+    <span>战场焦点</span>
+    <strong>${escapeHtml(teamId)} · ${escapeHtml(focused.display_name || "-")}</strong>
+    <em>${escapeHtml(model)} · ${escapeHtml(score === null ? "暂无分数" : `${score} 分`)} · ${escapeHtml(defenseText(teamId))}</em>
+    <small>${escapeHtml(captureCount(teamId))} 攻陷 · ${escapeHtml(breachCount(teamId))} 失守 · 准备度 ${escapeHtml(readiness)}%</small>
+    <small>${escapeHtml(lastCombatNote(teamId))}</small>
+  </div>`;
+}
+
+function lastCombatNote(teamId) {
+  const event = captureEvents().find((item) => {
+    const payload = capturePayload(item);
+    return payload.submitter_team_id === teamId || payload.target_team_id === teamId;
+  });
+  if (!event) {
+    return "暂无交火记录";
+  }
+  const payload = capturePayload(event);
+  if (payload.submitter_team_id === teamId) {
+    return `最近攻陷 ${payload.target_team_id || "未知目标"}`;
+  }
+  return `最近对 ${payload.submitter_team_id || "未知玩家"} 失守`;
+}
+
+function arenaReplayPanel(captures) {
+  if (!captures.length) {
+    return `<div class="arena-replay" data-replay-index="-1">
+      <span>战斗回放</span>
+      <strong>等待首次攻陷</strong>
+      <em>裁判事件同步后可回看攻陷过程</em>
+      <div class="replay-actions">
+        <button type="button" data-replay-action="prev" disabled>上一攻</button>
+        <button type="button" data-replay-action="next" disabled>下一攻</button>
+        <button type="button" data-replay-action="latest" disabled>最新</button>
+        <button type="button" data-replay-action="autoplay" disabled>▶ 播放</button>
+      </div>
+    </div>`;
+  }
+  normalizeReplayIndex(captures);
+  const replay = captures[state.replayIndex];
+  const payload = capturePayload(replay);
+  const submitter = payload.submitter_team_id || "未知玩家";
+  const target = payload.target_team_id || "未知目标";
+  const delta = payload.score_delta ? `${payload.score_delta > 0 ? "+" : ""}${payload.score_delta} 分` : "攻陷得分";
+  return `<div class="arena-replay" data-replay-index="${escapeHtml(state.replayIndex)}">
+    <span>战斗回放</span>
+    <strong>${escapeHtml(submitter)} 攻陷 ${escapeHtml(target)}</strong>
+    <em>${escapeHtml(delta)} · 第 ${escapeHtml(state.replayIndex + 1)}/${escapeHtml(captures.length)} 次攻陷</em>
+    <small>选择回放会自动聚焦攻陷方，当前只回放裁判攻陷事件。</small>
+    <div class="replay-actions">
+      <button type="button" data-replay-action="prev"${state.replayIndex >= captures.length - 1 ? " disabled" : ""}>上一攻</button>
+      <button type="button" data-replay-action="next"${state.replayIndex <= 0 ? " disabled" : ""}>下一攻</button>
+      <button type="button" data-replay-action="latest"${state.replayIndex === 0 ? " disabled" : ""}>最新</button>
+      <button type="button" data-replay-action="autoplay" class="${state.autoPlayActive ? "is-paused" : ""}">${state.autoPlayActive ? "⏸ 暂停" : "▶ 播放"}</button>
+    </div>
+    ${replayTimeline(captures)}
+  </div>`;
+}
+
+function replayTimeline(captures) {
+  const dots = captures.map((event, index) => {
+    const realIndex = captures.length - 1 - index;
+    const payload = capturePayload(event);
+    const isActive = realIndex === state.replayIndex;
+    const isLatest = realIndex === captures.length - 1;
+    const label = `${payload.submitter_team_id || "?"}→${payload.target_team_id || "?"}`;
+    return `<button type="button"
+      class="timeline-dot${isActive ? " is-active" : ""}${isLatest ? " is-latest" : ""}${state.autoPlayActive && isActive ? " is-pulsing" : ""}"
+      data-replay-action="jump"
+      data-replay-target="${escapeHtml(realIndex)}"
+      title="${escapeHtml(label)} · 第${escapeHtml(realIndex + 1)}次攻陷"
+      aria-label="跳到第${escapeHtml(realIndex + 1)}次攻陷：${escapeHtml(label)}"></button>`;
+  }).join("");
+
+  return `<div class="replay-timeline" role="tablist" aria-label="攻陷时间线">
+    <span class="timeline-label">时间线</span>
+    <div class="timeline-track">${dots}</div>
+  </div>`;
+}
+
+function currentReplay() {
+  const captures = captureEvents();
+  if (!captures.length) {
+    return null;
+  }
+  normalizeReplayIndex(captures);
+  return captures[state.replayIndex] || captures[0];
+}
+
+function normalizeReplayIndex(captures) {
+  if (!captures.length) {
+    state.replayIndex = 0;
+    return;
+  }
+  state.replayIndex = Math.min(Math.max(0, state.replayIndex), captures.length - 1);
 }
 
 function teamStats(players) {
@@ -750,8 +1145,8 @@ function teamStats(players) {
       teamId,
       name: player.display_name || "",
       model: player.model_display_name || player.agent_runtime || "",
-      kills: killCount(teamId),
-      deaths: deathCount(teamId),
+      captures: captureCount(teamId),
+      breaches: breachCount(teamId),
       score: teamScore(teamId) ?? Number(player.score || 0),
       targetReady: Boolean(player.target_ready),
       agentReady: Boolean(player.agent_ready),
@@ -759,16 +1154,16 @@ function teamStats(players) {
   });
 }
 
-function killLeaderStat(stats) {
+function captureLeaderStat(stats) {
   return stats
-    .filter((stat) => stat.kills > 0)
-    .sort((a, b) => b.kills - a.kills || b.score - a.score || a.teamId.localeCompare(b.teamId))[0] || null;
+    .filter((stat) => stat.captures > 0)
+    .sort((a, b) => b.captures - a.captures || b.score - a.score || a.teamId.localeCompare(b.teamId))[0] || null;
 }
 
 function highRiskStat(stats) {
   return stats
-    .filter((stat) => stat.deaths > 0)
-    .sort((a, b) => b.deaths - a.deaths || a.score - b.score || a.teamId.localeCompare(b.teamId))[0] || null;
+    .filter((stat) => stat.breaches > 0)
+    .sort((a, b) => b.breaches - a.breaches || a.score - b.score || a.teamId.localeCompare(b.teamId))[0] || null;
 }
 
 function captureStreak() {
@@ -819,6 +1214,7 @@ function targetRuntimePlanText(config) {
 
 function targetActionLabel(actionName) {
   return {
+    doctor: "诊断",
     install: "安装",
     start: "启动",
     health: "巡检",
@@ -831,6 +1227,10 @@ function targetActionResultText(result) {
   if (result.message) {
     return result.message;
   }
+  if (result.action === "doctor" && Array.isArray(result.checks)) {
+    const failed = result.checks.filter((check) => !check.ok).map((check) => check.label || check.name);
+    return failed.length ? `本地靶机诊断发现问题：${failed.join("、")}` : "本地靶机诊断通过";
+  }
   if (result.action === "health") {
     return result.ok ? "本地靶机健康检查通过" : "本地靶机健康检查未通过";
   }
@@ -838,26 +1238,57 @@ function targetActionResultText(result) {
 }
 
 function combatMetricText(teamId) {
-  return `${survivalText(teamId)} · 击杀 ${killCount(teamId)}`;
+  return `${defenseText(teamId)} · 攻陷 ${captureCount(teamId)}`;
 }
 
-function killCount(teamId) {
+function combatantInitials(player, teamId) {
+  const source = player.model_display_name || player.display_name || teamId || "AI";
+  const compact = String(source).replace(/[^a-zA-Z0-9\u4e00-\u9fff]+/g, "");
+  return (compact.slice(0, 2) || "AI").toUpperCase();
+}
+
+function readinessPercent(player) {
+  let ready = 0;
+  if (player.target_ready) ready += 50;
+  if (player.agent_ready) ready += 50;
+  return ready;
+}
+
+function threatLane(event, index, isReplay = false) {
+  const submission = capturePayload(event);
+  const submitter = submission.submitter_team_id || "未知玩家";
+  const target = submission.target_team_id || "未知目标";
+  const delta = submission.score_delta ? `${submission.score_delta > 0 ? "+" : ""}${submission.score_delta} 分` : "攻陷得分";
+  return `<div class="threat-lane${index === 0 ? " is-latest" : ""}${isReplay ? " is-replay" : ""}">
+    <span>${escapeHtml(index === 0 ? "最新攻陷" : `回放 ${index + 1}`)}</span>
+    <strong>${escapeHtml(submitter)} → ${escapeHtml(target)}</strong>
+    <em>${escapeHtml(delta)}</em>
+  </div>`;
+}
+
+function captureCount(teamId) {
   if (!teamId) {
     return 0;
+  }
+  if (state.captureCounts[teamId] !== undefined) {
+    return state.captureCounts[teamId];
   }
   return captureEvents().filter((event) => capturePayload(event).submitter_team_id === teamId).length;
 }
 
-function deathCount(teamId) {
+function breachCount(teamId) {
   if (!teamId) {
     return 0;
+  }
+  if (state.breachCounts[teamId] !== undefined) {
+    return state.breachCounts[teamId];
   }
   return captureEvents().filter((event) => capturePayload(event).target_team_id === teamId).length;
 }
 
-function survivalText(teamId) {
-  const deaths = deathCount(teamId);
-  return deaths ? `被击破 ${deaths} 次` : "存活";
+function defenseText(teamId) {
+  const breaches = breachCount(teamId);
+  return breaches ? `失守 ${breaches} 次` : "防线完整";
 }
 
 function renderRooms(rooms) {
@@ -889,7 +1320,7 @@ function roomMeta(room) {
   const players = Array.isArray(room.players) ? room.players.length : 0;
   const maxPlayers = room.max_players || "-";
   const spectatorLabel = room.allow_spectators ? "可观战" : "不可观战";
-  return `${room.room_id || "-"} · 大逃杀 · ${players}/${maxPlayers} 玩家 · ${spectatorLabel} · ${room.target_template_id || "未标注靶场"}`;
+  return `${room.room_id || "-"} · AI攻防大乱斗 · ${players}/${maxPlayers} 玩家 · ${spectatorLabel} · ${room.target_template_id || "未标注靶场"}`;
 }
 
 function memberItem(member) {
@@ -926,7 +1357,7 @@ function myScoreSummary() {
   return `${leader.score} 分领先`;
 }
 
-function battleHeatSummary() {
+function attackHeatSummary() {
   const captures = captureEvents();
   if (!captures.length) {
     return "暂无交火";
@@ -935,8 +1366,8 @@ function battleHeatSummary() {
   const route =
     submission.submitter_team_id && submission.target_team_id
       ? `${submission.submitter_team_id}→${submission.target_team_id}`
-      : "击杀得分";
-  return `${captures.length} 次击杀 · ${route}`;
+      : "攻陷得分";
+  return `${captures.length} 次攻陷 · ${route}`;
 }
 
 function captureEvents() {
@@ -952,7 +1383,7 @@ function captureRoute(event) {
   const submitter = submission.submitter_team_id || "未知玩家";
   const target = submission.target_team_id || "未知目标";
   const delta = submission.score_delta ? ` +${submission.score_delta} 分` : "";
-  return `${submitter} 击杀 ${target}${delta}`;
+  return `${submitter} 攻陷 ${target}${delta}`;
 }
 
 function teamScore(teamId) {
@@ -1076,7 +1507,7 @@ function eventSummary(event) {
   const submission = payload.submission || payload;
   if (submission.submitter_team_id || submission.target_team_id || submission.score_delta) {
     const submitter = submission.submitter_team_id || "未知玩家";
-    const target = submission.target_team_id ? ` 击杀 ${submission.target_team_id}` : "";
+    const target = submission.target_team_id ? ` 攻陷 ${submission.target_team_id}` : "";
     const delta = submission.score_delta ? ` ${submission.score_delta > 0 ? "+" : ""}${submission.score_delta} 分` : "";
     const code = submission.code && submission.code !== "OK" ? ` · ${displaySubmissionCode(submission.code)}` : "";
     return `${submitter}${target}${delta}${code}`;
@@ -1129,7 +1560,7 @@ function displayEventType(type) {
     TARGET_ACTION_SKIPPED: "靶机未执行",
     TARGET_ACTION_DONE: "本地靶机",
     TARGET_ACTION_FAILED: "靶机失败",
-    FLAG_CAPTURED: "击杀得分",
+    FLAG_CAPTURED: "攻陷得分",
     FLAG_REJECTED: "Flag 拒绝",
     ERROR: "错误",
     EVENT: "事件",

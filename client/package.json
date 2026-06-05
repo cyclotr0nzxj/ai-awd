@@ -2,13 +2,74 @@
   "name": "ai-awd-arena-client",
   "version": "0.1.0",
   "private": true,
-  "description": "Electron client placeholder for AI-AWD Arena.",
+  "description": "AI-AWD Arena — Electron AWD 攻防竞技客户端",
+  "author": "AI-AWD Arena Team",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test ./test-aiawdProtocol.js ./test-targetLifecycle.js ./test-renderer.js"
+    "test": "node --test ./test-aiawdProtocol.js ./test-targetLifecycle.js ./test-renderer.js ./test-agentRuntime.js ./test-adapters.js ./test-main.js",
+    "e2e:protocol": "node ./electronE2eEvidence.js",
+    "e2e:windows": "electron ./electronWindowEvidence.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.ai-awd.arena.client",
+    "productName": "AI-AWD Arena",
+    "copyright": "Copyright 2026 AI-AWD Arena Team",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "onboarding.js",
+      "aiawdProtocol.js",
+      "agentRuntime.js",
+      "adapters.js",
+      "scopeguard.js",
+      "targetLifecycle.js",
+      "index.html",
+      "styles.css",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "build/icon.icns",
+      "entitlements": "build/entitlements.mac.plist",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "asar": true,
+    "compression": "maximum"
   },
   "devDependencies": {
-    "electron": "^30.0.0"
+    "electron": "^30.0.0",
+    "electron-builder": "^25.0.0"
   }
 }

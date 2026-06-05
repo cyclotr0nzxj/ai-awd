@@ -24,6 +24,33 @@ class TargetRegistryTest(unittest.TestCase):
 
         self.assertEqual(registry.get("real_ctf_web_awd_01").manifest_snapshot()["runtime"], "docker-compose")
 
+    def test_all_three_targets_are_registered(self) -> None:
+        registry = TargetRegistry()
+        targets = registry.list_targets()
+        self.assertEqual(len(targets), 3)
+        ids = [t["template_id"] for t in targets]
+        self.assertIn("real_ctf_web_awd_01", ids)
+        self.assertIn("pwn_awd_echo_01", ids)
+        self.assertIn("crypto_awd_oracle_01", ids)
+
+    def test_pwn_target_has_tcp_healthcheck(self) -> None:
+        registry = TargetRegistry()
+        pwn = registry.get("pwn_awd_echo_01")
+        self.assertEqual(pwn.category, "pwn")
+        self.assertEqual(pwn.difficulty, "intermediate")
+        self.assertEqual(pwn.manifest["healthcheck"]["type"], "tcp")
+        self.assertEqual(pwn.manifest["healthcheck"]["send"], "HEALTH")
+        self.assertEqual(pwn.manifest["healthcheck"]["expect"], "OK")
+
+    def test_crypto_target_has_tcp_healthcheck(self) -> None:
+        registry = TargetRegistry()
+        crypto = registry.get("crypto_awd_oracle_01")
+        self.assertEqual(crypto.category, "crypto")
+        self.assertEqual(crypto.difficulty, "intermediate")
+        self.assertEqual(crypto.manifest["healthcheck"]["type"], "tcp")
+        self.assertEqual(crypto.manifest["healthcheck"]["send"], "HEALTH")
+        self.assertEqual(crypto.manifest["healthcheck"]["expect"], "OK")
+
 
 if __name__ == "__main__":
     unittest.main()

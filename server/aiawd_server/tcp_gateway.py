@@ -334,3 +334,20 @@ class TCPGateway:
             raise
         except Exception as exc:
             self.log_store.append("PHASE_SCHEDULER_ERROR", {"room_id": room_id, "error": str(exc)})
+            try:
+                room = self.room_manager.get_room(room_id)
+                self.match_engine.set_phase(room, Phase.FINISHED)
+                await self._broadcast_phase(room)
+                await self._broadcast_event(
+                    room,
+                    "ERROR",
+                    {
+                        "code": "PHASE_SCHEDULER_ERROR",
+                        "message": f"Phase scheduler failed: {exc}",
+                        "room_id": room_id,
+                    },
+                )
+            except Exception as inner_exc:
+                self.log_store.append("PHASE_SCHEDULER_CLEANUP_ERROR", {"room_id": room_id, "error": str(inner_exc)})
+            finally:
+                self._phase_tasks.pop(room_id, None)
