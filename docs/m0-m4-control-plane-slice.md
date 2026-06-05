@@ -23,20 +23,19 @@ Generated per-player flags, attack-phase submit, self/duplicate/invalid rejectio
 - 3 target templates: `real_ctf_web_awd_01` (web, HTTP healthcheck), `pwn_awd_echo_01` (binary, TCP healthcheck), `crypto_awd_oracle_01` (crypto, TCP healthcheck).
 - `TargetRuntime` builds safe Docker Compose install/start/stop/reset argv, injects room/player/flag env vars, redacts private flag snapshots.
 - TCP and HTTP healthcheck support.
-- Electron and TUI local lifecycle runners with Docker readiness diagnostics, localhost-only binding, argv allowlists, project-local path checks.
+- Electron local lifecycle runner with Docker readiness diagnostics, localhost-only binding, argv allowlists, project-local path checks.
 - Target lifecycle evidence collector (`examples/target_lifecycle_evidence.py`) with single-template and all-target dry-run/live modes.
 
 ### M6–M7 — Agent Runtime
-- Client-side Agent Runtime in Python (`tui/agent_runtime.py`) and Node (`client/agentRuntime.js`).
+- Client-side Agent Runtime in Node (`client/agentRuntime.js`).
 - `AgentContext`, `AgentManager`, `CustomCommandAdapter`, flag extraction (regex), safe command validation.
-- TUI integration: `agent start/stop/status` commands with Chinese aliases, cross-thread async flag submission.
 - Electron integration: IPC handlers in main process, preload API, renderer UI controls (start/stop buttons, command input, status display).
 
 ### M8 — Agent adapters
 - Multi-provider adapter layer: BasicHTTP, Hermes, OpenClaw, OpenCLI, Codex, Pi, CustomPython, and custom command adapters.
 - Unified `adapter_for()` factory with `detect_available_adapters()`.
 - All adapters implement `AgentAdapter`: `configure(ctx)`, `run(submit=)`, `stop()`.
-- Python (`tui/adapters.py`) and Node (`client/adapters.js`).
+- Node (`client/adapters.js`).
 
 ### M9b — Code audit & hardening
 Comprehensive 3-agent parallel audit. Fixed: FrameDecoder buffer order, execSync→spawnSync, async agent execution (Electron), PING/PONG heartbeat (30s/60s), sanitizeCommand `&`/`\t`/`#`/`~` gaps, HTTP blanket-except→typed handling + writer cleanup, zombie room on join failure, attack count drift→server-authoritative, phase scheduler recovery (FINISHED broadcast), session TTL cleanup, TUI reader_loop crash on non-IncompleteReadError.
@@ -46,7 +45,7 @@ Comprehensive 3-agent parallel audit. Fixed: FrameDecoder buffer order, execSync
 - File scope: project root enforcement.
 - Process safety: shell injection prevention, env allowlist, timeout limits.
 - Audit trail with `security_summary()`.
-- Python (`tui/scopeguard.py`) and Node (`client/scopeguard.js`).
+- Node (`client/scopeguard.js`).
 
 ### M10 — Electron UI (ongoing)
 Main-process TCP bridge, preload API, Chinese AI攻防大乱斗 dashboard, first-run onboarding tutorial, room selection, agent runtime/model entry, visual Agent-player arena with clickable avatars/readiness bars/attack-route lanes/battle-focus panel, battle replay with auto-play timeline + clickable capture dots + prev/next/latest/jump navigation, score delta popup animations, attack/defense HUD, target lifecycle controls and Docker diagnostics, final results panel, redacted battle report export, score-gap rankings, event tone states, agent controls, headless renderer smoke tests, IPC bridge smoke tests.
@@ -68,26 +67,24 @@ electron-builder configs: macOS DMG/ZIP (x64+arm64, hardened runtime) and Window
 
 ## Evidence
 
-- `PYTHONPATH=server python3 -m unittest discover -s tests -t . -v` — 144 tests
+- `PYTHONPATH=server python3 -m unittest discover -s tests -t . -v` — 54 tests
 - `cd client && npm test` — 89 tests
 - `cd client && npm run e2e:protocol` — redacted Electron protocol bridge evidence
 - `cd client && npm run e2e:windows` — redacted Electron BrowserWindow screenshots
 - `examples/three_clients_demo.py`
-- `examples/tui_script_demo.py`
 - `examples/target_lifecycle_evidence.py`
 - `curl http://127.0.0.1:9001/health` (HTTP API)
 - `logs/server/events.jsonl`
-- `logs/tui/script_demo.txt`
 - `logs/target_lifecycle/target_lifecycle_evidence.*`
 - `logs/target_lifecycle/target_lifecycle_all_evidence.*`
 
 ## Remaining Product Gaps
 
-- Packaged macOS/Windows artifacts have configs, but installers still need build-and-launch verification.
+- macOS `.app` bundle verified (build + launch). Windows NSIS/portable configs need a Windows build host for verification.
 - Named agent adapters are implemented; keep per-binary real-CLI verification claims tied to captured local evidence.
 
 ## Next Best Slices
 
-1. Build and launch packaged macOS/Windows artifacts from the existing electron-builder config.
-2. Add BrowserWindow evidence for onboarding launch/skip/complete and for auto-play actually advancing the replay timeline.
-3. Refresh named-adapter real-CLI evidence when additional binaries are available on the local machine.
+1. Build and launch packaged Windows artifacts from the existing electron-builder config.
+2. Real-CLI agent smoke tests (Anthropic/OpenAI/Hermes/Codex) against live Docker targets.
+3. Live Docker all-target evidence (`--live --all-targets`) when Docker Desktop is available.

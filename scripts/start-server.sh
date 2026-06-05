@@ -9,7 +9,7 @@
 #
 # LAN 部署说明：
 #   服务器机器运行 ./scripts/start-server.sh --lan
-#   客户端机器在 Electron/TUI 中输入服务器机器的局域网 IP 地址
+#   客户端机器在 Electron App 中输入服务器机器的局域网 IP 地址
 # ==========================================================================
 
 set -euo pipefail
@@ -55,8 +55,8 @@ echo "   curl http://127.0.0.1:${HTTP_PORT}/health"
 echo "   curl http://127.0.0.1:${HTTP_PORT}/api/v1/targets"
 echo ""
 echo " 客户端连接方式:"
-echo "   Electron: cd client && npm start"
-echo "   TUI:      python3 tui/aiawd_tui.py --host <服务器IP> --port ${PORT}"
+echo "   下载 App: https://github.com/cyclotr0nzxj/ai-awd/releases"
+echo "   源码启动: cd client && npx electron ."
 echo ""
 
 cd "$PROJECT_ROOT"

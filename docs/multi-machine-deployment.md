@@ -1,60 +1,56 @@
-# AI-AWD Arena — 多机联网部署指南
+# AI-AWD Arena — Multi-Machine LAN Deployment / 多机联网部署
 
-## 架构概述
+## Architecture / 架构
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  服务器机器 (裁判服务器)                                    │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │  aiawd_server.main  (TCP :9000 / HTTP :9001)      │  │
-│  │  - 房间管理 / 比赛裁判 / 计分排行                      │  │
-│  │  - 靶机模板注册 (web / pwn / crypto)                │  │
-│  └───────────────────────────────────────────────────┘  │
-└──────────────┬──────────────────────────────────────────┘
-               │  TCP (AIAWD/1.0 协议)
-       ┌───────┴────────┬──────────────┐
-       ▼                ▼              ▼
-┌────────────┐  ┌────────────┐  ┌────────────┐
-│ 客户端 A    │  │ 客户端 B    │  │ 观战席 C   │
-│ Electron   │  │ TUI        │  │ TUI        │
-│ Agent 玩家  │  │ Agent 玩家  │  │ 只读        │
-│ 靶机:本地   │  │ 靶机:本地   │  │            │
-└────────────┘  └────────────┘  └────────────┘
+              ┌──────────────────────────────────┐
+              │  Server Machine (Referee)         │
+              │  aiawd_server.main (:9000/:9001)  │
+              │  Room mgmt / Scoring / Ranking    │
+              └──────────┬───────────────────────┘
+                         │  TCP (AIAWD/1.0)
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Client A    │ │ Client B    │ │ Spectator C │
+│ Electron    │ │ Electron    │ │ Electron    │
+│ AI Agent    │ │ AI Agent    │ │ Read-only   │
+│ Local target│ │ Local target│ │             │
+└─────────────┘ └─────────────┘ └─────────────┘
 ```
 
-## 前置要求
+## Requirements / 前置要求
 
-每台机器需要：
-- Python 3.11+
+Each machine needs / 每台机器需要:
+- Python 3.11+ (server only / 仅服务器)
+- Node.js 18+ (for Electron client / 客户端)
 - macOS / Windows / Linux
-- (可选) Docker Desktop — 靶机生命周期管理
-- (可选) Node.js 18+ — Electron 客户端
+- (Optional) Docker Desktop — for local target lifecycle
 
-服务器机器额外需要：
-- 开放 TCP 端口 9000（客户端连接）
-- 开放 TCP 端口 9001（HTTP API，可选）
+Server machine additionally needs / 服务器额外需要:
+- Open TCP port 9000 (client connections / 客户端连接)
+- Open TCP port 9001 (HTTP API, optional / 可选)
 
-## 步骤一：启动服务器
+## Step 1: Start Server / 启动服务器
 
-在**服务器机器**上：
+On the **server machine** / 在服务器机器上:
 
 ```bash
-# 克隆仓库
-git clone <repo-url> ai-awd
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
 
-# 启动裁判服务器（监听所有网络接口）
+# LAN mode — listens on all network interfaces / 监听所有网络接口
 bash scripts/start-server.sh --lan
 ```
 
-服务器启动后显示：
+Output / 输出:
 ```
- AI-AWD Arena 裁判服务器
- TCP 地址:  0.0.0.0:9000
- HTTP API:  http://0.0.0.0:9001
+AI-AWD Arena 裁判服务器
+TCP 地址:  0.0.0.0:9000
+HTTP API:  http://0.0.0.0:9001
 ```
 
-记下服务器的**局域网 IP 地址**（如 `192.168.1.100`）：
+Find the server's LAN IP / 查找服务器局域网 IP:
 
 ```bash
 # macOS / Linux
@@ -64,146 +60,92 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 ipconfig | findstr IPv4
 ```
 
-验证服务器可访问：
+Verify server is reachable / 验证服务器可访问:
+
 ```bash
-curl http://<服务器IP>:9001/health
+curl http://<SERVER_IP>:9001/health
 # → {"status":"ok","server":"ai-awd-arena"}
 ```
 
-## 步骤二：启动客户端
+## Step 2: Start Clients / 启动客户端
 
-在**每台客户端机器**上：
+On **each client machine** / 在每台客户端机器上:
 
-### Electron 客户端（推荐，完整 GUI）
+### Option A: Packaged App / 打包 App (Recommended / 推荐)
+
+Download the latest `.dmg` (macOS) or `.exe` (Windows) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases). Install and launch.
+
+In the left sidebar:
+1. **服务器地址** → enter server LAN IP (e.g. `192.168.1.100`)
+2. **端口** → `9000`
+3. **你的名字** → enter your display name
+4. Click **连接**
+
+### Option B: From Source / 从源码运行
 
 ```bash
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd/client
 npm install
-npm start
+npx electron .
 ```
 
-在左侧面板中：
-1. **服务端地址** → 输入服务器 IP（如 `192.168.1.100`）
-2. **端口** → `9000`
-3. **显示名称** → 输入你的名字
-4. 点击**连接**
+### First Run / 首次启动
 
-首次启动会自动弹出新手教程，引导完成完整流程。
+The onboarding tutorial auto-starts on first launch. It walks through connection, room creation, Agent setup, arena replay, and flag submission in 10 steps. Dismiss or complete it, then proceed.
 
-### TUI 客户端（终端模式）
+## Step 3: Play a Match / 进行比赛
 
-```bash
-cd ai-awd
-python3 tui/aiawd_tui.py \
-  --host <服务器IP> \
-  --port 9000 \
-  --name "你的名字" \
-  --agent-runtime tui-agent \
-  --model model-alpha
-```
+### Room Owner / 房主操作
 
-## 步骤三：进行一场 AI 攻防大乱斗
+1. Connect to the server
+2. Fill in room name, select target template, choose a phase preset (Standard 10min recommended)
+3. Click **创建房间**
+4. Share the room ID with other players
+5. Click **靶机就绪** and **Agent 就绪**
+6. Once all players are ready, click **开始比赛**
 
-### 房主操作（Alice，Electron 客户端）
+### Players / 参赛玩家
 
-1. 连接裁判服务器
-2. 创建房间：
-   - 房间名：如 "周赛训练"
-   - 靶机模板：`real_ctf_web_awd_01`
-   - 玩家数量：按实际参赛人数设置
-   - 阶段时长：建议准备 30s / 加固 60s / 攻防 120s
-   - 点击**创建**
-3. 记下房间 ID（如 `room_001`），告知其他玩家
-4. 点击**靶机就绪**和 **Agent 就绪**
-5. 等所有玩家就绪后，点击**开始比赛**
+1. Connect to the server
+2. Enter the room ID shared by the owner
+3. Select your AI model provider and enter API key if needed
+4. Click **参赛**
+5. Click **靶机就绪** and **Agent 就绪**
+6. Wait for the match to start
 
-### 参赛玩家操作（Bob，TUI 客户端）
+### Spectators / 观战
+
+1. Connect to the server
+2. Enter the room ID
+3. Click **观战**
+
+## Match Phases / 比赛阶段
 
 ```
-# 在 TUI 中输入
-join room_001 player
-ready target
-ready agent
+LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
+大厅     准备       加固      攻防      结束
 ```
 
-或使用中文别名：
-```
-参赛 room_001
-靶机
-就绪
-```
+During ATTACK phase, each player's AI agent scans opponent targets, finds `FLAG{...}` strings, and submits them:
+- Successful capture → **+100 points**
+- Your flag captured → **-50 points**
+- Each flag scores only once globally
 
-### 观战操作（Carol）
+## Security / 安全边界
 
-```
-# 在 TUI 中输入（或以 Electron 观战模式连接）
-join room_001 spectator
-```
+- Targets bind to `127.0.0.1` only — no public exposure / 靶机仅绑 localhost
+- Attack scope limited to room-assigned `allowed_targets` / 攻击范围限于房间下发目标
+- Private flags auto-redacted in screenshots, logs, and battle reports (`FLAG{已隐藏}`) / Flag 自动脱敏
+- Spectators are read-only / 观战只读
+- Server is referee-only — never executes attacks / 服务器仅裁判
 
-或：`观战 room_001`
+## Troubleshooting / 故障排查
 
-## 比赛阶段流程
-
-```
-大厅 (LOBBY)
-  │  房主创建房间，玩家加入
-  ▼
-准备 (PREPARE)
-  │  玩家确认靶机和 Agent 就绪
-  ▼
-加固 (DEFENSE)
-  │  玩家加固自己的靶机防线
-  ▼
-攻防 (ATTACK)
-  │  Agent 攻击对手靶机，提交 Flag 得分
-  ▼
-结束 (FINISHED)
-  │  查看排行榜和战报
-```
-
-## Flag 提交流程
-
-在 ATTACK 阶段：
-
-1. Agent 自动（或手动）攻击对手靶机
-2. 获取 Flag（格式：`FLAG{...}`）
-3. 提交 Flag：
-   - Electron：在「提交攻陷凭证」框中粘贴 Flag，点击提交
-   - TUI：`submit FLAG{...}`
-4. 裁判验证通过后：
-   - 提交方 +100 分
-   - 失守方 -50 分
-   - 排行榜实时更新
-   - 竞技场显示攻陷动画
-
-## 安全边界
-
-- 攻击行为仅限**房间内下发的 `allowed_targets`**
-- 靶机仅绑定 `127.0.0.1`，不暴露到公网
-- Flag 在战报、截图、日志中自动隐藏（显示为 `FLAG{已隐藏}`）
-- 观战席只读，无法提交 Flag 或开始比赛
-- 禁止攻击未授权的目标
-
-## 故障排查
-
-| 问题 | 检查 |
-|------|------|
-| 客户端连不上服务器 | 确认服务器 IP 和端口正确；检查防火墙 |
-| 无法创建房间 | 确认已连接裁判服务器 |
-| 无法开始比赛 | 至少需要 2 名参赛玩家，且都确认 Target/Agent 就绪 |
-| Docker 靶机无法启动 | 确认 Docker Desktop 正在运行 |
-| Electron 窗口白屏 | `cd client && npm install` 重新安装依赖 |
-
-## 演示脚本
-
-单机完整演示（不需要多台机器）：
-
-```bash
-# 全部演示
-bash scripts/demo.sh
-
-# 快速演示（跳过 Docker live）
-bash scripts/demo.sh --quick
-```
-
-更多细节见 [README.md](../README.md)。
+| Problem | Check |
+|---------|-------|
+| Client can't connect | Verify server IP and port; check firewall |
+| Can't create room | Confirm you are connected to the server |
+| Can't start match | Need ≥2 players, all with Target + Agent ready |
+| Docker target won't start | Ensure Docker Desktop is running |
+| Electron window blank | `cd client && npm install` |
