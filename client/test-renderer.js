@@ -344,7 +344,7 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /id="attackHeat"/);
   assert.match(html, /data-state="offline"/);
   assert.match(html, /AI攻防大乱斗/);
-  assert.match(html, /AI.*模型/);
+  assert.match(html, /Agent/);
   assert.match(html, /参赛|加入/);
   assert.match(html, /id="agentStatus"/);
   assert.match(html, /防线/);

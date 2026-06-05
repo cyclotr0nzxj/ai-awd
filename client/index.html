@@ -50,6 +50,15 @@
         <div id="roomList" class="room-list"></div>
         <button id="refreshRooms" class="btn-ghost btn-sm">刷新列表</button>
       </div>
+
+      <div class="lobby-section">
+        <h3>🚪 加入房间</h3>
+        <input id="roomId" placeholder="输入房间 ID" />
+        <div class="sb-row">
+          <button id="joinPlayer" class="btn-primary">参赛</button>
+          <button id="joinSpectator">观战</button>
+        </div>
+      </div>
     </div>
 
     <div class="lobby-main">
@@ -132,25 +141,23 @@
       </div>
 
       <div class="room-config">
-        <h3>🤖 AI 模型配置</h3>
-        <p class="config-hint">你的 Agent 将使用此配置自动攻击对手靶机。靶机由系统自动部署（需 Docker Desktop）。</p>
+        <h3>🤖 Agent 配置</h3>
+        <p class="config-hint">Agent 会自动攻击对手靶机。OpenClaw 随 AI-AWD 自动部署，无需单独安装。靶机需 Docker Desktop。</p>
 
-        <label>Agent 运行时
+        <label>Agent
           <select id="agentRuntime" class="select-field">
-            <option value="hermes">Hermes (推荐本地)</option>
-            <option value="openclaw">OpenClaw (推荐本地)</option>
-            <option value="anthropic">Anthropic Claude (云端)</option>
-            <option value="openai">OpenAI GPT (云端)</option>
-            <option value="codex">Codex (本地)</option>
+            <option value="openclaw">OpenClaw (默认，公平竞技)</option>
+            <option value="hermes">Hermes</option>
+            <option value="codex">Codex</option>
             <option value="mock-agent">Mock (演示)</option>
           </select>
         </label>
 
-        <label>API Key / Token
-          <input id="apiKey" type="password" placeholder="云端模型必填；本地模型可留空" />
+        <label>LLM API Key
+          <input id="apiKey" type="password" placeholder="Agent 调 LLM 用的 Key（Anthropic / OpenAI）" />
         </label>
 
-        <label>模型名称
+        <label>LLM 模型
           <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="例如 claude-sonnet-4-6" />
         </label>
 

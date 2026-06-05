@@ -101,6 +101,16 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Room search filter
+  if (els.roomSearch) {
+    els.roomSearch.addEventListener("input", () => {
+      const q = els.roomSearch.value.trim().toLowerCase();
+      for (const row of els.roomList.querySelectorAll(".room-row")) {
+        row.style.display = !q || row.textContent.toLowerCase().includes(q) ? "" : "none";
+      }
+    });
+  }
+
   els.connect.addEventListener("click", connect);
   els.disconnect.addEventListener("click", disconnect);
   els.refreshRooms.addEventListener("click", listRooms);
@@ -263,7 +273,7 @@ async function agentStart() {
   state.agentStatus = { state: "running", message: "Agent 攻击中..." };
   render();
   try {
-    const result = await window.aiawd.agentStart({ command, matchConfig: config, roomStatus: state.match?.phase || state.room?.status || "LOBBY", matchId: state.matchId, roomId: state.roomId });
+    const result = await window.aiawd.agentStart({ command, apiKey: els.apiKey?.value?.trim() || "", matchConfig: config, roomStatus: state.match?.phase || state.room?.status || "LOBBY", matchId: state.matchId, roomId: state.roomId });
     state.agentStatus = { state: result.ok ? "ok" : "warn", message: result.ok ? `Agent 完成 · ${result.flagsCaptured?.length || 0} Flag · ${result.elapsedMs}ms` : result.error || "Agent 执行失败" };
     if (result.flagsCaptured?.length) addEvent("AGENT_FLAGS_FOUND", { flags: result.flagsCaptured, elapsedMs: result.elapsedMs });
     else addEvent("AGENT_DONE", { message: state.agentStatus.message });

@@ -94,7 +94,14 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   if (!sanitizeCommand(request.command)) {
     return { ok: false, error: "Agent 命令包含不安全的 shell 控制符", flagsCaptured: [], actions: [], elapsedMs: 0 };
   }
-  const adapter = new CustomCommandAdapter(request.command);
+  const apiKey = request.apiKey || "";
+  const env = { ...process.env };
+  if (apiKey) {
+    env.ANTHROPIC_API_KEY = apiKey;
+    env.OPENAI_API_KEY = apiKey;
+    env.LLM_API_KEY = apiKey;
+  }
+  const adapter = new CustomCommandAdapter(request.command, { env });
   agentManager = new AgentManager(adapter);
   agentManager.configure(request.matchConfig || {}, request.roomStatus || "LOBBY");
   const result = await agentManager.runAttackAsync((flag, targetUrl) => {
