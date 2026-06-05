@@ -594,9 +594,16 @@ function renderArenaMap(phase, players) {
     const popup = state.scorePopup;
     const showScorePopup = popup && popup.teamId === teamId && Date.now() - popup.timestamp < 2000;
     const scorePopupHtml = showScorePopup ? `<div class="score-popup${popup.delta > 0 ? " is-gain" : " is-loss"}">${popup.delta > 0 ? "+" : ""}${popup.delta}</div>` : "";
+    const shieldPct = isBreached ? Math.max(0, 100 - breachCount(teamId) * 25) : 100;
     return `<button type="button" class="arena-combatant${isSelf?" is-self":""}${isLeader?" is-leader":""}${isBreached?" is-breached":""}${isFocused?" is-focused":""}${isAttacker?" is-attacker":""}${isTarget?" is-target":""}" data-team-id="${escapeHtml(teamId)}">
       ${scorePopupHtml}
-      <div class="combatant-head"><div class="combatant-avatar" data-status="${escapeHtml(isBreached?"breached":"alive")}">${escapeHtml(combatantInitials(player, teamId))}</div><div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div></div>
+      <div class="combatant-head">
+        <div class="combatant-avatar-wrap">
+          <div class="combatant-shield${isBreached?" breached":""}" style="--shield-pct:${shieldPct}"></div>
+          <div class="combatant-avatar" data-status="${escapeHtml(isBreached?"breached":"alive")}">${escapeHtml(combatantInitials(player, teamId))}</div>
+        </div>
+        <div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div>
+      </div>
       <small>${escapeHtml(providerInfo || player.display_name || "-")}</small>
       <div class="combatant-stats"><em>${escapeHtml(score===null?"暂无分数":`${score} 分`)}</em><b>${escapeHtml(captureCount(teamId))}攻陷 · ${escapeHtml(breachCount(teamId))}失守</b></div>
       <div class="readiness-track"><span style="width:${readiness}%"></span></div>
