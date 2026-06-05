@@ -8,243 +8,144 @@
   </head>
   <body>
     <main>
-      <aside class="command-rail">
-        <div class="brand">
-          <div>
-            <h1>AI-AWD Arena</h1>
-            <p>Attack With Defense 竞技客户端</p>
-          </div>
+      <!-- ====== Sidebar ====== -->
+      <aside class="sidebar">
+        <div class="sb-brand">
+          <h1>AI-AWD Arena</h1>
           <span id="connectionState" class="badge" data-state="offline">未连接</span>
         </div>
 
-        <div class="rail-status">
-          <span>本地裁判协议</span>
-          <strong>AIAWD/1.0</strong>
+        <div class="sb-section">
+          <div class="sb-label">连接服务器</div>
+          <input id="host" value="127.0.0.1" placeholder="服务器地址" />
+          <input id="port" type="number" value="9000" placeholder="端口" />
+          <input id="displayName" value="本地玩家" placeholder="你的名字" />
+          <div class="sb-row">
+            <button id="connect" class="primary">连接</button>
+            <button id="disconnect">断开</button>
+          </div>
+          <div class="sb-client-id">客户端：<span id="clientId">-</span></div>
         </div>
 
-        <section class="section">
-          <h2>连接裁判服务器</h2>
-          <div class="stack">
-            <label>
-              服务端地址
-              <input id="host" value="127.0.0.1" />
-            </label>
-            <label>
-              端口
-              <input id="port" type="number" value="9000" />
-            </label>
-            <label>
-              显示名称
-              <input id="displayName" value="本地玩家" />
-            </label>
-            <div class="actions">
-              <button id="connect" class="primary">连接</button>
-              <button id="disconnect">断开</button>
-            </div>
-            <div class="client-id">我的客户端：<span id="clientId">-</span></div>
-          </div>
-        </section>
+        <div class="sb-section">
+          <div class="sb-label">🤖 AI 模型</div>
+          <select id="agentRuntime" class="select-field">
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="hermes">Hermes (本地)</option>
+            <option value="openclaw">OpenClaw</option>
+            <option value="codex">Codex (本地)</option>
+            <option value="opencli">OpenCLI</option>
+            <option value="mock-agent">Mock (演示)</option>
+          </select>
+          <input id="apiKey" type="password" placeholder="API Key (本地模型可留空)" />
+          <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="模型名称" />
+        </div>
 
-        <section class="section">
-          <h2>创建AI攻防房间</h2>
-          <div class="stack">
-            <label>
-              房间名
-              <input id="roomName" value="AI-AWD AI攻防乱斗演示房间" />
-            </label>
-            <label>
-              靶机模板
-              <input id="targetTemplateId" value="real_ctf_web_awd_01" />
-            </label>
-            <div class="inline">
-              <label>
-                玩家数量
-                <input id="maxPlayers" type="number" min="2" value="4" />
-              </label>
-              <label>
-                准备
-                <input id="prepareSeconds" type="number" min="0" value="30" />
-              </label>
-            </div>
-            <div class="inline">
-              <label>
-                加固
-                <input id="defenseSeconds" type="number" min="0" value="60" />
-              </label>
-              <label>
-                攻防
-                <input id="attackSeconds" type="number" min="0" value="120" />
-              </label>
-            </div>
-            <button id="createRoom" class="primary">创建</button>
+        <div class="sb-section">
+          <div class="sb-label">创建房间</div>
+          <input id="roomName" value="AI攻防大乱斗" placeholder="房间名" />
+          <div class="sb-row">
+            <input id="targetTemplateId" value="real_ctf_web_awd_01" style="flex:2" />
+            <input id="maxPlayers" type="number" min="2" value="4" style="flex:1" placeholder="人数" />
           </div>
-        </section>
+          <div class="phase-presets">
+            <button type="button" data-phase-preset="quick">快</button>
+            <button type="button" data-phase-preset="standard" class="active">标准</button>
+            <button type="button" data-phase-preset="long">深度</button>
+          </div>
+          <div class="sb-row sb-row-3">
+            <input id="prepareSeconds" type="number" min="0" value="60" title="准备(秒)" />
+            <input id="defenseSeconds" type="number" min="0" value="600" title="加固(秒)" />
+            <input id="attackSeconds" type="number" min="0" value="1800" title="攻防(秒)" />
+          </div>
+          <button id="createRoom" class="primary">创建房间</button>
+        </div>
 
-        <section class="section">
-          <h2>Agent 玩家入场与准备</h2>
-          <div class="stack">
-            <label>
-              房间 ID
-              <input id="roomId" placeholder="room_001" />
-            </label>
-            <div class="inline">
-              <label>
-                Agent 运行时
-                <input id="agentRuntime" value="mock-agent" />
-              </label>
-              <label>
-                模型名称
-                <input id="modelDisplayName" value="mock-model" />
-              </label>
-            </div>
-            <div class="actions">
-              <button id="joinPlayer">参赛</button>
-              <button id="joinSpectator">观战</button>
-            </div>
-            <div class="actions">
-              <button id="markTargetReady">靶机就绪</button>
-              <button id="markAgentReady">Agent 就绪</button>
-            </div>
-            <button id="startMatch" class="primary">开始比赛</button>
+        <div class="sb-section">
+          <div class="sb-label">加入 & 准备</div>
+          <input id="roomId" placeholder="房间 ID" />
+          <div class="sb-row">
+            <button id="joinPlayer">参赛</button>
+            <button id="joinSpectator">观战</button>
           </div>
-        </section>
+          <div class="sb-row">
+            <button id="markTargetReady">靶机就绪</button>
+            <button id="markAgentReady">Agent 就绪</button>
+          </div>
+          <button id="startMatch" class="primary">开始比赛</button>
+        </div>
 
-        <section class="section">
-          <h2>Agent 自动攻击</h2>
-          <div class="stack">
-            <label>
-              Agent 命令
-              <input id="agentCommand" placeholder="echo FLAG{...}" value="echo FLAG{test}" />
-            </label>
-            <div class="actions">
-              <button id="agentStart">启动 Agent</button>
-              <button id="agentStop">停止 Agent</button>
-            </div>
-            <p id="agentStatus" class="status-text">Agent 未启动</p>
-          </div>
-        </section>
+        <div class="sb-section">
+          <div class="sb-label">提交 Flag</div>
+          <input id="flagInput" placeholder="FLAG{...}" />
+          <button id="submitFlag">提交得分</button>
+        </div>
 
-        <section class="section">
-          <h2>提交攻陷凭证</h2>
-          <div class="stack">
-            <label>
-              获取到的 Flag
-              <input id="flagInput" placeholder="FLAG{...}" />
-            </label>
-            <button id="submitFlag">提交</button>
-          </div>
-        </section>
+        <div class="sb-rooms">
+          <div class="sb-label">公开房间 <button id="refreshRooms" class="tiny-btn">刷新</button></div>
+          <div id="roomList" class="room-list"></div>
+        </div>
       </aside>
 
+      <!-- ====== Workspace Tabs ====== -->
       <section class="workspace">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">AI攻防大乱斗</p>
-            <h2>黑客攻防战情大厅</h2>
-          </div>
-          <div class="platform-strip">
-            <button id="startOnboarding" title="重新观看新手教程">🎓 新手教程</button>
-            <span>GUI: Electron</span>
-            <span>TUI: 已支持</span>
-            <span>macOS / Windows</span>
-          </div>
-        </header>
+        <nav class="tab-nav">
+          <button class="tab-btn active" data-tab="arena">⚔️ 竞技场</button>
+          <button class="tab-btn" data-tab="kit">🔧 战斗包</button>
+          <button class="tab-btn" data-tab="results">🏆 结算</button>
+          <button class="tab-btn" data-tab="debug">📋 日志</button>
+          <span class="tab-right">
+            <button id="startOnboarding" title="新手教程">🎓</button>
+          </span>
+        </nav>
 
-        <section class="hero-panel">
-          <div>
-            <p class="eyebrow">裁判同步状态</p>
-            <h2 id="nextStepTitle">先连接裁判服务器</h2>
-            <p id="nextStepBody">连接后进入AI攻防乱斗大厅，可以创建房间，或输入房间 ID 加入已有比赛。</p>
-          </div>
-          <div class="status-grid">
-            <div class="status-card">
+        <!-- ====== Tab: Arena ====== -->
+        <div class="tab-panel active" data-panel="arena">
+          <div class="arena-status-bar">
+            <div class="arena-status-item">
+              <span>阶段</span>
+              <strong id="phase">大厅</strong>
+            </div>
+            <div class="arena-status-item">
+              <span>倒计时</span>
+              <strong id="phaseTimer">等待同步</strong>
+            </div>
+            <div class="arena-status-item">
               <span>房间</span>
               <strong id="selectedRoom">未选择</strong>
             </div>
-            <div class="status-card">
-              <span>我的身份</span>
+            <div class="arena-status-item">
+              <span>身份</span>
               <strong id="myRole">未加入</strong>
             </div>
-            <div class="status-card">
-              <span>比赛阶段</span>
-              <strong id="phase">大厅</strong>
+            <div class="arena-status-item">
+              <span>分数</span>
+              <strong id="scoreSummary">--</strong>
             </div>
-            <div class="status-card">
-              <span>阶段倒计时</span>
-              <strong id="phaseTimer">等待同步</strong>
-            </div>
-            <div class="status-card">
-              <span>当前分数</span>
-              <strong id="scoreSummary">暂无分数</strong>
-            </div>
-            <div class="status-card">
-              <span>战局热度</span>
+            <div class="arena-status-item">
+              <span>战况</span>
               <strong id="attackHeat">暂无交火</strong>
             </div>
           </div>
-        </section>
 
-        <div class="dashboard">
-          <section class="panel panel-wide">
-            <div class="panel-head">
-              <h2>公开房间</h2>
-              <button id="refreshRooms">刷新</button>
-            </div>
-            <div id="roomList" class="room-list"></div>
-          </section>
+          <div id="arenaMap" class="arena-stage" aria-label="AI攻防大乱斗"></div>
 
-          <section class="panel panel-wide arena-map-panel">
-            <div class="panel-head">
-              <h2>AI攻防大乱斗</h2>
-              <span class="hint">看谁能防线完整更久、攻陷更多，行动限制在 allowed_targets 内</span>
-            </div>
-            <div id="arenaMap" class="arena-map" aria-label="AI攻防大乱斗">
-              <div class="arena-node node-referee">
-                <span>REF</span>
-                <strong>裁判服务器</strong>
-              </div>
-              <div class="arena-empty">等待玩家入场</div>
-            </div>
-          </section>
+          <div class="arena-footer">
+            <div id="nextStepBody" class="arena-hint"></div>
+            <div class="arena-replay-bar" id="arenaReplayBar"></div>
+          </div>
+        </div>
 
-          <section class="panel panel-wide survival-panel">
-            <div class="panel-head">
-              <h2>AI攻防态势</h2>
-              <span class="hint">防线完整、攻陷领先、失守最多和连续攻陷由裁判事件自动计算</span>
+        <!-- ====== Tab: Battle Kit ====== -->
+        <div class="tab-panel" data-panel="kit">
+          <div class="kit-grid">
+            <div class="kit-card">
+              <h3>🎯 战斗包</h3>
+              <div id="attackKit" class="kit-text"></div>
             </div>
-            <div id="defenseBoard" class="survival-board">
-              <div class="arena-empty">等待玩家入场</div>
-            </div>
-          </section>
-
-          <section class="panel panel-wide results-panel">
-            <div class="panel-head">
-              <h2>AI攻防大乱斗结算</h2>
-              <span class="hint">防线完整和攻陷由裁判战报自动生成</span>
-            </div>
-            <div class="result-summary" id="resultSummary">等待比赛结果</div>
-            <div class="result-grid">
-              <ul id="podiumList"></ul>
-              <div id="captureRecap" class="summary-block subtle">暂无攻陷记录</div>
-            </div>
-            <div class="report-actions">
-              <button id="generateReport">生成战报</button>
-              <button id="copyReport">复制</button>
-              <button id="downloadReport">下载</button>
-            </div>
-            <pre id="reportPreview" class="report-preview">战报将在这里生成，私有 Flag 会保持隐藏。</pre>
-          </section>
-
-          <section class="panel">
-            <h2>当前房间</h2>
-            <div id="roomSummary" class="summary-block">还没有进入AI攻防乱斗房间</div>
-            <div id="matchSummary" class="summary-block subtle">等待比赛配置</div>
-          </section>
-
-          <section class="panel">
-            <h2>我的战斗包</h2>
-            <div id="attackKit" class="summary-block">等待私人战斗包</div>
-            <div class="target-lifecycle">
+            <div class="kit-card">
+              <h3>🖥️ 靶机控制</h3>
               <div class="lifecycle-actions">
                 <button id="targetDoctor">诊断</button>
                 <button id="targetInstall">安装</button>
@@ -253,53 +154,85 @@
                 <button id="targetStop">停止</button>
                 <button id="targetReset">重置</button>
               </div>
-              <div id="targetLifecycleStatus" class="lifecycle-status" data-state="idle">等待本地靶机计划</div>
+              <div id="targetLifecycleStatus" class="status-text" data-state="idle">等待本地靶机计划</div>
             </div>
-          </section>
-
-          <section class="panel">
-            <h2>Agent 玩家席位</h2>
-            <ul id="players"></ul>
-          </section>
-
-          <section class="panel">
-            <h2>观战席</h2>
-            <ul id="spectators"></ul>
-          </section>
-
-          <section class="panel">
-            <h2>排行榜</h2>
-            <ul id="rankings"></ul>
-          </section>
-
-          <section class="panel">
-            <h2>实时战报</h2>
-            <ul id="events"></ul>
-          </section>
-
-          <section class="panel">
-            <h2>靶场模板</h2>
-            <ul id="targetList"></ul>
-          </section>
-
-          <section class="panel panel-wide">
-            <h2>排障信息</h2>
-            <div class="debug-grid">
-              <div>
-                <h3>协议消息</h3>
-                <ul id="messages"></ul>
+            <div class="kit-card">
+              <h3>🤖 Agent</h3>
+              <input id="agentCommand" placeholder="留空使用模型自动攻击" />
+              <div class="sb-row">
+                <button id="agentStart">启动</button>
+                <button id="agentStop">停止</button>
               </div>
-              <div>
-                <h3>比赛配置</h3>
-                <pre id="matchConfig">{}</pre>
-              </div>
+              <p id="agentStatus" class="status-text">Agent 未启动</p>
             </div>
-          </section>
+            <div class="kit-card">
+              <h3>📊 当前房间</h3>
+              <div id="roomSummary" class="kit-text"></div>
+              <div id="matchSummary" class="kit-text subtle"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====== Tab: Results ====== -->
+        <div class="tab-panel" data-panel="results">
+          <div class="results-layout">
+            <div class="results-main">
+              <div class="result-hero" id="resultSummary">等待比赛结果</div>
+              <div class="podium" id="podiumList"></div>
+              <div class="capture-recap" id="captureRecap">暂无攻陷记录</div>
+            </div>
+            <div class="results-side">
+              <div class="panel-head"><h2>防守态势</h2></div>
+              <div id="defenseBoard" class="defense-compact"></div>
+              <div class="report-actions" style="margin-top:12px">
+                <button id="generateReport">生成战报</button>
+                <button id="copyReport">复制</button>
+                <button id="downloadReport">下载</button>
+              </div>
+              <pre id="reportPreview" class="report-mini">战报将在这里生成，私有 Flag 会保持隐藏。</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====== Tab: Debug ====== -->
+        <div class="tab-panel" data-panel="debug">
+          <div class="debug-layout">
+            <div class="debug-col">
+              <h3>实时事件</h3>
+              <ul id="events"></ul>
+            </div>
+            <div class="debug-col">
+              <h3>排行榜</h3>
+              <ul id="rankings"></ul>
+            </div>
+            <div class="debug-col">
+              <h3>玩家</h3>
+              <ul id="players"></ul>
+            </div>
+            <div class="debug-col">
+              <h3>协议消息</h3>
+              <ul id="messages"></ul>
+            </div>
+          </div>
+          <div class="debug-extra">
+            <div>
+              <h3>比赛配置</h3>
+              <pre id="matchConfig">{}</pre>
+            </div>
+            <div>
+              <h3>靶场模板</h3>
+              <ul id="targetList"></ul>
+            </div>
+            <div>
+              <h3>观战席</h3>
+              <ul id="spectators"></ul>
+            </div>
+          </div>
         </div>
       </section>
     </main>
 
-    <!-- Onboarding / 新手教程 overlay -->
+    <!-- Onboarding overlay -->
     <div id="onboardingOverlay" class="onboarding-overlay" style="display:none" aria-label="新手教程">
       <div class="onboarding-backdrop"></div>
       <div id="onboardingSpotlight" class="onboarding-spotlight" style="display:none"></div>

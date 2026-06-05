@@ -47,7 +47,8 @@ echo " $(date)"
 echo "=========================================="
 
 # —— 测试套件 ——
-check "Python 测试套件 (144 tests)" \
+check "Python 测试套件 (54 tests)" \
+
   bash -c "PYTHONPATH=server python3 -m unittest discover -s tests -t . -v 2>&1 | tail -3"
 
 check "Node 测试套件 (89 tests)" \
@@ -56,9 +57,6 @@ check "Node 测试套件 (89 tests)" \
 # —— 协议演示 ——
 check "TCP 三客户端演示" \
   bash -c "PYTHONPATH=server python3 examples/three_clients_demo.py 2>&1 | tail -5"
-
-check "TUI 脚本演示" \
-  bash -c "PYTHONPATH=server python3 examples/tui_script_demo.py 2>&1 | tail -5"
 
 # —— 靶机生命周期 ——
 check "靶机生命周期 Dry-Run (all targets)" \

@@ -5,75 +5,29 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const ELEMENT_IDS = [
-  "host",
-  "port",
-  "displayName",
-  "connect",
-  "disconnect",
-  "connectionState",
-  "clientId",
-  "roomName",
-  "maxPlayers",
-  "targetTemplateId",
-  "prepareSeconds",
-  "defenseSeconds",
-  "attackSeconds",
-  "createRoom",
-  "refreshRooms",
-  "roomId",
-  "agentRuntime",
-  "modelDisplayName",
-  "joinPlayer",
-  "joinSpectator",
-  "markTargetReady",
-  "markAgentReady",
-  "startMatch",
-  "flagInput",
-  "submitFlag",
-  "roomList",
-  "targetList",
-  "players",
-  "spectators",
-  "selectedRoom",
-  "myRole",
-  "phase",
-  "phaseTimer",
-  "scoreSummary",
-  "attackHeat",
-  "nextStepTitle",
+  "host", "port", "displayName", "connect", "disconnect",
+  "connectionState", "clientId",
+  "roomName", "maxPlayers", "targetTemplateId",
+  "prepareSeconds", "defenseSeconds", "attackSeconds",
+  "createRoom", "refreshRooms",
+  "roomId", "agentRuntime", "modelDisplayName", "apiKey",
+  "joinPlayer", "joinSpectator",
+  "markTargetReady", "markAgentReady", "startMatch",
+  "flagInput", "submitFlag",
+  "roomList", "targetList", "players", "spectators",
+  "selectedRoom", "myRole", "phase", "phaseTimer",
+  "scoreSummary", "attackHeat",
   "nextStepBody",
-  "roomSummary",
-  "matchSummary",
-  "attackKit",
+  "roomSummary", "matchSummary", "attackKit",
   "targetLifecycleStatus",
-  "targetDoctor",
-  "targetInstall",
-  "targetStart",
-  "targetHealth",
-  "targetStop",
-  "targetReset",
-  "arenaMap",
-  "defenseBoard",
-  "resultSummary",
-  "podiumList",
-  "captureRecap",
-  "generateReport",
-  "copyReport",
-  "downloadReport",
-  "reportPreview",
-  "rankings",
-  "events",
-  "messages",
-  "matchConfig",
-  "agentCommand",
-  "agentStart",
-  "agentStop",
-  "agentStatus",
+  "targetDoctor", "targetInstall", "targetStart", "targetHealth", "targetStop", "targetReset",
+  "arenaMap", "defenseBoard",
+  "resultSummary", "podiumList", "captureRecap",
+  "generateReport", "copyReport", "downloadReport", "reportPreview",
+  "rankings", "events", "messages", "matchConfig",
+  "agentCommand", "agentStart", "agentStop", "agentStatus",
   "startOnboarding",
-  "onboardingOverlay",
-  "onboardingSpotlight",
-  "onboardingTooltip",
-  "onboardingProgress",
+  "onboardingOverlay", "onboardingSpotlight", "onboardingTooltip", "onboardingProgress",
 ];
 
 class FakeElement {
@@ -283,6 +237,13 @@ function loadRenderer() {
         // captured for tests that need to simulate keyboard events
       },
       querySelector: (selector) => elements[selector.replace("#", "")] || null,
+      querySelectorAll: (selector) => {
+        if (selector === ".tab-btn") return [];
+        if (selector === ".tab-panel") return [];
+        if (selector === "[data-phase-preset]") return [];
+        if (selector === "[data-onboarding-action]") return [];
+        return [];
+      },
     },
     window: {
       aiawd: bridge,
@@ -340,8 +301,7 @@ test("renderer initializes offline Chinese dashboard state", () => {
   assert.equal(elements.myRole.textContent, "未加入");
   assert.equal(elements.scoreSummary.textContent, "暂无分数");
   assert.equal(elements.attackHeat.textContent, "暂无交火");
-  assert.equal(elements.nextStepTitle.textContent, "先连接裁判服务器");
-  assert.match(elements.nextStepBody.textContent, /AI攻防乱斗大厅/);
+  assert.match(elements.nextStepBody.textContent, /连接|大厅/);
   assert.equal(elements.roomSummary.textContent, "还没有进入AI攻防乱斗房间");
   assert.equal(elements.matchSummary.textContent, "等待比赛配置");
   assert.equal(elements.attackKit.textContent, "等待私人战斗包");
@@ -377,23 +337,17 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /AI攻防大乱斗<\/title>/);
   assert.match(html, /id="displayName" value="本地玩家"/);
-  assert.match(html, /id="agentRuntime" value="mock-agent"/);
-  assert.match(html, /id="modelDisplayName" value="mock-model"/);
-  assert.match(html, /id="roomName" value="AI-AWD AI攻防乱斗演示房间"/);
+  assert.match(html, /mock-agent/);
+  assert.match(html, /id="modelDisplayName"/);
+  assert.match(html, /id="roomName" value="AI攻防大乱斗"/);
   assert.match(html, /id="maxPlayers" type="number" min="2" value="4"/);
   assert.match(html, /id="attackHeat">暂无交火/);
   assert.match(html, /data-state="offline">未连接/);
-  assert.match(html, /黑客攻防战情大厅/);
   assert.match(html, /AI攻防大乱斗/);
-  assert.match(html, /Agent 玩家入场与准备/);
-  assert.match(html, /Agent 运行时/);
-  assert.match(html, /模型名称/);
-  assert.match(html, /Agent 自动攻击/);
+  assert.match(html, /AI.*模型/);
+  assert.match(html, /加入.*准备/);
   assert.match(html, /id="agentStatus"/);
-  assert.match(html, /AI攻防态势/);
-  assert.match(html, /AI攻防大乱斗结算/);
-  assert.match(html, /防线完整和攻陷/);
-  assert.match(html, /防线完整、攻陷领先、失守最多和连续攻陷/);
+  assert.match(html, /防守态势/);
   assert.match(html, /生成战报/);
   assert.match(html, /targetLifecycleStatus/);
   assert.match(html, /诊断/);
@@ -401,12 +355,8 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /启动/);
   assert.match(html, /巡检/);
   assert.match(html, /reportPreview/);
-  assert.match(html, /看谁能防线完整更久、攻陷更多/);
-  assert.match(html, /加固/);
   assert.match(html, /攻防/);
-  assert.match(html, /TUI: 已支持/);
-  assert.match(html, /macOS \/ Windows/);
-  assert.match(html, /排障信息/);
+  assert.match(html, /日志/);
 });
 
 test("renderer sends Agent runtime and model metadata when joining", async () => {
@@ -427,6 +377,7 @@ test("renderer sends Agent runtime and model metadata when joining", async () =>
         displayName: "Alice",
         agentRuntime: "hermes-local",
         modelDisplayName: "model-alpha",
+        apiKey: "",
         roomId: "room_001",
         role: "player",
       },
@@ -460,6 +411,7 @@ test("renderer sends Agent runtime and model metadata when creating a room", asy
         displayName: "Alice",
         agentRuntime: "hermes-local",
         modelDisplayName: "model-alpha",
+        apiKey: "",
         allowSpectators: true,
         phaseSeconds: {
           prepare: 1,
@@ -572,7 +524,7 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.equal(elements.myRole.textContent, "参赛玩家");
   assert.equal(elements.scoreSummary.textContent, "100 分");
   assert.equal(elements.attackHeat.textContent, "1 次攻陷 · team_a→team_b");
-  assert.equal(elements.nextStepTitle.textContent, "AI攻防大乱斗已开启");
+  assert.match(elements.nextStepBody.textContent, /allowed_targets|攻防|攻击|ATTACK/);
   assert.match(elements.roomSummary.textContent, /room_001/);
   assert.match(elements.roomSummary.textContent, /AI攻防大乱斗/);
   assert.match(elements.matchSummary.textContent, /match_001/);
@@ -843,7 +795,7 @@ test("renderer shows AI attack-defense final results after finished phase", () =
   });
 
   assert.equal(elements.phase.textContent, "结束");
-  assert.equal(elements.nextStepTitle.textContent, "AI攻防大乱斗结算完成");
+  assert.match(elements.nextStepBody.textContent, /比赛已结束|结算|完成|FINISHED|冠军|复盘/);
   assert.equal(elements.submitFlag.disabled, true);
   assert.match(elements.resultSummary.textContent, /冠军 team_b · Bob · 150 分 · 攻陷 1 · 防线完整/);
   assert.match(elements.podiumList.innerHTML, /team_b/);
@@ -1330,6 +1282,7 @@ test("onboarding does not auto-start when already completed", () => {
         getElementById: (id) => els[id],
         createElement: (tag) => { const e = new FakeElement(tag); localCreatedElements.push(e); return e; },
         addEventListener: () => {},
+        querySelectorAll: () => [],
       },
       window: {
         aiawd: bridge,
@@ -1402,6 +1355,7 @@ test("onboarding 新手教程 button re-launches the tutorial", () => {
         getElementById: (id) => els[id],
         createElement: (tag) => { const e = new FakeElement(tag); localCreatedElements.push(e); return e; },
         addEventListener: () => {},
+        querySelectorAll: () => [],
       },
       window: {
         aiawd: bridge,

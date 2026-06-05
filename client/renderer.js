@@ -98,8 +98,27 @@ window.addEventListener("DOMContentLoaded", () => {
     "agentStop",
     "agentStatus",
     "startOnboarding",
+    "apiKey",
   ]) {
     els[id] = document.getElementById(id);
+  }
+
+  // —— Phase timing presets ——
+  const phasePresets = {
+    quick: { prepare: 30, defense: 60, attack: 120 },
+    standard: { prepare: 60, defense: 600, attack: 1800 },
+    long: { prepare: 120, defense: 1800, attack: 3600 },
+  };
+  for (const btn of document.querySelectorAll("[data-phase-preset]")) {
+    btn.addEventListener("click", () => {
+      const preset = phasePresets[btn.dataset.phasePreset];
+      if (!preset) return;
+      els.prepareSeconds.value = preset.prepare;
+      els.defenseSeconds.value = preset.defense;
+      els.attackSeconds.value = preset.attack;
+      for (const b of document.querySelectorAll("[data-phase-preset]")) b.classList.remove("active");
+      btn.classList.add("active");
+    });
   }
 
   els.connect.addEventListener("click", connect);
@@ -141,6 +160,17 @@ window.addEventListener("DOMContentLoaded", () => {
         render();
       });
     }
+  }
+
+  // —— Tab switching ——
+  for (const btn of document.querySelectorAll(".tab-btn")) {
+    btn.addEventListener("click", () => {
+      for (const b of document.querySelectorAll(".tab-btn")) b.classList.remove("active");
+      btn.classList.add("active");
+      for (const p of document.querySelectorAll(".tab-panel")) p.classList.remove("active");
+      const panel = document.querySelector(`[data-panel="${btn.dataset.tab}"]`);
+      if (panel) panel.classList.add("active");
+    });
   }
 
   window.aiawd = window.aiawd || unavailableBridge();
@@ -191,12 +221,13 @@ async function createRoom() {
       targetTemplateId: els.targetTemplateId.value.trim() || "real_ctf_web_awd_01",
       displayName: els.displayName.value.trim() || "本地玩家",
       agentRuntime: els.agentRuntime.value.trim() || "mock-agent",
-      modelDisplayName: els.modelDisplayName.value.trim() || "mock-model",
+      modelDisplayName: els.modelDisplayName.value.trim() || "claude-sonnet-4-6",
+      apiKey: els.apiKey?.value?.trim() || "",
       allowSpectators: true,
       phaseSeconds: {
-        prepare: Number(els.prepareSeconds.value || 30),
-        defense: Number(els.defenseSeconds.value || 60),
-        attack: Number(els.attackSeconds.value || 120),
+        prepare: Number(els.prepareSeconds.value || 60),
+        defense: Number(els.defenseSeconds.value || 600),
+        attack: Number(els.attackSeconds.value || 1800),
       },
     }),
   );
@@ -214,7 +245,8 @@ async function joinRoom(role) {
     window.aiawd.joinRoom({
       displayName: els.displayName.value.trim() || "本地玩家",
       agentRuntime: els.agentRuntime.value.trim() || "mock-agent",
-      modelDisplayName: els.modelDisplayName.value.trim() || "mock-model",
+      modelDisplayName: els.modelDisplayName.value.trim() || "claude-sonnet-4-6",
+      apiKey: els.apiKey?.value?.trim() || "",
       roomId,
       role,
     }),
@@ -590,32 +622,32 @@ function renderGuidance(phase, players) {
   const agentReadyCount = players.filter((player) => player.agent_ready).length;
 
   if (!state.connected) {
-    els.nextStepTitle.textContent = "先连接裁判服务器";
+    els.nextStepBody.textContent = "先连接裁判服务器";
     els.nextStepBody.textContent = "连接后进入AI攻防乱斗大厅，可以创建房间，或输入房间 ID 加入已有比赛。";
     return;
   }
   if (!state.roomId) {
-    els.nextStepTitle.textContent = "选择一场AI攻防乱斗";
+    els.nextStepBody.textContent = "选择一场AI攻防乱斗";
     els.nextStepBody.textContent = "房主创建AI攻防房间；玩家从公开房间选择后参赛或观战。";
     return;
   }
   if (state.role === "spectator") {
-    els.nextStepTitle.textContent = "正在观战";
+    els.nextStepBody.textContent = "正在观战";
     els.nextStepBody.textContent = "观战席只能查看阶段、事件和排行，不能开始比赛或提交 Flag。";
     return;
   }
   if (phase === "LOBBY") {
-    els.nextStepTitle.textContent = "AI攻防大乱斗入场准备";
+    els.nextStepBody.textContent = "AI攻防大乱斗入场准备";
     els.nextStepBody.textContent = `房间内全员互为目标，目标是尽量保持防线完整并完成更多攻陷。已加入 ${players.length} 位玩家，靶机 ${targetReadyCount}/${players.length}，Agent ${agentReadyCount}/${players.length}。`;
     return;
   }
   if (phase === "ATTACK") {
-    els.nextStepTitle.textContent = "AI攻防大乱斗已开启";
+    els.nextStepBody.textContent = "AI攻防大乱斗已开启";
     els.nextStepBody.textContent = "每位玩家都可在 allowed_targets 内攻击对手靶机，拿到 Flag 后提交攻陷凭证刷新排行。";
     return;
   }
   if (phase === "FINISHED") {
-    els.nextStepTitle.textContent = "AI攻防大乱斗结算完成";
+    els.nextStepBody.textContent = "AI攻防大乱斗结算完成";
     els.nextStepBody.textContent = "比赛已结束，查看冠军、前三名、防线完整情况和攻陷回放，准备导出报告或复盘。";
     return;
   }
