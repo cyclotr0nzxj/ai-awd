@@ -171,7 +171,15 @@ window.addEventListener("DOMContentLoaded", () => {
   window.aiawd.onMessage(handleMessage);
   window.aiawd.onStatus((status) => { if (!status.connected) { state.connected = false; state.clientId = null; render(); } });
   setInterval(refreshPhaseTimer, 1000);
+  // Particle system for atmosphere
+  let particles = null;
+  const particleCanvas = document.getElementById("particleCanvas");
+  if (particleCanvas && typeof ParticleSystem !== "undefined") {
+    particles = new ParticleSystem(particleCanvas);
+  }
+
   navigateTo("connect");
+  if (particles) particles.start(50);
   render();
 });
 
@@ -364,6 +372,17 @@ function handleMessage(message) {
         if (s) state.focusedTeamId = s;
         state.scorePopup = { teamId: s, delta: ep.score_delta || 0, timestamp: Date.now() };
         state.replayIndex = 0;
+        // Animate attack line between combatants
+        if (typeof drawAttackLine !== "undefined") {
+          setTimeout(() => {
+            const fromEl = document.querySelector(`[data-team-id="${s}"]`);
+            const toEl = document.querySelector(`[data-team-id="${t}"]`);
+            if (fromEl && toEl) drawAttackLine(fromEl, toEl);
+          }, 200);
+        }
+        // Glitch the phase label
+        const phaseEl = document.getElementById("phase");
+        if (phaseEl && typeof glitchText !== "undefined") glitchText(phaseEl);
       }
       break;
     }
