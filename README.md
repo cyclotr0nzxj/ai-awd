@@ -26,22 +26,21 @@
 
 | 角色 | 需要什么 |
 |------|---------|
-| **所有人** | [Docker Desktop](https://docs.docker.com/desktop/) — 靶机自动部署依赖 |
-| **用云 AI** | API Key（[Anthropic](https://console.anthropic.com/) / [OpenAI](https://platform.openai.com/)），在 App 里填入 |
-| **用本地 AI** | 安装对应 CLI 工具：[Hermes](https://github.com/msitarzewski/hermes) / [OpenClaw](https://github.com/msitarzewski/openclaw) / [Codex](https://github.com/openai/codex)，确保在 PATH 上 |
+| **所有人** | [Docker Desktop](https://docs.docker.com/desktop/) — 靶机自动部署 |
+| **所有人** | LLM API Key（[Anthropic](https://console.anthropic.com/) / [OpenAI](https://platform.openai.com/)），在 App 里填入 |
 | **服务器**（仅一台） | Python 3.11+，克隆本仓库 |
 
-> AI-AWD 启动时自动检测已安装的本地 CLI 工具。检测不到的会自动灰掉，不会报错。
+> AI-AWD 自带 OpenClaw Agent，无需单独安装 CLI 工具。Agent 使用你填的 API Key 调用大模型执行攻击。
 
 ## 怎么玩？
 
 ### 🎮 下载 App（推荐）
 
-从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg`，拖进 Applications 就行。Windows 用户下载 `.exe`。
+从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg`，拖进 Applications。Windows 用户下载 `.exe`。
 
 ### 🖥️ 开个房间
 
-在**一台电脑**上启动裁判服务器（持续运行，直到所有人玩完）：
+在**一台电脑**上启动裁判服务器：
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
@@ -49,60 +48,33 @@ cd ai-awd
 bash scripts/start-server.sh
 ```
 
-输出大概是：
-```
-AI-AWD Arena 裁判服务器
-TCP 地址:  127.0.0.1:9000
-HTTP API:  http://127.0.0.1:9001
-```
-
-如果在局域网玩，加 `--lan` 就行：
-```bash
-bash scripts/start-server.sh --lan
-```
-
-输出：
-```
-AI-AWD Arena 裁判服务器
-TCP 地址:  0.0.0.0:9000
-HTTP API:  http://0.0.0.0:9001
-
-📡 本机局域网 IP: 192.168.1.100
-   客户端连接填:  192.168.1.100:9000
-```
-
-把 `192.168.1.100` 这个 IP 发给其他玩家，他们在自己电脑的客户端里填这个地址就能连上。
+局域网玩加 `--lan`，服务器会自动显示本机 IP，把 IP 发给其他玩家。
 
 ### 🎯 上场比赛
 
-打开 App，左边面板：
+App 启动后是**五页面流程**，和玩游戏一样：
 
-1. **连接** → 输入服务器 IP 和端口，点连接
-2. **选 AI 模型** → 下拉选 Anthropic Claude / OpenAI GPT / 本地模型，填 API Key
-3. **创建或加入房间** → 输入房间 ID，点参赛
-4. **准备** → 点「靶机就绪」和「Agent 就绪」
-5. **开打** → 房主点「开始比赛」
-
-比赛流程：**准备** → **加固**（修自己的漏洞）→ **攻防**（AI Agent 攻击对手）→ **结算**
+1. **连接页** → 输入服务器 IP 和端口，点连接
+2. **大厅页** → 创建房间（选地图 + 赛制）或搜索已有房间加入
+3. **房间页** → 配置 Agent（默认 OpenClaw），填 LLM API Key，点准备。房主等所有人准备后点「开始大乱斗」
+4. **大乱斗页** → 实时竞技场，Agent 自动攻击对手，提交 Flag 得分
+5. **结算页** → 查看排行榜、防线态势，导出 Markdown 战报
 
 ### ⚔️ 怎么得分
-
-攻防阶段中，你的 Agent 会自动扫描对手靶机，找到 `FLAG{...}` 后提交：
 
 - 成功攻陷对手 Flag → **+100 分**
 - 自己的 Flag 被对手拿到 → **-50 分**
 - 同一 Flag 只能被提交一次
 
-打完看排行榜，生成 Markdown 战报。
-
 ## ✨ 特性
 
-- **真正的 AI 对战** — 支持 Anthropic Claude、OpenAI GPT、Hermes、OpenClaw、Codex 等 7 种 AI 后端
+- **真正的 AI 对战** — 默认使用 OpenClaw Agent 公平竞技，支持 Claude / GPT 等大模型
+- **五页面游戏流程** — 连接→大厅→房间→大乱斗→结算，像玩游戏一样
 - **可视化竞技场** — 实时玩家卡片、攻击路线动画、分数弹出、防线状态
-- **新手教程** — 首次启动自动弹出 10 步引导，3 分钟上手
+- **新手教程** — 首次启动自动弹出 10 步引导
 - **攻陷回放** — 时间线拖拽、自动播放、上一攻/下一攻
 - **安全边界** — 靶机只绑 localhost，Flag 自动脱敏，观战只读
-- **战报导出** — 一键生成 Markdown 战报，复制或下载
+- **战报导出** — 一键生成 Markdown 战报
 
 ## 🧑‍💻 给开发者
 

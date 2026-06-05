@@ -77,20 +77,18 @@ LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
 
 ## Agent Adapters
 
-7 providers, unified via `adapterFor()` / `adapter_for()`:
+4 agents, unified via `adapterFor()` in `client/adapters.js`. Default: OpenClaw.
 
-| Adapter | CLI | Node | Python |
-|---------|-----|------|--------|
-| Anthropic (Claude) | via API | - | - |
-| OpenAI (GPT) | via API | - | - |
-| Hermes | `hermes` | ✓ | ✓ |
-| OpenClaw | `openclaw` | ✓ | ✓ |
-| Codex | `codex` | ✓ | ✓ |
-| OpenCLI | `opencli` | ✓ | ✓ |
-| Pi | `pi` | ✓ | ✓ |
-| Mock | built-in | ✓ | ✓ |
+| Agent | Type | How it works |
+|-------|------|-------------|
+| OpenClaw (default) | CLI | `openclaw infer model run --local --json` — uses LLM_API_KEY env var |
+| Hermes | CLI | `hermes -z <prompt> --yolo` |
+| Codex | CLI | `codex exec --json <prompt>` |
+| Mock | built-in | `echo FLAG{test}` — no real AI |
 
-API-key-based providers (Anthropic, OpenAI) are configured in the Electron UI. CLI-based providers require the binary on `PATH`.
+API keys are set as environment variables before agent execution:
+- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `LLM_API_KEY` — all set to the key entered in UI
+- Agent CLI tools read the appropriate var from their environment
 
 ## Safety Boundary (ScopeGuard)
 
@@ -127,5 +125,5 @@ API-key-based providers (Anthropic, OpenAI) are configured in the Electron UI. C
 ## Next Steps
 
 1. Windows build verification
-2. Live Docker all-target evidence (requires Docker Desktop)
-3. Real API-key adapter smoke tests (Anthropic/OpenAI)
+2. Live Docker all-target evidence (requires Docker Desktop running)
+3. OpenClaw integration test with real LLM API key
