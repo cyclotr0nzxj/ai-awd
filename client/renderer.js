@@ -147,6 +147,30 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Populate agent dropdown based on detected CLI tools
+  async function populateAgentDropdown() {
+    const select = els.agentRuntime;
+    if (!select) return;
+    let available = {};
+    try {
+      if (typeof detectAvailableAdapters !== "undefined") {
+        available = detectAvailableAdapters();
+      }
+    } catch (e) { /* use defaults */ }
+    const agents = [
+      { value: "openclaw", label: "OpenClaw (默认)", available: available.openclaw !== false },
+      { value: "hermes", label: "Hermes", available: available.hermes === true },
+      { value: "codex", label: "Codex", available: available.codex === true },
+      { value: "mock-agent", label: "Mock (演示)", available: true },
+    ];
+    select.innerHTML = agents
+      .filter(a => a.available)
+      .map(a => `<option value="${a.value}">${a.label}${a.available && a.value !== 'mock-agent' && a.value !== 'openclaw' ? ' ✓' : ''}</option>`)
+      .join("");
+    select.value = available.openclaw !== false ? "openclaw" : agents.find(a => a.available)?.value || "mock-agent";
+  }
+  populateAgentDropdown();
+
   // Room search filter
   if (els.roomSearch) {
     els.roomSearch.addEventListener("input", () => {

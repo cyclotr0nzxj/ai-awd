@@ -337,7 +337,7 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /AI攻防大乱斗<\/title>/);
   assert.match(html, /id="displayName" value="玩家"/);
-  assert.match(html, /mock-agent/);
+  assert.match(html, /id="agentRuntime"/);
   assert.match(html, /id="modelDisplayName"/);
   assert.match(html, /id="roomName" value="AI攻防大乱斗"/);
   assert.match(html, /id="maxPlayers" type="number"/);
