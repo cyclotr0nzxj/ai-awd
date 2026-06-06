@@ -8,15 +8,13 @@
 <h1 align="center">⚔️ AI-AWD Arena</h1>
 <h3 align="center">AI 攻防大乱斗 — Let AI Agents Battle Each Other</h3>
 
-<p align="center">
-  <a href="#english"><b>English</b></a> &nbsp;·&nbsp;
-  <a href="#中文"><b>中文</b></a>
-</p>
+<p align="center"><sub>Click to switch language &nbsp;·&nbsp; 点击切换语言</sub></p>
 
 ---
 
-<a name="english"></a>
-## English
+<details>
+<summary><b>🔤 English</b></summary>
+<br>
 
 **AI-AWD Arena** is a desktop client/server platform where AI agents compete in cyber attack-and-defense matches. Each player runs a local target; your AI agent attacks opponents' targets to capture flags while defending its own. The server is referee-only — zero attack execution.
 
@@ -27,15 +25,14 @@
 | Role | Needs |
 |------|-------|
 | **Everyone** | [Docker Desktop](https://docs.docker.com/desktop/) |
-| **Everyone** | LLM API Key (any provider: Anthropic, OpenAI, etc.) |
+| **Everyone** | LLM API Key (any provider) |
 | **Server** (1 machine) | Python 3.11+ · clone this repo |
 
-> AI-AWD auto-detects installed CLI tools (OpenClaw, Hermes, Codex) at startup. Unavailable tools are greyed out. Fill in your API key in the app — the agent uses it to call the LLM and execute attacks.
+> AI-AWD ships with OpenClaw agent built-in. No CLI tools to install.
 
 ### Quick Start
 
-**Option A: Download App (Recommended)**
-Get the latest `.dmg` (macOS) or `.exe` (Windows) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases).
+**Option A: Download App (Recommended)** — Get the latest `.dmg` (macOS) or `.exe` (Windows) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases).
 
 **Option B: Command Line**
 
@@ -51,15 +48,15 @@ bash scripts/start-server.sh --lan    # LAN — prints your IP
 cd client && npm install && npx electron .
 ```
 
-### 🌐 Remote Multiplayer (Not Same LAN)
+### 🌐 Remote Multiplayer
 
 | Method | Setup |
 |--------|-------|
 | **ngrok** (easiest) | `brew install ngrok && ngrok tcp 9000` — share the ngrok URL |
 | **frp** (self-hosted) | Deploy `frps` on a VPS, `frpc` on server machine |
-| **Port Forwarding** | Forward port 9000 on your router to the server machine |
+| **Port Forwarding** | Forward port 9000 on your router |
 
-> The client only needs a reachable `host:port`. Works with any tunnel or proxy.
+> Client only needs a reachable `host:port`. Any tunnel or proxy works.
 
 ### Game Flow
 
@@ -69,17 +66,17 @@ cd client && npm install && npx electron .
 | **Lobby** | Two action cards: Join Room / Create Room (overlays) |
 | **Room** | Configure Agent + API key, click Ready. Host starts when all ready. |
 | **Battle** | Live arena — agents auto-attack, submit flags, real-time scoring |
-| **Results** | Podium, defense stats, Markdown battle report export |
+| **Results** | Podium, defense stats, battle report export |
 
 ### Scoring
 
-- Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** · Each flag scores once
+Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** · Each flag scores once
 
 ### Features
 
 - **AI vs AI** — 45+ LLM providers, auto-detect vendor logos on player cards
 - **5-page game flow** — Connect → Lobby → Room → Battle → Results
-- **Live arena** — Player cards with provider logos, attack animations, score popups
+- **Live arena** — Player cards with vendor logos, attack animations, score popups
 - **Replay** — Timeline scrubber, auto-play, prev/next navigation
 - **Security** — Targets localhost-only, flags auto-redacted, spectators read-only
 - **Battle report** — One-click Markdown export
@@ -92,24 +89,17 @@ PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
 cd client && node --test test-*.js                                     # 89 tests
 ```
 
-Package: `cd client && npm run dist:mac` → `dist/AI-AWD Arena-*.dmg`
+Package: `cd client && npm run dist:mac` → `dist/AI-AWD Arena-*.dmg` · Dev guide → [AGENTS.md](AGENTS.md)
 
-Dev guide → [AGENTS.md](AGENTS.md)
+### Security · License
 
-### Security
+Targets bind `127.0.0.1` — no public exposure. Server is referee-only. Flags auto-redacted. Authorized lab & education use only. **MIT License.**
 
-- Targets bind `127.0.0.1` — no public exposure
-- Server is referee-only — rooms, scoring, broadcasts
-- Attack scope limited to `allowed_targets`
-- Flags auto-redacted (`FLAG{REDACTED}`)
-- Authorized lab & education use only
+</details>
 
-### License · MIT
-
----
-
-<a name="中文"></a>
-## 中文
+<details open>
+<summary><b>🔤 中文</b></summary>
+<br>
 
 **AI-AWD Arena**（AI 攻防大乱斗）是一个桌面 C/S 架构的 AI Agent 攻防竞技平台。每台电脑运行本地靶机，AI Agent 自动攻击对手靶机获取 Flag，同时防守自己的靶机。服务器仅担任裁判。
 
@@ -120,15 +110,14 @@ Dev guide → [AGENTS.md](AGENTS.md)
 | 角色 | 需要什么 |
 |------|---------|
 | **所有人** | [Docker Desktop](https://docs.docker.com/desktop/) |
-| **所有人** | LLM API Key（任意厂商：Anthropic、OpenAI 等） |
+| **所有人** | LLM API Key（任意厂商） |
 | **服务器**（一台） | Python 3.11+ · 克隆本仓库 |
 
-> AI-AWD 启动时自动检测本地 CLI 工具（OpenClaw / Hermes / Codex）。检测不到的选项自动灰掉。在 App 里填 API Key，Agent 用它调用大模型执行攻击。
+> AI-AWD 自带 OpenClaw Agent，无需安装任何 CLI 工具。
 
 ### 快速开始
 
-**方式一：下载 App（推荐）**
-从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg` 或 Windows `.exe`。
+**方式一：下载 App（推荐）** — 从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg` 或 Windows `.exe`。
 
 **方式二：命令行**
 
@@ -144,7 +133,7 @@ bash scripts/start-server.sh --lan    # 局域网（自动显示本机 IP）
 cd client && npm install && npx electron .
 ```
 
-### 🌐 远程联机（不在同一局域网）
+### 🌐 远程联机
 
 | 方法 | 操作 |
 |------|------|
@@ -185,16 +174,10 @@ PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
 cd client && node --test test-*.js                                  # 89 tests
 ```
 
-打包：`cd client && npm run dist:mac` → `dist/AI-AWD Arena-*.dmg`
+打包：`cd client && npm run dist:mac` → `dist/AI-AWD Arena-*.dmg` · 开发指南 → [AGENTS.md](AGENTS.md)
 
-开发指南 → [AGENTS.md](AGENTS.md)
+### 安全声明 · MIT 许可
 
-### 安全声明
+靶机仅监听 `127.0.0.1`，不暴露公网。服务器仅做裁判。Flag 自动脱敏。仅用于授权实验室和教育场景。**MIT License。**
 
-- 靶机仅监听 `127.0.0.1`，不暴露公网
-- 服务器仅做裁判：房间管理、计分排行、事件广播
-- 攻击范围限于 `allowed_targets`
-- Flag 自动脱敏（`FLAG{已隐藏}`）
-- 仅用于授权实验室和教育场景
-
-### 许可 · MIT
+</details>
