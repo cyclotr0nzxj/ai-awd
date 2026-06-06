@@ -30,9 +30,16 @@
 
 > AI-AWD 自带 OpenClaw Agent，填 API Key 即用。服务器和客户端可以在同一台电脑上。
 
-### 开始游戏
+### 快速开始
 
-**第一步：启动服务器**
+**启动客户端**
+
+- **下载 App（推荐）**：从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 `.dmg`（Mac）或 `.exe`（Win）
+- **或命令行**：`cd client && npm install && npm start`
+
+**启动服务器（仅房主需要）**
+
+如果已有别人开好服务器，跳过这一步，直接填地址连接即可。
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
@@ -42,12 +49,7 @@ bash scripts/start-server.sh
 
 看到 `TCP 地址: 127.0.0.1:9000` 就说明跑起来了。
 
-**第二步：启动客户端**
-
-- **下载 App（推荐）**：从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 `.dmg`（Mac）或 `.exe`（Win）
-- **或命令行**：`cd client && npm install && npm start`
-
-**第三步：开打**
+**开打**
 
 1. **连接页** — 填服务器地址和端口，连接
 2. **大厅页** — 加入已有房间，或创建新房间（选地图和赛制）
@@ -119,9 +121,16 @@ cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 
 > AI-AWD ships with the OpenClaw agent built in. Just fill in your API key. Server and client can run on the same machine.
 
-### Getting Started
+### Quick Start
 
-**Step 1: Start the server**
+**Start the client**
+
+- **Download the app (recommended)**: Get `.dmg` (Mac) or `.exe` (Win) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases)
+- **Or command line**: `cd client && npm install && npm start`
+
+**Start the server (host only)**
+
+Skip this step if someone else is already running a server — just enter their address in the client.
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
@@ -131,12 +140,7 @@ bash scripts/start-server.sh
 
 You should see `TCP 地址: 127.0.0.1:9000`.
 
-**Step 2: Start the client**
-
-- **Download the app (recommended)**: Get `.dmg` (Mac) or `.exe` (Win) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases)
-- **Or command line**: `cd client && npm install && npm start`
-
-**Step 3: Play**
+**Play**
 
 1. **Connect** — Server address + port, your name, connect
 2. **Lobby** — Join an existing room or create one (pick a map + format)
