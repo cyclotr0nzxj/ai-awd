@@ -171,15 +171,7 @@ window.addEventListener("DOMContentLoaded", () => {
   window.aiawd.onMessage(handleMessage);
   window.aiawd.onStatus((status) => { if (!status.connected) { state.connected = false; state.clientId = null; render(); } });
   setInterval(refreshPhaseTimer, 1000);
-  // Particle system for atmosphere
-  let particles = null;
-  const particleCanvas = document.getElementById("particleCanvas");
-  if (particleCanvas && typeof ParticleSystem !== "undefined") {
-    particles = new ParticleSystem(particleCanvas);
-  }
-
   navigateTo("connect");
-  if (particles) particles.start(50);
   render();
 });
 

@@ -27,7 +27,6 @@
       "main.js",
       "preload.js",
       "renderer.js",
-      "particles.js",
       "onboarding.js",
       "aiawdProtocol.js",
       "agentRuntime.js",
