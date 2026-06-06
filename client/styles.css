@@ -1,6 +1,6 @@
 /* ============================================================
    AI-AWD Arena — Clean Game Client
-   Dark theme, centered layouts, no noise
+   Dark theme, full-width layouts, overlay sub-pages
    ============================================================ */
 
 :root {
@@ -39,9 +39,9 @@ body {
 }
 
 /* ====== Page System ====== */
-.page { display: none; height: 100vh; overflow: hidden; }
-.page.active { display: flex; flex-direction: column; align-items: center; }
-#page-connect.active { justify-content: center; }
+.page { display: none; height: 100vh; overflow: hidden; position: relative; }
+.page.active { display: flex; flex-direction: column; align-items: stretch; }
+#page-connect.active { align-items: center; justify-content: center; }
 
 /* ====== Buttons ====== */
 button {
@@ -101,95 +101,109 @@ label {
 .connect-footer a { color: var(--blue); text-decoration: none; }
 
 /* ============================================================
-   PAGE 2: LOBBY — centered main, compact sidebar
+   PAGE 2: LOBBY — full width, two action cards, overlay sub-pages
    ============================================================ */
 .lobby-layout {
-  display: flex; flex: 1; width: 100%; max-width: 1100px; overflow: hidden;
+  display: flex; flex-direction: column; flex: 1; width: 100%; overflow: hidden;
 }
 
-.lobby-side {
-  width: 320px; flex-shrink: 0;
-  background: var(--surface); border-right: 1px solid var(--border);
-  padding: 24px 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+.lobby-topbar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 28px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
-.lobby-header {
-  display: flex; align-items: center; gap: 10px; padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
-.lobby-header h2 { font-size: 20px; flex: 1; color: var(--accent); }
-.lobby-header span { color: var(--accent); font-weight: 700; font-size: 13px; font-family: var(--mono); }
+.lobby-topbar h2 { font-size: 20px; color: var(--accent); margin-right: auto; }
+.lobby-topbar span { color: var(--accent); font-weight: 700; font-size: 13px; font-family: var(--mono); }
 
-.lobby-section { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-.lobby-section:last-child { flex: 1; min-height: 0; }
-.lobby-section h3 { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-.room-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-
-.room-row {
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--bg); cursor: pointer; text-align: left; font-size: 13px;
-  border-left: 3px solid var(--border2); transition: border-color 150ms;
-}
-.room-row:hover { border-color: var(--accent); border-left-color: var(--accent); }
-.room-row strong { color: var(--text); font-family: var(--mono); }
-.room-row small { color: var(--muted); font-size: 11px; }
-.room-row em {
-  color: var(--accent); font-style: normal; font-weight: 700; font-size: 11px;
-  background: rgba(46,232,144,0.08); padding: 2px 8px; border-radius: 999px;
-}
-
-/* Lobby main — centered content with whitespace */
 .lobby-main {
-  flex: 1; padding: 60px 64px; overflow-y: auto;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 24px; overflow-y: auto;
 }
-.lobby-hero { text-align: center; margin-bottom: 32px; max-width: 480px; }
-.lobby-hero h2 { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
-.lobby-hero p { color: var(--text2); font-size: 15px; }
-.create-form { display: flex; flex-direction: column; gap: 16px; width: 480px; max-width: 100%; }
+.lobby-hero { text-align: center; margin-bottom: 40px; }
+.lobby-hero h2 { font-size: 32px; font-weight: 900; margin-bottom: 8px; }
+.lobby-hero p { color: var(--text2); font-size: 16px; }
 
-.map-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.map-card {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 18px 12px; border: 2px solid var(--border); border-radius: var(--radius-lg);
-  background: var(--surface); cursor: pointer; text-align: center; transition: all 150ms;
+/* Action cards */
+.lobby-actions {
+  display: flex; gap: 24px; max-width: 560px; width: 100%;
 }
-.map-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.map-card.active { border-color: var(--accent); background: rgba(46,232,144,0.06); }
-.map-icon { font-size: 30px; }
-.map-card strong { font-size: 13px; }
-.map-card small { font-size: 10px; color: var(--muted); line-height: 1.4; }
+.action-card {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 40px 28px; border: 2px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface); cursor: pointer; text-align: center;
+  transition: all 200ms;
+}
+.action-card:hover {
+  border-color: var(--accent); transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.action-card:active { transform: translateY(-1px); }
+.action-card .action-icon { font-size: 48px; line-height: 1; }
+.action-card strong { font-size: 20px; font-weight: 800; }
+.action-card small { font-size: 13px; color: var(--text2); line-height: 1.4; }
 
-.format-presets { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
-.format-presets button { text-align: center; padding: 10px 6px; font-size: 13px; font-weight: 700; }
-.format-presets button small { display: block; font-weight: 400; color: var(--muted); }
-.format-presets button.active { border-color: var(--accent); background: rgba(46,232,144,0.08); color: var(--accent); }
+/* ====== Overlay System ====== */
+.overlay {
+  position: absolute; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  animation: overlay-in 180ms ease-out;
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.overlay-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(3px); cursor: pointer;
+}
+.overlay-panel {
+  position: relative; z-index: 1;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  width: 460px; max-width: 92vw; max-height: 82vh;
+  overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+  animation: panel-in 220ms ease-out;
+}
+.overlay-panel-lg { width: 520px; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.overlay-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface); z-index: 2;
+}
+.overlay-header h3 { font-size: 18px; font-weight: 800; }
+.overlay-close-btn {
+  font-size: 18px; padding: 6px 10px; line-height: 1;
+}
+.overlay-body {
+  padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 14px;
+}
 
-.format-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.format-row input { width: 70px; }
-
-.sb-row { display: flex; gap: 6px; }
-.sb-row button { flex: 1; }
+/* Room list inside overlay */
+.room-list-overlay { max-height: 200px; overflow-y: auto; }
 
 /* ============================================================
-   PAGE 3: ROOM — centered main content
+   PAGE 3: ROOM — full width, config folded into prepare
    ============================================================ */
 #page-room { background: var(--bg); width: 100%; }
-.room-layout { display: flex; flex-direction: column; flex: 1; width: 100%; max-width: 1100px; }
+.room-layout { display: flex; flex-direction: column; flex: 1; width: 100%; }
 
 .room-top {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 14px 28px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .room-info h2 { font-size: 20px; font-weight: 900; }
 .room-meta { color: var(--text2); font-size: 13px; }
 .room-meta strong { color: var(--text); font-family: var(--mono); }
 
 .room-body {
-  flex: 1; display: flex; gap: 24px; padding: 24px 28px; overflow: hidden;
+  flex: 1; display: flex; gap: 0; padding: 24px 28px; overflow: hidden;
 }
-.room-players { flex: 1; overflow-y: auto; }
+.room-players { flex: 1; overflow-y: auto; width: 100%; }
 .room-players h3 {
   font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px;
   margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
@@ -226,13 +240,30 @@ label {
 .player-slot .slot-status.ready { background: rgba(46,232,144,0.1); color: var(--accent); }
 .player-slot .slot-status.waiting { background: rgba(230,168,23,0.1); color: var(--amber); }
 
-.room-config {
-  width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
-  padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  background: var(--surface); overflow-y: auto;
+/* Prepare module — config folded into the ready area */
+.room-actions {
+  padding: 0; border-top: 1px solid var(--border); background: var(--surface);
+  flex-shrink: 0;
 }
+.prepare-module {
+  display: flex; flex-direction: column;
+}
+.prepare-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 28px; border-bottom: 1px solid var(--border);
+}
+.prepare-header span { font-size: 14px; font-weight: 800; color: var(--text); }
+.prepare-header small { font-size: 12px; color: var(--text2); }
+.prepare-panels {
+  padding: 12px 28px; display: flex; flex-direction: column; gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.prepare-actions {
+  padding: 14px 28px; display: flex; align-items: center; justify-content: center; gap: 12px;
+}
+
 .config-toggle {
-  width: 100%; text-align: left; padding: 10px 14px; font-size: 13px; font-weight: 700;
+  width: 100%; text-align: left; padding: 8px 14px; font-size: 13px; font-weight: 700;
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
   transition: border-color 120ms;
 }
@@ -247,10 +278,6 @@ label {
 .lifecycle-actions { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .lifecycle-actions button { padding: 5px 4px; font-size: 11px; font-weight: 700; }
 
-.room-actions {
-  padding: 14px 28px; border-top: 1px solid var(--border); background: var(--surface);
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-}
 .room-hint { font-size: 13px; color: var(--text2); }
 
 /* ============================================================
@@ -363,11 +390,11 @@ label {
 .arena-empty { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--muted); font-style: italic; }
 
 /* ============================================================
-   PAGE 5: RESULTS — centered
+   PAGE 5: RESULTS — wider layout
    ============================================================ */
 .results-layout {
-  max-width: 900px; margin: 0 auto; padding: 32px 24px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 20px; width: 100%;
+  width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 36px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 20px;
 }
 .results-hero { text-align: center; }
 .results-hero h2 { font-size: 28px; font-weight: 900; margin-bottom: 12px; }
@@ -424,6 +451,47 @@ pre {
 .status-text[data-state="ok"] { border-color: var(--accent); color: var(--accent); }
 .status-text[data-state="bad"] { border-color: var(--red); color: var(--red); }
 
+/* Map cards & format presets (used in create overlay) */
+.map-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.map-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 18px 12px; border: 2px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface); cursor: pointer; text-align: center; transition: all 150ms;
+}
+.map-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.map-card.active { border-color: var(--accent); background: rgba(46,232,144,0.06); }
+.map-icon { font-size: 30px; }
+.map-card strong { font-size: 13px; }
+.map-card small { font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+.format-presets { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.format-presets button { text-align: center; padding: 10px 6px; font-size: 13px; font-weight: 700; }
+.format-presets button small { display: block; font-weight: 400; color: var(--muted); }
+.format-presets button.active { border-color: var(--accent); background: rgba(46,232,144,0.08); color: var(--accent); }
+
+.format-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.format-row input { width: 70px; }
+
+.sb-row { display: flex; gap: 6px; }
+.sb-row button { flex: 1; }
+
+/* Room list */
+.room-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+
+.room-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg); cursor: pointer; text-align: left; font-size: 13px;
+  border-left: 3px solid var(--border2); transition: border-color 150ms;
+}
+.room-row:hover { border-color: var(--accent); border-left-color: var(--accent); }
+.room-row strong { color: var(--text); font-family: var(--mono); }
+.room-row small { color: var(--muted); font-size: 11px; }
+.room-row em {
+  color: var(--accent); font-style: normal; font-weight: 700; font-size: 11px;
+  background: rgba(46,232,144,0.08); padding: 2px 8px; border-radius: 999px;
+}
+
 /* ====== Onboarding ====== */
 .onboarding-overlay { position: fixed; inset: 0; z-index: 99999; }
 .onboarding-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); }
@@ -454,17 +522,18 @@ pre {
 
 /* ====== Responsive ====== */
 @media (max-width: 900px) {
-  .lobby-layout { flex-direction: column; max-width: none; }
-  .lobby-side { width: 100%; height: 40vh; border-right: 0; border-bottom: 1px solid var(--border); }
-  .lobby-main { padding: 32px 20px; }
-  .room-body { flex-direction: column; max-width: none; }
-  .room-config { width: 100%; }
+  .lobby-actions { flex-direction: column; max-width: 340px; }
+  .room-body { padding: 16px; }
   .results-grid { grid-template-columns: 1fr; }
+  .prepare-panels { padding: 10px 16px; }
+  .prepare-actions { padding: 10px 16px; }
 }
 @media (max-width: 600px) {
   .connect-card { padding: 30px 24px; }
+  .action-card { padding: 28px 20px; }
   .map-cards { grid-template-columns: 1fr; }
   .battle-bottom { flex-direction: column; }
   .format-presets { grid-template-columns: repeat(2,1fr); }
   .lifecycle-actions { grid-template-columns: repeat(3,1fr); }
+  .overlay-panel, .overlay-panel-lg { width: 96vw; max-height: 90vh; border-radius: var(--radius); }
 }

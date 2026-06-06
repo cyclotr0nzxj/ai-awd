@@ -75,7 +75,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "startOnboarding","apiKey",
     "roomSearch","roomReadyBtn","roomHint","leaveRoom","backToRoom","backToLobby",
     "lobbyPlayerName","roomTitle","roomTargetType","roomFormat","roomPhase",
-    "playerCount","playerSlots","spectatorSlots","targetDeployStatus","connectStatus",
+    "playerCount","playerSlots","spectatorSlots","targetDeployStatus","connectStatus","prepareSummary",
   ];
   for (const id of ids) {
     els[id] = document.getElementById(id) || {
@@ -122,18 +122,34 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Lobby: toggle create form
-  const showCreateBtn = document.getElementById("showCreateForm");
-  const createPanel = document.getElementById("createFormPanel");
-  if (showCreateBtn && createPanel) {
-    showCreateBtn.addEventListener("click", () => {
-      const visible = createPanel.style.display !== "none";
-      createPanel.style.display = visible ? "none" : "block";
-      showCreateBtn.textContent = visible ? "+ 创建房间" : "收起";
-      showCreateBtn.classList.toggle("btn-ghost", !visible);
-      showCreateBtn.classList.toggle("btn-primary", visible);
-    });
+  // Lobby: overlay open/close
+  function openOverlay(id) {
+    const overlay = document.getElementById(id);
+    if (!overlay) return;
+    overlay.style.display = "flex";
+    if (id === "joinOverlay") listRooms();
   }
+  function closeOverlay(id) {
+    const overlay = document.getElementById(id);
+    if (!overlay) return;
+    overlay.style.display = "none";
+  }
+  function closeAllOverlays() {
+    for (const el of document.querySelectorAll(".overlay")) el.style.display = "none";
+  }
+
+  const showJoinBtn = document.getElementById("showJoinOverlay");
+  const showCreateOverlayBtn = document.getElementById("showCreateOverlay");
+  if (showJoinBtn) showJoinBtn.addEventListener("click", () => openOverlay("joinOverlay"));
+  if (showCreateOverlayBtn) showCreateOverlayBtn.addEventListener("click", () => openOverlay("createOverlay"));
+
+  for (const closer of document.querySelectorAll("[data-close]")) {
+    closer.addEventListener("click", () => closeOverlay(closer.dataset.close));
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllOverlays();
+  });
 
   // Room: toggle config panels
   for (const toggle of document.querySelectorAll(".config-toggle")) {
@@ -535,6 +551,13 @@ function renderRoomPage(phase) {
     els.roomFormat.textContent = `准备 ${Math.round((ps.prepare||60)/60)}min · 加固 ${Math.round((ps.defense||120)/60)}min · 攻防 ${atkMin}min`;
   }
   if (els.roomPhase) els.roomPhase.textContent = displayPhase(phase);
+
+  // Prepare summary
+  if (els.prepareSummary) {
+    const players = room.players || [];
+    const readyCount = players.filter(p => p.target_ready && p.agent_ready).length;
+    els.prepareSummary.textContent = `${readyCount}/${players.length} 已准备 · 配置 Agent 与靶机后点击准备`;
+  }
 
   // Player slots
   const players = room.players || [];
