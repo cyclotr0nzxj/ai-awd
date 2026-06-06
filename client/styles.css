@@ -85,7 +85,7 @@ button {
   border: 1px solid var(--border2); border-radius: var(--radius);
   background: var(--surface2); color: var(--text);
   padding: 10px 18px; font-size: 13px; font-weight: 600;
-  transition: all 150ms ease; white-space: nowrap;
+  transition: border-color 150ms, background 150ms, box-shadow 150ms, transform 150ms; white-space: nowrap;
   letter-spacing: 0.2px;
 }
 button:hover:not(:disabled) {
@@ -200,7 +200,7 @@ label {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 14px;
   padding: 48px 32px; border: 1px solid var(--border2); border-radius: var(--radius-xl);
   background: linear-gradient(180deg, rgba(15,25,40,0.9) 0%, rgba(11,19,32,0.95) 100%);
-  cursor: pointer; text-align: center; transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer; text-align: center; transition: transform 250ms, border-color 250ms, box-shadow 250ms;
   position: relative; overflow: hidden;
 }
 .action-card::after {
@@ -314,38 +314,22 @@ label {
 .player-slot .slot-status.ready { background: var(--green-dim); color: var(--green); }
 .player-slot .slot-status.waiting { background: var(--amber-dim); color: var(--amber); }
 
-/* Right config panel */
-.room-config {
-  width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
-  padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  background: rgba(11,19,32,0.7); overflow-y: auto;
-}
-
-.config-toggle {
-  width: 100%; text-align: left; padding: 10px 14px; font-size: 13px; font-weight: 700;
-  background: var(--void); border: 1px solid var(--border); border-radius: var(--radius);
-  font-family: var(--font-display); letter-spacing: 0.5px; transition: all 150ms;
-}
-.config-toggle:hover { border-color: var(--cyan); }
-.config-toggle.active { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
-
-.config-panel { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
-.config-hint { font-size: 11px; color: var(--muted); line-height: 1.6; font-style: italic; }
-
-/* Target controls */
-.target-status { margin-top: 6px; }
-.target-status h4 { font-size: 12px; margin-bottom: 6px; font-family: var(--font-display); letter-spacing: 0.5px; }
-.target-status p { font-size: 11px; color: var(--muted); min-height: 18px; font-family: var(--font-mono); }
-.lifecycle-actions { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-.lifecycle-actions button { padding: 5px 3px; font-size: 10px; font-weight: 700; }
-
-/* Bottom action bar */
+/* Bottom action bar — compact prepare module */
 .room-actions {
-  padding: 14px 32px; border-top: 1px solid var(--border);
+  padding: 12px 32px; border-top: 1px solid var(--border);
   background: rgba(7,13,22,0.9); backdrop-filter: blur(12px);
-  display: flex; align-items: center; justify-content: center; gap: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.room-hint { font-size: 12px; color: var(--text2); font-family: var(--font-mono); }
+.prepare-module {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.prepare-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text2); font-family: var(--font-display); white-space: nowrap;
+}
+.prepare-select { width: 160px !important; flex-shrink: 0; }
+.prepare-input { width: 180px !important; flex-shrink: 0; }
+.room-hint { font-size: 11px; color: var(--text2); font-family: var(--font-mono); white-space: nowrap; }
 
 /* ============================================================
    PAGE 4 ─ BATTLE
@@ -407,7 +391,7 @@ label {
   position: relative; border: 1px solid var(--border); border-radius: var(--radius-xl);
   background: linear-gradient(180deg, rgba(15,25,40,0.8) 0%, rgba(11,19,32,0.9) 100%);
   padding: 22px; text-align: center; cursor: pointer;
-  transition: all 200ms cubic-bezier(0.4,0,0.2,1); min-height: 180px;
+  transition: transform 200ms, border-color 200ms, box-shadow 200ms; min-height: 180px;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   backdrop-filter: blur(8px);
 }

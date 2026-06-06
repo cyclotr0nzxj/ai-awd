@@ -75,7 +75,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "startOnboarding","apiKey",
     "roomSearch","roomReadyBtn","roomHint","leaveRoom","backToRoom","backToLobby",
     "lobbyPlayerName","roomTitle","roomTargetType","roomFormat","roomPhase",
-    "playerCount","playerSlots","spectatorSlots","targetDeployStatus","connectStatus","prepareSummary",
+    "playerCount","playerSlots","spectatorSlots","connectStatus",
   ];
   for (const id of ids) {
     els[id] = document.getElementById(id) || {
@@ -110,18 +110,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Phase presets (legacy)
-  for (const btn of document.querySelectorAll("[data-phase-preset]")) {
-    btn.addEventListener("click", () => {
-      const presets = { quick:{prepare:30,defense:60,attack:120}, standard:{prepare:60,defense:600,attack:1800}, long:{prepare:120,defense:1800,attack:3600} };
-      const p = presets[btn.dataset.phasePreset];
-      if (!p) return;
-      els.prepareSeconds.value = p.prepare; els.defenseSeconds.value = p.defense; els.attackSeconds.value = p.attack;
-      for (const b of document.querySelectorAll("[data-phase-preset]")) b.classList.remove("active");
-      btn.classList.add("active");
-    });
-  }
-
   // Lobby: overlay open/close
   function openOverlay(id) {
     const overlay = document.getElementById(id);
@@ -150,18 +138,6 @@ window.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllOverlays();
   });
-
-  // Room: toggle config panels
-  for (const toggle of document.querySelectorAll(".config-toggle")) {
-    toggle.addEventListener("click", () => {
-      const panel = document.querySelector(`[data-panel="${toggle.dataset.toggle}"]`);
-      if (!panel) return;
-      const isOpen = panel.style.display !== "none";
-      panel.style.display = isOpen ? "none" : "block";
-      toggle.classList.toggle("active", !isOpen);
-      toggle.textContent = toggle.textContent.replace(isOpen ? "▾" : "▸", isOpen ? "▸" : "▾");
-    });
-  }
 
   // Populate agent dropdown based on detected CLI tools
   async function populateAgentDropdown() {
@@ -552,13 +528,6 @@ function renderRoomPage(phase) {
   }
   if (els.roomPhase) els.roomPhase.textContent = displayPhase(phase);
 
-  // Prepare summary
-  if (els.prepareSummary) {
-    const players = room.players || [];
-    const readyCount = players.filter(p => p.target_ready && p.agent_ready).length;
-    els.prepareSummary.textContent = `${readyCount}/${players.length} 已准备 · 配置 Agent 与靶机后点击准备`;
-  }
-
   // Player slots
   const players = room.players || [];
   if (els.playerCount) els.playerCount.textContent = `${players.length}/${room.max_players || "-"}`;
@@ -585,13 +554,6 @@ function renderRoomPage(phase) {
     }).join("") || "<p style='color:var(--muted)'>等待玩家加入...</p>";
   }
 
-  // Target deploy status
-  if (els.targetDeployStatus) {
-    const cfg = state.configs[0];
-    els.targetDeployStatus.textContent = cfg?.target_runtime?.project_name
-      ? `靶机计划: ${cfg.target_runtime.project_name} · 入口: ${cfg.target_runtime.base_url || "localhost"}`
-      : "等待房间配置后自动部署...";
-  }
 }
 
 function renderBattle(phase) {

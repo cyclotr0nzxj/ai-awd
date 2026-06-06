@@ -163,48 +163,17 @@
 
     <div class="room-actions">
       <div class="prepare-module">
-        <div class="prepare-header">
-          <span>⚙️ 准备</span>
-          <small id="prepareSummary">配置 Agent 与靶机后准备就绪</small>
-        </div>
-        <div class="prepare-panels">
-          <button class="config-toggle active" data-toggle="agent">🤖 Agent 配置 ▾</button>
-          <div class="config-panel" data-panel="agent">
-            <p class="config-hint">Agent 会自动攻击对手靶机。OpenClaw 随 AI-AWD 自动部署。</p>
-            <label>Agent
-              <select id="agentRuntime" class="select-field">
-                <option value="">检测中...</option>
-              </select>
-            </label>
-            <label>LLM API Key
-              <input id="apiKey" type="password" placeholder="填入你的 LLM API Key" />
-            </label>
-            <label>LLM 模型
-              <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="例如 claude-sonnet-4-6" />
-            </label>
-          </div>
-
-          <button class="config-toggle" data-toggle="target">🖥️ 靶机管理 ▸</button>
-          <div class="config-panel" data-panel="target" style="display:none">
-            <p id="targetDeployStatus">等待房间配置...</p>
-            <div class="lifecycle-actions" style="margin-top:8px">
-              <button id="targetDoctor" class="btn-sm">诊断</button>
-              <button id="targetInstall" class="btn-sm">安装</button>
-              <button id="targetStart" class="btn-sm btn-primary">启动</button>
-              <button id="targetHealth" class="btn-sm">巡检</button>
-              <button id="targetStop" class="btn-sm">停止</button>
-              <button id="targetReset" class="btn-sm">重置</button>
-            </div>
-          </div>
-        </div>
-        <div class="prepare-actions">
-          <button id="markTargetReady" style="display:none">靶机就绪</button>
-          <button id="markAgentReady" style="display:none">Agent 就绪</button>
-          <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
-          <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
-          <p id="roomHint" class="room-hint"></p>
-        </div>
+        <span class="prepare-label">Agent</span>
+        <select id="agentRuntime" class="select-field prepare-select">
+          <option value="">检测中...</option>
+        </select>
+        <input id="apiKey" type="password" placeholder="LLM API Key" class="prepare-input" />
+        <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="模型名" class="prepare-input" />
+        <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
+        <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
+        <small id="roomHint" class="room-hint"></small>
       </div>
+    </div>
     </div>
   </div>
 </div>

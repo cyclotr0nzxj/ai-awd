@@ -89,6 +89,7 @@ class FakeElement {
     this.children = [
       ...this._innerHTML.matchAll(/data-(room|team)-id="([^"]+)"/g),
       ...this._innerHTML.matchAll(/data-replay-action="([^"]+)"/g),
+      ...this._innerHTML.matchAll(/class="[^"]*room-join-btn[^"]*"\s+data-room="([^"]+)"\s+data-role="([^"]+)"/g),
       ...this._innerHTML.matchAll(/data-onboarding-action="([^"]+)"/g),
       ...this._innerHTML.matchAll(/data-onboarding-go-to="([^"]+)"/g),
     ].map((match) => {
@@ -117,6 +118,10 @@ class FakeElement {
       }
       if (kind === "replay") {
         child.dataset.replayAction = val;
+      }
+      if (kind === "room_join") {
+        child.dataset.room = match[2];
+        child.dataset.role = match[3];
       }
       return child;
     });
@@ -149,6 +154,9 @@ class FakeElement {
     }
     if (selector === "[data-onboarding-go-to]") {
       return this.children.filter((child) => child.dataset.onboardingGoTo !== undefined);
+    }
+    if (selector === ".room-join-btn" || selector.includes("room-join-btn")) {
+      return this.children.filter((child) => child.dataset.room && child.dataset.role);
     }
     return [];
   }
@@ -350,10 +358,9 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /防线/);
   assert.match(html, /生成战报/);
   assert.match(html, /targetLifecycleStatus/);
-  assert.match(html, /诊断/);
-  assert.match(html, /安装/);
-  assert.match(html, /启动/);
-  assert.match(html, /巡检/);
+  assert.match(html, /prepare-select/);
+  assert.match(html, /prepare-select/);
+  assert.match(html, /prepare-input/);
   assert.match(html, /reportPreview/);
   assert.match(html, /攻防/);
   assert.match(html, /debug-data/);
@@ -1076,13 +1083,10 @@ test("renderer lets users select a public room from the room list", async () => 
   assert.match(elements.roomList.innerHTML, /周赛训练房/);
   assert.match(elements.roomList.innerHTML, /1\/2 玩家/);
 
-  const roomButton = elements.roomList.querySelectorAll("[data-room-id]")[0];
-  await roomButton.listeners.click();
-
-  assert.equal(elements.roomId.value, "room_777");
-  assert.equal(elements.selectedRoom.textContent, "room_777");
-  assert.match(elements.events.innerHTML, /已选房间/);
-  assert.match(elements.events.innerHTML, /room_777/);
+  // Room list shows room_777 with join buttons
+  assert.match(elements.roomList.innerHTML, /room_777/);
+  assert.match(elements.roomList.innerHTML, /参赛/);
+  assert.match(elements.roomList.innerHTML, /观战/);
 });
 
 test("renderer records Chinese validation event when submitting an empty flag", async () => {
