@@ -160,7 +160,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const agents = [
       { value: "openclaw", label: "OpenClaw (默认)", available: available.openclaw !== false },
       { value: "hermes", label: "Hermes", available: available.hermes === true },
-      { value: "codex", label: "Codex", available: available.codex === true },
       { value: "mock-agent", label: "Mock (演示)", available: true },
     ];
     select.innerHTML = agents
