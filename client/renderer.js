@@ -52,9 +52,9 @@ function updateNavigation() {
 }
 
 const FORMAT_PRESETS = {
-  quick: { prepare: 15, defense: 30, attack: 180 },
-  standard: { prepare: 30, defense: 60, attack: 600 },
-  long: { prepare: 60, defense: 120, attack: 1800 },
+  quick: { prepare: 30, defense: 600, attack: 1200 },
+  standard: { prepare: 60, defense: 1200, attack: 2400 },
+  long: { prepare: 60, defense: 1800, attack: 3600 },
 };
 
 // ====== DOM Ready ======
