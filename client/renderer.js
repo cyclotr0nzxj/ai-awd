@@ -909,8 +909,30 @@ function captureCount(tid) { if (!tid) return 0; if (state.captureCounts[tid] !=
 function breachCount(tid) { if (!tid) return 0; if (state.breachCounts[tid] !== undefined) return state.breachCounts[tid]; return captureEvents().filter(e => capturePayload(e).target_team_id === tid).length; }
 function defenseText(tid) { const b = breachCount(tid); return b ? `失守 ${b} 次` : "防线完整"; }
 function renderRooms(rooms) {
-  els.roomList.innerHTML = rooms.map(r => `<button class="room-row" data-room-id="${escapeHtml(r.room_id)}"><span><strong>${escapeHtml(r.room_name||r.room_id)}</strong><small>${escapeHtml(roomMeta(r))}</small></span><em>${escapeHtml(displayPhase(r.status))}</em></button>`).join("") || "<p style='color:var(--muted)'>暂无房间</p>";
-  for (const btn of els.roomList.querySelectorAll("[data-room-id]")) { btn.addEventListener("click", () => { els.roomId.value = btn.dataset.roomId; state.roomId = btn.dataset.roomId; addEvent("ROOM_SELECTED", { room_id: btn.dataset.roomId }); render(); }); }
+  els.roomList.innerHTML = rooms.map(r => {
+    const id = escapeHtml(r.room_id);
+    const name = escapeHtml(r.room_name||r.room_id);
+    const meta = escapeHtml(roomMeta(r));
+    const phase = escapeHtml(displayPhase(r.status));
+    return `<div class="room-row" data-room-id="${id}">
+      <span><strong>${name}</strong><small>${meta}</small></span>
+      <em>${phase}</em>
+      <div class="room-row-actions">
+        <button class="btn-sm btn-primary room-join-btn" data-room="${id}" data-role="player">参赛</button>
+        <button class="btn-sm room-join-btn" data-room="${id}" data-role="spectator">观战</button>
+      </div>
+    </div>`;
+  }).join("") || "<p style='color:var(--muted)'>暂无房间</p>";
+  for (const btn of els.roomList.querySelectorAll(".room-join-btn")) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const roomId = btn.dataset.room;
+      const role = btn.dataset.role;
+      els.roomId.value = roomId;
+      state.roomId = roomId;
+      joinRoom(role);
+    });
+  }
 }
 function roomMeta(room) { const p = Array.isArray(room.players) ? room.players.length : 0; return `${room.room_id||"-"} · ${p}/${room.max_players||"-"} 玩家 · ${room.allow_spectators?"可观战":"不可观战"} · ${room.target_template_id||"未标注靶场"}`; }
 function memberItem(member) { const status = member.team_id ? ` · ${member.target_ready?"靶机已好":"靶机待确认"} · ${member.agent_ready?"Agent已好":"Agent待确认"}` : ""; const model = member.model_display_name ? ` · 模型 ${member.model_display_name}` : ""; return `<li><span>${escapeHtml(member.team_id||"-")}${status}${escapeHtml(model)}</span><strong>${escapeHtml(member.display_name)}</strong></li>`; }

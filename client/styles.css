@@ -601,6 +601,8 @@ pre {
   color: var(--cyan); font-style: normal; font-weight: 700; font-size: 10px;
   background: var(--cyan-dim); padding: 2px 8px; border-radius: 999px;
 }
+.room-row-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.room-join-btn { padding: 4px 10px !important; font-size: 11px !important; }
 
 /* ====== Onboarding ====== */
 .onboarding-overlay { position: fixed; inset: 0; z-index: 99999; }
