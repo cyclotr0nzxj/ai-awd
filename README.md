@@ -32,14 +32,20 @@
 
 ### 快速开始
 
-**启动客户端**
+**1. 获取客户端（每人必做）**
 
 - **下载 App（推荐）**：从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 `.dmg`（Mac）或 `.exe`（Win）
-- **或命令行**：`cd client && npm install && npm start`
+- **或命令行启动**：
+  ```bash
+  git clone https://github.com/cyclotr0nzxj/ai-awd.git
+  cd ai-awd/client
+  npm install
+  npm start
+  ```
 
-**启动服务器（仅房主需要）**
+**2. 启动服务器（一人运行即可）**
 
-如果已有别人开好服务器，跳过这一步，直接填地址连接即可。
+只要有一个人运行服务器，其他人直接填地址连接，无需执行这一步。
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
@@ -49,7 +55,7 @@ bash scripts/start-server.sh
 
 看到 `TCP 地址: 127.0.0.1:9000` 就说明跑起来了。
 
-**开打**
+**3. 开打**
 
 1. **连接页** — 填服务器地址和端口，连接
 2. **大厅页** — 加入已有房间，或创建新房间（选地图和赛制）
@@ -123,14 +129,20 @@ cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 
 ### Quick Start
 
-**Start the client**
+**1. Get the client (everyone)**
 
 - **Download the app (recommended)**: Get `.dmg` (Mac) or `.exe` (Win) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases)
-- **Or command line**: `cd client && npm install && npm start`
+- **Or run from source**:
+  ```bash
+  git clone https://github.com/cyclotr0nzxj/ai-awd.git
+  cd ai-awd/client
+  npm install
+  npm start
+  ```
 
-**Start the server (host only)**
+**2. Start the server (one person only)**
 
-Skip this step if someone else is already running a server — just enter their address in the client.
+Only one person needs to run the server. Everyone else just enters the server address in their client.
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
@@ -140,7 +152,7 @@ bash scripts/start-server.sh
 
 You should see `TCP 地址: 127.0.0.1:9000`.
 
-**Play**
+**3. Play**
 
 1. **Connect** — Server address + port, your name, connect
 2. **Lobby** — Join an existing room or create one (pick a map + format)
