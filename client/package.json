@@ -1,6 +1,6 @@
 {
   "name": "ai-awd-arena-client",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "AI-AWD Arena — Electron AWD 攻防竞技客户端",
   "author": "AI-AWD Arena Team",

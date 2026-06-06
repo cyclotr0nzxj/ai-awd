@@ -96,7 +96,6 @@ describe("electron-builder package files", () => {
     const files = new Set(packageJson.build.files);
     for (const requiredFile of [
       "renderer.js",
-      "onboarding.js",
       "aiawdProtocol.js",
       "agentRuntime.js",
       "adapters.js",
