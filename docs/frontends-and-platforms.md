@@ -14,8 +14,8 @@ The Electron GUI should feel like an AWD competition client, not a raw protocol 
 Primary screens:
 
 1. First-run onboarding: auto-starts once, can be relaunched with `新手教程`, and explains connection, room creation, Agent-player setup, replay, flag submission, and report export.
-2. Match lobby: connection state, public rooms with click-to-select room IDs, quick join, create room.
-3. AI攻防大乱斗 room staging: free-for-all Agent-player runtime/model entry, Agent-player nodes, spectator list, target ready, Agent ready, owner start.
+2. Match lobby: connection state, two large action cards（加入房间 / 创建房间）, each opening a floating overlay sub-page. Join overlay shows room search, clickable room list, and join-as-player/spectator buttons. Create overlay shows map cards, format presets, and room config.
+3. AI攻防大乱斗 room staging: full-width player list with ready/busy indicators, inline prepare bar at bottom (Agent runtime select, API key, model name), ready toggle, host start button.
 4. Battle HUD: phase, score, visual arena map with clickable Agent-player avatars, readiness bars, attack-route lanes, attack replay panel, battle-focus details, Agent-player attack/defense status, defense-integrity situation board, target runtime and health metadata, local target lifecycle controls, score-gap rankings, flag submission, tone-coded live events, target summary.
 5. Results: final ranking, winner summary, podium, defense-integrity status, latest attack recap, and redacted Markdown report export.
 6. Diagnostics: raw protocol messages and redacted match config, hidden from the primary flow.

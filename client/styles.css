@@ -303,6 +303,16 @@ label {
 }
 .player-slot.is-self .slot-avatar { border-color: var(--cyan); color: var(--cyan); }
 .player-slot strong { font-size: 15px; font-weight: 700; }
+.player-slot .slot-info {
+  flex: 1; min-width: 0;
+}
+.player-slot .slot-provider-row {
+  display: flex; align-items: center; gap: 6px; margin-top: 2px;
+}
+.player-slot .slot-provider-logo {
+  width: 20px; height: 20px; border-radius: 4px; object-fit: contain;
+  flex-shrink: 0;
+}
 .player-slot .slot-provider {
   font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
   background: var(--cyan-dim); color: var(--cyan); letter-spacing: 0.5px;
@@ -438,6 +448,14 @@ label {
 
 .combatant-stats { display: flex; gap: 12px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
 .combatant-stats b { color: var(--text); font-weight: 700; }
+
+.combatant-provider {
+  display: flex; align-items: center; gap: 6px; margin: 4px 0 2px;
+}
+.combatant-provider-logo {
+  width: 22px; height: 22px; border-radius: 5px; object-fit: contain;
+  flex-shrink: 0;
+}
 
 /* Score popup */
 .score-popup {

@@ -75,11 +75,11 @@ On **each client machine** / 在每台客户端机器上:
 
 Download the latest `.dmg` (macOS) or `.exe` (Windows) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases). Install and launch.
 
-In the left sidebar:
+In the connection page:
 1. **服务器地址** → enter server LAN IP (e.g. `192.168.1.100`)
 2. **端口** → `9000`
 3. **你的名字** → enter your display name
-4. Click **连接**
+4. Click **连接服务器**
 
 ### Option B: From Source / 从源码运行
 
@@ -99,25 +99,24 @@ The onboarding tutorial auto-starts on first launch. It walks through connection
 ### Room Owner / 房主操作
 
 1. Connect to the server
-2. Fill in room name, select target template, choose a phase preset (Standard 10min recommended)
-3. Click **创建房间**
+2. Click **创建房间** on the lobby page → fill in room name, select target template, choose a phase preset
+3. Click **创建房间** in the overlay
 4. Share the room ID with other players
-5. Click **靶机就绪** and **Agent 就绪**
-6. Once all players are ready, click **开始比赛**
+5. In the room page, select your Agent model, fill in API key, click **准备**
+6. Once all players are ready, click **开始大乱斗**
 
 ### Players / 参赛玩家
 
 1. Connect to the server
-2. Enter the room ID shared by the owner
-3. Select your AI model provider and enter API key if needed
-4. Click **参赛**
-5. Click **靶机就绪** and **Agent 就绪**
-6. Wait for the match to start
+2. Click **加入房间** on the lobby page → search or enter the room ID shared by the owner
+3. Click **参赛**
+4. In the room page, select your AI model provider, enter API key, click **准备**
+5. Wait for the match to start
 
 ### Spectators / 观战
 
 1. Connect to the server
-2. Enter the room ID
+2. Click **加入房间** → enter the room ID
 3. Click **观战**
 
 ## Match Phases / 比赛阶段

@@ -31,6 +31,106 @@ function providerLabel(apiKey) {
   return `🔧 ${p}`;
 }
 
+// ====== Provider Logo Mapping ======
+const VENDOR_LOGOS = {
+  // 国际大厂
+  anthropic:        "assets/vendors/anthropic.png",
+  claude:           "assets/vendors/anthropic.png",
+  openai:           "assets/vendors/openai.png",
+  chatgpt:          "assets/vendors/openai.png",
+  gpt:              "assets/vendors/openai.png",
+  google:           "assets/vendors/google.png",
+  gemini:           "assets/vendors/google.png",
+  meta:             "assets/vendors/meta.png",
+  llama:            "assets/vendors/meta.png",
+  mistral:          "assets/vendors/mistral.png",
+  nvidia:           "assets/vendors/nvidia.png",
+  microsoft:        "assets/vendors/openai.png",
+  // 中国厂商
+  deepseek:         "assets/vendors/deepseek.png",
+  qwen:             "assets/vendors/qwen.png",
+  tongyi:           "assets/vendors/qwen.png",
+  "tongyi-qianwen":    "assets/vendors/qwen.png",
+  baichuan:         "assets/vendors/baichuan.png",
+  hunyuan:          "assets/vendors/hunyuan.png",
+  spark:            "assets/vendors/spark.png",
+  "spark-desk":        "assets/vendors/spark.png",
+  wenxin:           "assets/vendors/wenxin.png",
+  "ernie-bot":      "assets/vendors/wenxin.png",
+  yi:               "assets/vendors/yi.png",
+  "yi-lightning":   "assets/vendors/yi.png",
+  stepfun:          "assets/vendors/stepfun.png",
+  step:             "assets/vendors/stepfun.png",
+  skywork:          "assets/vendors/skywork.png",
+  kimi:             "assets/vendors/kimi.png",
+  moonshot:         "assets/vendors/kimi.png",
+  doubao:           "assets/vendors/doubao.png",
+  zhipu:            "assets/vendors/zhipu.png",
+  glm:              "assets/vendors/zhipu.png",
+  chatglm:          "assets/vendors/zhipu.png",
+  minimax:          "assets/vendors/minimax.png",
+  internlm:         "assets/vendors/internlm.png",
+  codegeex:         "assets/vendors/codegeex.png",
+  yuanbao:          "assets/vendors/yuanbao.png",
+  "hunyuan-t1":      "assets/vendors/yuanbao.png",
+  siliconcloud:     "assets/vendors/siliconcloud.png",
+  siliconflow:      "assets/vendors/siliconcloud.png",
+  alibaba:          "assets/vendors/alibaba.png",
+  baidu:            "assets/vendors/baidu.png",
+  tencent:          "assets/vendors/tencent.png",
+  bytedance:        "assets/vendors/bytedance.png",
+  iflytek:          "assets/vendors/iflytekcloud.png",
+  iflytekcloud:     "assets/vendors/iflytekcloud.png",
+  // 其他海外
+  cohere:           "assets/vendors/cohere.png",
+  grok:             "assets/vendors/grok.png",
+  xai:              "assets/vendors/xai.png",
+  perplexity:       "assets/vendors/perplexity.png",
+  groq:             "assets/vendors/groq.png",
+  together:         "assets/vendors/together.png",
+  "together-ai":    "assets/vendors/together.png",
+  huggingface:      "assets/vendors/huggingface.png",
+  ollama:           "assets/vendors/ollama.png",
+  replicate:        "assets/vendors/replicate.png",
+  cerebras:         "assets/vendors/cerebras.png",
+  fireworks:        "assets/vendors/fireworks.png",
+  sambanova:        "assets/vendors/sambanova.png",
+  novita:           "assets/vendors/novita.png",
+  openrouter:       "assets/vendors/openrouter.png",
+  openclaw:         "assets/vendors/openclaw.png",
+  phind:            "assets/vendors/phind.png",
+};
+
+// agent_runtime -> logo key mapping
+const RUNTIME_LOGO = {
+  hermes:  "anthropic",   // Hermes typically uses Claude API
+  codex:   "openai",      // Codex uses OpenAI API
+  openclaw: "openclaw",
+};
+
+function providerLogo(player, apiKey) {
+  // 1. Check model_display_name for known keywords
+  const model = (player.model_display_name || "").toLowerCase();
+  for (const [keyword, logo] of Object.entries(VENDOR_LOGOS)) {
+    if (model.includes(keyword)) return logo;
+  }
+
+  // 2. Check agent_runtime mapping
+  const runtime = (player.agent_runtime || "").toLowerCase();
+  const mapped = RUNTIME_LOGO[runtime];
+  if (mapped && VENDOR_LOGOS[mapped]) return VENDOR_LOGOS[mapped];
+
+  // 3. Check apiKey prefix (local detection)
+  if (apiKey) {
+    const prov = detectProvider(apiKey);
+    const key = (prov || "").toLowerCase();
+    if (VENDOR_LOGOS[key]) return VENDOR_LOGOS[key];
+  }
+
+  // No logo available — return null, caller will show text badge
+  return null;
+}
+
 const els = {};
 
 // ====== Page Navigation ======
@@ -540,14 +640,22 @@ function renderRoomPage(phase) {
       if (isMe) cls += " is-self";
       if (ready) cls += " is-ready";
       if (isHost) cls += " is-host";
-      const prov = p.api_provider || (p.agent_runtime === "openclaw" ? "OpenClaw" : p.agent_runtime === "hermes" ? "Hermes" : p.agent_runtime === "codex" ? "Codex" : "") || "";
+      const logo = providerLogo(p, null);
       const model = p.model_display_name || "";
-      const providerBadge = prov ? `<span class="slot-provider">${escapeHtml(prov)}</span>` : "";
+      const runtimeName = p.agent_runtime === "openclaw" ? "OpenClaw" : p.agent_runtime === "hermes" ? "Hermes" : p.agent_runtime === "codex" ? "Codex" : p.agent_runtime || "";
+      const prov = p.api_provider || runtimeName || "";
+      const logoHtml = logo
+        ? `<img class="slot-provider-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}">`
+        : (prov ? `<span class="slot-provider">${escapeHtml(prov)}</span>` : "");
       return `<div class="${cls}">
         <div class="slot-avatar">${(p.display_name||"?").charAt(0).toUpperCase()}</div>
-        <strong>${escapeHtml(p.display_name||p.team_id||"-")}</strong>
-        ${providerBadge}
-        ${model ? `<small class="slot-model">${escapeHtml(model)}</small>` : ""}
+        <div class="slot-info">
+          <strong>${escapeHtml(p.display_name||p.team_id||"-")}</strong>
+          <div class="slot-provider-row">
+            ${logoHtml}
+            ${model ? `<small class="slot-model">${escapeHtml(model)}</small>` : ""}
+          </div>
+        </div>
         <span class="slot-status ${ready?'ready':'waiting'}">${ready?'已准备':'等待中'}</span>
         ${isHost ? '<small>房主</small>' : ''}
       </div>`;
@@ -613,6 +721,7 @@ function renderArenaMap(phase, players) {
     const readyText = `${player.target_ready ? "靶机已好" : "靶机待确认"} · ${player.agent_ready ? "Agent已好" : "Agent待确认"}`;
     const agentName = player.agent_runtime === "openclaw" ? "OpenClaw" : player.agent_runtime === "hermes" ? "Hermes" : player.agent_runtime === "codex" ? "Codex" : player.agent_runtime || "";
     const modelName = player.model_display_name || "";
+    const combatLogo = providerLogo(player, null);
     const providerInfo = [agentName, modelName].filter(Boolean).join(" · ");
     const isBreached = breachCount(teamId) > 0;
     const readiness = readinessPercent(player);
@@ -629,7 +738,10 @@ function renderArenaMap(phase, players) {
         </div>
         <div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div>
       </div>
-      <small>${escapeHtml(providerInfo || player.display_name || "-")}</small>
+      <div class="combatant-provider">
+        ${combatLogo ? `<img class="combatant-provider-logo" src="${escapeHtml(combatLogo)}" alt="${escapeHtml(agentName || modelName)}" title="${escapeHtml(providerInfo)}">` : ""}
+        <small>${escapeHtml(providerInfo || player.display_name || "-")}</small>
+      </div>
       <div class="combatant-stats"><em>${escapeHtml(score===null?"暂无分数":`${score} 分`)}</em><b>${escapeHtml(captureCount(teamId))}攻陷 · ${escapeHtml(breachCount(teamId))}失守</b></div>
       <div class="readiness-track"><span style="width:${readiness}%"></span></div>
       <i style="font-size:11px;color:var(--muted)">${escapeHtml(combatMetricText(teamId))}</i>

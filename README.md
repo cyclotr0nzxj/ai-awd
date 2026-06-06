@@ -34,29 +34,34 @@
 
 ## 怎么玩？
 
-### 🎮 下载 App（推荐）
+### 🎮 方式一：下载 App（推荐）
 
 从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg`，拖进 Applications。Windows 用户下载 `.exe`。
 
-### 🖥️ 开个房间
-
-在**一台电脑**上启动裁判服务器：
+### 💻 方式二：命令行快速启动
 
 ```bash
+# 1. 克隆仓库
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
-bash scripts/start-server.sh
+
+# 2. 启动裁判服务器（一台电脑运行即可）
+bash scripts/start-server.sh          # 本机
+bash scripts/start-server.sh --lan    # 局域网（会显示本机 IP）
+
+# 3. 启动客户端（每台电脑）
+cd client && npm install && npx electron .
 ```
 
-局域网玩加 `--lan`，服务器会自动显示本机 IP，把 IP 发给其他玩家。
+> 服务器和客户端可以在**同一台电脑**上运行。多机联机时，服务器用 `--lan`，客户端输入服务器的局域网 IP。
 
 ### 🎯 上场比赛
 
 App 启动后是**五页面流程**，和玩游戏一样：
 
 1. **连接页** → 输入服务器 IP 和端口，点连接
-2. **大厅页** → 创建房间（选地图 + 赛制）或搜索已有房间加入
-3. **房间页** → 配置 Agent（默认 OpenClaw），填 LLM API Key，点准备。房主等所有人准备后点「开始大乱斗」
+2. **大厅页** → 两个大卡片：点击「加入房间」搜索已有房间，或「创建房间」选地图和赛制（均以浮层呈现）
+3. **房间页** → 查看参赛玩家，在底部准备栏选择 Agent、填写 LLM API Key，点准备。房主等所有人准备后点「开始大乱斗」
 4. **大乱斗页** → 实时竞技场，Agent 自动攻击对手，提交 Flag 得分
 5. **结算页** → 查看排行榜、防线态势，导出 Markdown 战报
 

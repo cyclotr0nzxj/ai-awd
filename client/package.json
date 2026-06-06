@@ -35,7 +35,8 @@
       "targetLifecycle.js",
       "index.html",
       "styles.css",
-      "package.json"
+      "package.json",
+      "assets/**/*"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
