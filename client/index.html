@@ -37,38 +37,62 @@
      ============================================================ -->
 <div id="page-lobby" class="page">
   <div class="lobby-layout">
-    <div class="lobby-side">
-      <div class="lobby-header">
-        <h2>🏠 大厅</h2>
-        <span id="lobbyPlayerName"></span>
-        <button id="disconnect" class="btn-ghost btn-sm">断开</button>
-      </div>
+    <div class="lobby-topbar">
+      <h2>🏠 大厅</h2>
+      <span id="lobbyPlayerName"></span>
+      <button id="disconnect" class="btn-ghost btn-sm">断开</button>
+    </div>
 
-      <div class="lobby-section">
-        <h3>🔍 查找房间</h3>
-        <input id="roomSearch" placeholder="搜索房间名或 ID..." />
-        <div id="roomList" class="room-list"></div>
+    <div class="lobby-main">
+      <div class="lobby-hero">
+        <h2>⚔️ AI 攻防大乱斗</h2>
+        <p>创建或加入房间，开始 AI Agent 之间的攻防竞技</p>
+      </div>
+      <div class="lobby-actions">
+        <button class="action-card" id="showJoinOverlay">
+          <span class="action-icon">🔍</span>
+          <strong>加入房间</strong>
+          <small>搜索并加入已有攻防房间</small>
+        </button>
+        <button class="action-card" id="showCreateOverlay">
+          <span class="action-icon">✨</span>
+          <strong>创建房间</strong>
+          <small>创建新的 AI 攻防竞技房间</small>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Join Room Overlay -->
+  <div class="overlay" id="joinOverlay" style="display:none">
+    <div class="overlay-backdrop" data-close="joinOverlay"></div>
+    <div class="overlay-panel">
+      <div class="overlay-header">
+        <h3>🔍 加入房间</h3>
+        <button class="btn-ghost btn-sm overlay-close-btn" data-close="joinOverlay">✕</button>
+      </div>
+      <div class="overlay-body">
+        <label>搜索房间 <input id="roomSearch" placeholder="搜索房间名或 ID..." /></label>
+        <div id="roomList" class="room-list room-list-overlay"></div>
         <button id="refreshRooms" class="btn-ghost btn-sm">刷新列表</button>
-      </div>
-
-      <div class="lobby-section">
-        <h3>🚪 加入房间</h3>
-        <input id="roomId" placeholder="输入房间 ID" />
+        <label>房间 ID <input id="roomId" placeholder="输入房间 ID（点击列表自动填入）" /></label>
         <div class="sb-row">
           <button id="joinPlayer" class="btn-primary">参赛</button>
           <button id="joinSpectator">观战</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="lobby-main">
-      <div class="lobby-hero">
-        <h2>AI 攻防大乱斗</h2>
-        <p>创建或加入房间，开始 AI Agent 之间的攻防竞技</p>
-        <button id="showCreateForm" class="btn-primary btn-lg" style="margin-top:16px">+ 创建房间</button>
+  <!-- Create Room Overlay -->
+  <div class="overlay" id="createOverlay" style="display:none">
+    <div class="overlay-backdrop" data-close="createOverlay"></div>
+    <div class="overlay-panel overlay-panel-lg">
+      <div class="overlay-header">
+        <h3>✨ 创建房间</h3>
+        <button class="btn-ghost btn-sm overlay-close-btn" data-close="createOverlay">✕</button>
       </div>
-
-      <div id="createFormPanel" class="create-form" style="display:none">
+      <div class="overlay-body" id="createFormPanel">
         <label>房间名称 <input id="roomName" value="AI攻防大乱斗" /></label>
 
         <label>靶机类型 <span style="color:var(--accent);font-weight:400;font-size:12px">— 选择地图</span></label>
@@ -140,45 +164,52 @@
         <h3>观战席</h3>
         <div id="spectatorSlots" class="player-slots"></div>
       </div>
-
-      <div class="room-config">
-        <button class="config-toggle active" data-toggle="agent">🤖 Agent 配置 ▾</button>
-        <div class="config-panel" data-panel="agent">
-          <p class="config-hint">Agent 会自动攻击对手靶机。OpenClaw 随 AI-AWD 自动部署。</p>
-          <label>Agent
-            <select id="agentRuntime" class="select-field">
-              <option value="">检测中...</option>
-            </select>
-          </label>
-          <label>LLM API Key
-            <input id="apiKey" type="password" placeholder="填入你的 LLM API Key" />
-          </label>
-          <label>LLM 模型
-            <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="例如 claude-sonnet-4-6" />
-          </label>
-        </div>
-
-        <button class="config-toggle" data-toggle="target">🖥️ 靶机管理 ▸</button>
-        <div class="config-panel" data-panel="target" style="display:none">
-          <p id="targetDeployStatus">等待房间配置...</p>
-          <div class="lifecycle-actions" style="margin-top:8px">
-            <button id="targetDoctor" class="btn-sm">诊断</button>
-            <button id="targetInstall" class="btn-sm">安装</button>
-            <button id="targetStart" class="btn-sm btn-primary">启动</button>
-            <button id="targetHealth" class="btn-sm">巡检</button>
-            <button id="targetStop" class="btn-sm">停止</button>
-            <button id="targetReset" class="btn-sm">重置</button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div class="room-actions">
-      <button id="markTargetReady" style="display:none">靶机就绪</button>
-      <button id="markAgentReady" style="display:none">Agent 就绪</button>
-      <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
-      <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
-      <p id="roomHint" class="room-hint"></p>
+      <div class="prepare-module">
+        <div class="prepare-header">
+          <span>⚙️ 准备</span>
+          <small id="prepareSummary">配置 Agent 与靶机后准备就绪</small>
+        </div>
+        <div class="prepare-panels">
+          <button class="config-toggle active" data-toggle="agent">🤖 Agent 配置 ▾</button>
+          <div class="config-panel" data-panel="agent">
+            <p class="config-hint">Agent 会自动攻击对手靶机。OpenClaw 随 AI-AWD 自动部署。</p>
+            <label>Agent
+              <select id="agentRuntime" class="select-field">
+                <option value="">检测中...</option>
+              </select>
+            </label>
+            <label>LLM API Key
+              <input id="apiKey" type="password" placeholder="填入你的 LLM API Key" />
+            </label>
+            <label>LLM 模型
+              <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="例如 claude-sonnet-4-6" />
+            </label>
+          </div>
+
+          <button class="config-toggle" data-toggle="target">🖥️ 靶机管理 ▸</button>
+          <div class="config-panel" data-panel="target" style="display:none">
+            <p id="targetDeployStatus">等待房间配置...</p>
+            <div class="lifecycle-actions" style="margin-top:8px">
+              <button id="targetDoctor" class="btn-sm">诊断</button>
+              <button id="targetInstall" class="btn-sm">安装</button>
+              <button id="targetStart" class="btn-sm btn-primary">启动</button>
+              <button id="targetHealth" class="btn-sm">巡检</button>
+              <button id="targetStop" class="btn-sm">停止</button>
+              <button id="targetReset" class="btn-sm">重置</button>
+            </div>
+          </div>
+        </div>
+        <div class="prepare-actions">
+          <button id="markTargetReady" style="display:none">靶机就绪</button>
+          <button id="markAgentReady" style="display:none">Agent 就绪</button>
+          <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
+          <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
+          <p id="roomHint" class="room-hint"></p>
+        </div>
+      </div>
     </div>
   </div>
 </div>
