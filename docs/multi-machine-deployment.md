@@ -48,9 +48,12 @@ Output / 输出:
 AI-AWD Arena 裁判服务器
 TCP 地址:  0.0.0.0:9000
 HTTP API:  http://0.0.0.0:9001
+
+📡 本机局域网 IP: 192.168.1.100
+   客户端连接填:  192.168.1.100:9000
 ```
 
-Find the server's LAN IP / 查找服务器局域网 IP:
+The server auto-detects and prints the LAN IP. Share this IP with other players. If automatic detection fails, find it manually:
 
 ```bash
 # macOS / Linux

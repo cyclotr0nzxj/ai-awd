@@ -26,8 +26,6 @@ const ELEMENT_IDS = [
   "generateReport", "copyReport", "downloadReport", "reportPreview",
   "rankings", "events", "messages", "matchConfig",
   "agentCommand", "agentStart", "agentStop", "agentStatus",
-  "startOnboarding",
-  "onboardingOverlay", "onboardingSpotlight", "onboardingTooltip", "onboardingProgress",
 ];
 
 class FakeElement {
@@ -90,21 +88,8 @@ class FakeElement {
       ...this._innerHTML.matchAll(/data-(room|team)-id="([^"]+)"/g),
       ...this._innerHTML.matchAll(/data-replay-action="([^"]+)"/g),
       ...this._innerHTML.matchAll(/class="[^"]*room-join-btn[^"]*"\s+data-room="([^"]+)"\s+data-role="([^"]+)"/g),
-      ...this._innerHTML.matchAll(/data-onboarding-action="([^"]+)"/g),
-      ...this._innerHTML.matchAll(/data-onboarding-go-to="([^"]+)"/g),
     ].map((match) => {
       const attr = match[0];
-      if (attr.startsWith("data-onboarding-action")) {
-        const child = new FakeElement(`onboarding-action-${match[1]}`);
-        child.dataset.onboardingAction = match[1];
-        child.disabled = new RegExp(`data-onboarding-action="${match[1]}"[^>]* disabled`).test(this._innerHTML);
-        return child;
-      }
-      if (attr.startsWith("data-onboarding-go-to")) {
-        const child = new FakeElement(`onboarding-go-to-${match[1]}`);
-        child.dataset.onboardingGoTo = match[1];
-        return child;
-      }
       const isReplayAction = attr.startsWith("data-replay-action");
       const kind = isReplayAction ? "replay" : match[1];
       const val = isReplayAction ? match[1] : match[2];
@@ -148,14 +133,7 @@ class FakeElement {
     }
     if (selector === "[data-replay-action]") {
       return this.children.filter((child) => child.dataset.replayAction);
-    }
-    if (selector === "[data-onboarding-action]") {
-      return this.children.filter((child) => child.dataset.onboardingAction);
-    }
-    if (selector === "[data-onboarding-go-to]") {
-      return this.children.filter((child) => child.dataset.onboardingGoTo !== undefined);
-    }
-    if (selector === ".room-join-btn" || selector.includes("room-join-btn")) {
+    }    if (selector === ".room-join-btn" || selector.includes("room-join-btn")) {
       return this.children.filter((child) => child.dataset.room && child.dataset.role);
     }
     return [];
@@ -248,9 +226,7 @@ function loadRenderer() {
       querySelectorAll: (selector) => {
         if (selector === ".tab-btn") return [];
         if (selector === ".tab-panel") return [];
-        if (selector === "[data-phase-preset]") return [];
-        if (selector === "[data-onboarding-action]") return [];
-        return [];
+        if (selector === "[data-phase-preset]") return [];        return [];
       },
     },
     window: {
@@ -263,8 +239,7 @@ function loadRenderer() {
       addEventListener: (type, callback) => {
         windowListeners[type] = callback;
       },
-      innerHeight: 800,
-      OnboardingEngine: undefined, // placeholder — populated after loading onboarding.js
+      innerHeight: 800
     },
     localStorage: {
       getItem: (key) => localStorageStore[key] || null,
@@ -287,11 +262,6 @@ function loadRenderer() {
   };
   context.globalThis = context;
   vm.createContext(context);
-  // Load onboarding.js first so OnboardingEngine is available to renderer.js
-  const onboardingPath = path.join(__dirname, "onboarding.js");
-  vm.runInContext(fs.readFileSync(onboardingPath, "utf8"), context, { filename: onboardingPath });
-  // Expose to renderer's typeof check
-  context.OnboardingEngine = context.window.OnboardingEngine;
   const rendererPath = path.join(__dirname, "renderer.js");
   vm.runInContext(fs.readFileSync(rendererPath, "utf8"), context, { filename: rendererPath });
   windowListeners.DOMContentLoaded();
@@ -1181,333 +1151,4 @@ test("renderer shows negative score delta popup with is-loss class", () => {
   assert.match(elements.arenaMap.innerHTML, /is-loss/);
   assert.match(elements.arenaMap.innerHTML, /-50/);
   assert.doesNotMatch(elements.arenaMap.innerHTML, /FLAG\{secret\}/);
-});
-
-// —— Onboarding / 新手教程 tests ——
-
-test("onboarding HTML elements exist in index.html", () => {
-  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
-
-  assert.match(html, /id="onboardingOverlay"/);
-  assert.match(html, /id="onboardingSpotlight"/);
-  assert.match(html, /id="onboardingTooltip"/);
-  assert.match(html, /id="onboardingProgress"/);
-  assert.match(html, /id="startOnboarding"/);
-  assert.match(html, /新手教程/);
-  assert.match(html, /onboarding\.js/);
-});
-
-test("onboarding auto-starts on first visit and records event", () => {
-  const { elements, context } = loadRenderer();
-
-  // After auto-start (setTimeout fires immediately in test), overlay should be visible
-  assert.equal(elements.onboardingOverlay.style.display, "block");
-  // The first step is welcome (center), so overlay should have is-center class
-  assert.ok(elements.onboardingOverlay._classList.has("is-center"));
-  // Tooltip should contain welcome content
-  assert.match(elements.onboardingTooltip.innerHTML, /欢迎来到 AI-AWD Arena/);
-  assert.match(elements.onboardingTooltip.innerHTML, /AI 攻防大乱斗竞技场/);
-  // Event should be recorded
-  assert.match(elements.events.innerHTML, /ONBOARDING_STARTED/);
-});
-
-test("onboarding marks completed in localStorage after finishing all steps", () => {
-  const { elements, context, localStorageStore } = loadRenderer();
-
-  // Navigate through all 10 steps (indices 0-8 advance, 9th click on last step finishes)
-  for (let i = 0; i < 10; i++) {
-    const nextButton = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-      .find((btn) => btn.dataset.onboardingAction === "next");
-    assert.ok(nextButton, `next button should exist at step ${i}`);
-    nextButton.listeners.click();
-  }
-
-  // After finishing, overlay should be hidden
-  assert.equal(elements.onboardingOverlay.style.display, "none");
-  const stored = JSON.parse(localStorageStore["aiawd_onboarding_v1"]);
-  assert.equal(stored.completed, true);
-  assert.ok(stored.completedAt > 0);
-});
-
-test("onboarding skip dismisses and records in localStorage without marking completed", () => {
-  const { elements, localStorageStore } = loadRenderer();
-
-  // Click the skip button on the first step
-  const skipButton = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-    .find((btn) => btn.dataset.onboardingAction === "dismiss");
-  assert.ok(skipButton);
-  skipButton.listeners.click();
-
-  // Overlay should be hidden
-  assert.equal(elements.onboardingOverlay.style.display, "none");
-  // localStorage should record dismissed (not completed)
-  const stored = JSON.parse(localStorageStore["aiawd_onboarding_v1"]);
-  assert.equal(stored.completed, false);
-  assert.equal(stored.dismissed, true);
-});
-
-test("onboarding does not auto-start when already completed", () => {
-  // Pre-populate localStorage as completed
-  const { elements, localStorageStore } = (() => {
-    const store = { aiawd_onboarding_v1: JSON.stringify({ completed: true, completedAt: Date.now() }) };
-    const localCalls = [];
-    const localIntervals = [];
-    const localCreatedElements = [];
-
-    // Build a fresh context with pre-populated localStorage
-    const els = Object.fromEntries(ELEMENT_IDS.map((id) => [id, new FakeElement(id)]));
-    const winListeners = {};
-    const protoHandlers = {};
-    const bridge = {
-      connect: async () => ({ connected: true, clientId: "client_001" }),
-      disconnect: async () => ({ connected: false }),
-      listTargets: async () => {},
-      listRooms: async () => {},
-      createRoom: async (r) => localCalls.push(["createRoom", r]),
-      joinRoom: async (r) => localCalls.push(["joinRoom", r]),
-      startMatch: async () => {},
-      markTargetReady: async (r) => localCalls.push(["markTargetReady", r]),
-      markAgentReady: async (r) => localCalls.push(["markAgentReady", r]),
-      submitFlag: async () => {},
-      runTargetAction: async (r) => {
-        localCalls.push(["runTargetAction", r]);
-        return { ok: true, action: r.action, message: `${r.action} done` };
-      },
-      snapshot: async () => ({ connected: false }),
-      onMessage: (cb) => { protoHandlers.message = cb; return () => {}; },
-      onStatus: (cb) => { protoHandlers.status = cb; return () => {}; },
-    };
-    const ctx = {
-      console,
-      setTimeout: (cb) => { cb(); return 1; },
-      requestAnimationFrame: (cb) => { cb(); return 1; },
-      setInterval: (cb, delay) => { localIntervals.push({ callback: cb, delay }); return localIntervals.length; },
-      document: {
-        getElementById: (id) => els[id],
-        createElement: (tag) => { const e = new FakeElement(tag); localCreatedElements.push(e); return e; },
-        addEventListener: () => {},
-        querySelectorAll: () => [],
-      },
-      window: {
-        aiawd: bridge,
-        navigator: { clipboard: { writeText: async (text) => localCalls.push(["clipboard", text]) } },
-        addEventListener: (type, cb) => { winListeners[type] = cb; },
-        innerHeight: 800,
-      },
-      localStorage: {
-        getItem: (key) => store[key] || null,
-        setItem: (key, value) => { store[key] = String(value); },
-        removeItem: (key) => { delete store[key]; },
-      },
-      Blob: class FakeBlob { constructor(parts, options) { this.parts = parts; this.options = options; } },
-      URL: {
-        createObjectURL: (blob) => { localCalls.push(["createObjectURL", blob.parts.join("")]); return "blob:report"; },
-        revokeObjectURL: (url) => localCalls.push(["revokeObjectURL", url]),
-      },
-    };
-    ctx.globalThis = ctx;
-    vm.createContext(ctx);
-    const onboardingPath = path.join(__dirname, "onboarding.js");
-    vm.runInContext(fs.readFileSync(onboardingPath, "utf8"), ctx, { filename: onboardingPath });
-    ctx.OnboardingEngine = ctx.window.OnboardingEngine;
-    const rendererPath = path.join(__dirname, "renderer.js");
-    vm.runInContext(fs.readFileSync(rendererPath, "utf8"), ctx, { filename: rendererPath });
-    winListeners.DOMContentLoaded();
-    return { elements: els, localStorageStore: store, context: ctx };
-  })();
-
-  // Overlay should NOT be visible since onboarding was already completed
-  // style.display starts undefined (not set by autoStart which returned false)
-  assert.ok(!elements.onboardingOverlay.style.display || elements.onboardingOverlay.style.display === "none");
-});
-
-test("onboarding 新手教程 button re-launches the tutorial", () => {
-  // Pre-complete onboarding so auto-start doesn't fire
-  const { elements } = (() => {
-    const store = { aiawd_onboarding_v1: JSON.stringify({ completed: true, completedAt: Date.now() }) };
-    const localCalls = [];
-    const localIntervals = [];
-    const localCreatedElements = [];
-    const els = Object.fromEntries(ELEMENT_IDS.map((id) => [id, new FakeElement(id)]));
-    const winListeners = {};
-    const protoHandlers = {};
-    const bridge = {
-      connect: async () => ({ connected: true, clientId: "client_001" }),
-      disconnect: async () => ({ connected: false }),
-      listTargets: async () => {},
-      listRooms: async () => {},
-      createRoom: async (r) => localCalls.push(["createRoom", r]),
-      joinRoom: async (r) => localCalls.push(["joinRoom", r]),
-      startMatch: async () => {},
-      markTargetReady: async (r) => localCalls.push(["markTargetReady", r]),
-      markAgentReady: async (r) => localCalls.push(["markAgentReady", r]),
-      submitFlag: async () => {},
-      runTargetAction: async (r) => {
-        localCalls.push(["runTargetAction", r]);
-        return { ok: true, action: r.action, message: `${r.action} done` };
-      },
-      snapshot: async () => ({ connected: false }),
-      onMessage: (cb) => { protoHandlers.message = cb; return () => {}; },
-      onStatus: (cb) => { protoHandlers.status = cb; return () => {}; },
-    };
-    const ctx = {
-      console,
-      setTimeout: (cb) => { cb(); return 1; },
-      requestAnimationFrame: (cb) => { cb(); return 1; },
-      setInterval: (cb, delay) => { localIntervals.push({ callback: cb, delay }); return localIntervals.length; },
-      document: {
-        getElementById: (id) => els[id],
-        createElement: (tag) => { const e = new FakeElement(tag); localCreatedElements.push(e); return e; },
-        addEventListener: () => {},
-        querySelectorAll: () => [],
-      },
-      window: {
-        aiawd: bridge,
-        navigator: { clipboard: { writeText: async (text) => localCalls.push(["clipboard", text]) } },
-        addEventListener: (type, cb) => { winListeners[type] = cb; },
-        innerHeight: 800,
-      },
-      localStorage: {
-        getItem: (key) => store[key] || null,
-        setItem: (key, value) => { store[key] = String(value); },
-        removeItem: (key) => { delete store[key]; },
-      },
-      Blob: class FakeBlob { constructor(parts, options) { this.parts = parts; this.options = options; } },
-      URL: {
-        createObjectURL: (blob) => { localCalls.push(["createObjectURL", blob.parts.join("")]); return "blob:report"; },
-        revokeObjectURL: (url) => localCalls.push(["revokeObjectURL", url]),
-      },
-    };
-    ctx.globalThis = ctx;
-    vm.createContext(ctx);
-    vm.runInContext(fs.readFileSync(path.join(__dirname, "onboarding.js"), "utf8"), ctx, { filename: "onboarding.js" });
-    ctx.OnboardingEngine = ctx.window.OnboardingEngine;
-    vm.runInContext(fs.readFileSync(path.join(__dirname, "renderer.js"), "utf8"), ctx, { filename: "renderer.js" });
-    winListeners.DOMContentLoaded();
-    return { elements: els, context: ctx };
-  })();
-
-  // Overlay should be hidden (already completed, autoStart returned false)
-  assert.ok(!elements.onboardingOverlay.style.display || elements.onboardingOverlay.style.display === "none");
-
-  // Click the 新手教程 button
-  elements.startOnboarding.listeners.click();
-
-  // Overlay should now be visible with welcome step
-  assert.equal(elements.onboardingOverlay.style.display, "block");
-  assert.match(elements.onboardingTooltip.innerHTML, /欢迎来到 AI-AWD Arena/);
-  // Event should note it's a replay
-  assert.match(elements.events.innerHTML, /ONBOARDING_STARTED/);
-});
-
-test("onboarding step navigation: next/prev through spotlight steps", () => {
-  const { elements } = loadRenderer();
-
-  // Step 0 is welcome (center) - no spotlight
-  assert.ok(elements.onboardingOverlay._classList.has("is-center"));
-
-  // Next → step 1 (connect, right position, spotlight)
-  const nextBtn = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-    .find((btn) => btn.dataset.onboardingAction === "next");
-  nextBtn.listeners.click();
-
-  // Should now be in spotlight mode
-  assert.ok(elements.onboardingOverlay._classList.has("is-spotlight"));
-  assert.match(elements.onboardingTooltip.innerHTML, /连接裁判服务器/);
-  assert.match(elements.onboardingTooltip.innerHTML, /2 \/ 10/);
-
-  // Next → step 2 (create-room)
-  const nextBtn2 = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-    .find((btn) => btn.dataset.onboardingAction === "next");
-  nextBtn2.listeners.click();
-  assert.match(elements.onboardingTooltip.innerHTML, /创建 AI 攻防房间/);
-  assert.match(elements.onboardingTooltip.innerHTML, /3 \/ 10/);
-
-  // Go back to step 1
-  const prevBtn = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-    .find((btn) => btn.dataset.onboardingAction === "prev");
-  prevBtn.listeners.click();
-  assert.match(elements.onboardingTooltip.innerHTML, /连接裁判服务器/);
-  assert.match(elements.onboardingTooltip.innerHTML, /2 \/ 10/);
-
-  // First step should have prev disabled
-  // Navigate back to step 0
-  const prevBtn2 = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-    .find((btn) => btn.dataset.onboardingAction === "prev");
-  prevBtn2.listeners.click();
-  assert.match(elements.onboardingTooltip.innerHTML, /欢迎来到 AI-AWD Arena/);
-  assert.match(elements.onboardingTooltip.innerHTML, /1 \/ 10/);
-
-  // Previous button should be disabled at step 0
-  const prevBtn3 = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-    .find((btn) => btn.dataset.onboardingAction === "prev");
-  assert.equal(prevBtn3.disabled, true);
-});
-
-test("onboarding progress dots allow jumping to arbitrary steps", () => {
-  const { elements } = loadRenderer();
-
-  // Progress dots should be rendered
-  assert.match(elements.onboardingProgress.innerHTML, /onboarding-dot/);
-  assert.match(elements.onboardingProgress.innerHTML, /is-active/);
-
-  // Click the 5th progress dot (step index 4, "join-ready")
-  const dots = elements.onboardingProgress.querySelectorAll("[data-onboarding-go-to]");
-  assert.ok(dots.length >= 10, `expected >= 10 dots, got ${dots.length}`);
-
-  const targetDot = dots.find((d) => d.dataset.onboardingGoTo === "4");
-  assert.ok(targetDot, "dot for step 4 should exist");
-  targetDot.listeners.click();
-
-  assert.match(elements.onboardingTooltip.innerHTML, /参赛入场与准备/);
-  assert.match(elements.onboardingTooltip.innerHTML, /5 \/ 10/);
-});
-
-test("onboarding displays all step titles in Chinese", () => {
-  const { elements } = loadRenderer();
-
-  const titles = [];
-  // Collect all step titles by navigating through
-  for (let i = 0; i < 10; i++) {
-    const match = elements.onboardingTooltip.innerHTML.match(/<h3>([^<]+)<\/h3>/);
-    if (match) titles.push(match[1]);
-    const nextBtn = elements.onboardingTooltip.querySelectorAll("[data-onboarding-action]")
-      .find((btn) => btn.dataset.onboardingAction === "next");
-    if (nextBtn && i < 9) nextBtn.listeners.click();
-  }
-
-  assert.equal(titles.length, 10);
-  assert.equal(titles[0], "欢迎来到 AI-AWD Arena");
-  assert.ok(titles.some((t) => t.includes("连接裁判服务器")));
-  assert.ok(titles.some((t) => t.includes("创建 AI 攻防房间")));
-  assert.ok(titles.some((t) => t.includes("公开房间")));
-  assert.ok(titles.some((t) => t.includes("参赛入场与准备")));
-  assert.ok(titles.some((t) => t.includes("开始比赛")));
-  assert.ok(titles.some((t) => t.includes("大乱斗战场")));
-  assert.ok(titles.some((t) => t.includes("提交攻陷凭证")));
-  assert.ok(titles.some((t) => t.includes("比赛结算与战报")));
-  assert.ok(titles[9], "准备就绪！");
-});
-
-test("onboarding resets localStorage correctly", () => {
-  const { localStorageStore, context } = loadRenderer();
-
-  // After auto-start, localStorage should not have completed yet
-  assert.equal(localStorageStore["aiawd_onboarding_v1"], undefined);
-
-  // Complete the onboarding (10 steps, last click finishes)
-  for (let i = 0; i < 10; i++) {
-    const nextBtn = context.window.OnboardingEngine._tooltipEl
-      .querySelectorAll("[data-onboarding-action]")
-      .find((btn) => btn.dataset.onboardingAction === "next");
-    if (nextBtn) nextBtn.listeners.click();
-  }
-
-  // Now localStorage should have completed = true
-  const stored = JSON.parse(localStorageStore["aiawd_onboarding_v1"]);
-  assert.equal(stored.completed, true);
-
-  // Reset
-  context.window.OnboardingStore.reset();
-  assert.equal(localStorageStore["aiawd_onboarding_v1"], undefined);
 });

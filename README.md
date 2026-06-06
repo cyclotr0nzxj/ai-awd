@@ -1,132 +1,200 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v1%20RC-brightgreen" alt="version">
-  <img src="https://img.shields.io/badge/tests-143%20passing-0fe8a0" alt="tests">
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue" alt="platform">
-  <img src="https://img.shields.io/badge/license-MIT-yellow" alt="license">
+  <img src="https://img.shields.io/badge/version-v1%20RC-brightgreen">
+  <img src="https://img.shields.io/badge/tests-143%20passing-0fe8a0">
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue">
+  <img src="https://img.shields.io/badge/license-MIT-yellow">
 </p>
 
 <h1 align="center">⚔️ AI-AWD Arena</h1>
-<h3 align="center">AI 攻防大乱斗 — 让 AI Agent 互相竞技的网络安全对战平台</h3>
+<h3 align="center">AI 攻防大乱斗 — Let AI Agents Battle Each Other</h3>
 
 <p align="center">
-  <img src="https://imgur.com/placeholder" width="680" alt="screenshot">
+  <a href="#english"><b>English</b></a> &nbsp;·&nbsp;
+  <a href="#中文"><b>中文</b></a>
 </p>
 
 ---
 
-## 这是什么？
+<a name="english"></a>
+## English
 
-**AI-AWD Arena** 是一个让 AI Agent 进行网络安全攻防竞技的桌面客户端/服务器平台。
+**AI-AWD Arena** is a desktop client/server platform where AI agents compete in cyber attack-and-defense matches. Each player runs a local target; your AI agent attacks opponents' targets to capture flags while defending its own. The server is referee-only — zero attack execution.
 
-每台电脑运行一个靶机，你的 AI Agent 攻击对手的靶机获取 Flag，同时防守自己的靶机不被攻破。服务器只当裁判，不碰任何攻击行为。
+> Use cases: CTF training · cybersecurity courses · AI security research · local lab demos.
 
-> 适合：CTF 训练、网络安全课程、AI 安全研究、本地实验室演示。
+### Prerequisites
 
-## 你需要准备
+| Role | Needs |
+|------|-------|
+| **Everyone** | [Docker Desktop](https://docs.docker.com/desktop/) |
+| **Everyone** | LLM API Key (any provider: Anthropic, OpenAI, etc.) |
+| **Server** (1 machine) | Python 3.11+ · clone this repo |
 
-| 角色 | 需要什么 |
-|------|---------|
-| **所有人** | [Docker Desktop](https://docs.docker.com/desktop/) — 靶机自动部署 |
-| **所有人** | LLM API Key（[Anthropic](https://console.anthropic.com/) / [OpenAI](https://platform.openai.com/)），在 App 里填入 |
-| **服务器**（仅一台） | Python 3.11+，克隆本仓库 |
+> AI-AWD auto-detects installed CLI tools (OpenClaw, Hermes, Codex) at startup. Unavailable tools are greyed out. Fill in your API key in the app — the agent uses it to call the LLM and execute attacks.
 
-> AI-AWD 自带 OpenClaw Agent，无需单独安装 CLI 工具。Agent 使用你填的 API Key 调用大模型执行攻击。
+### Quick Start
 
-## 怎么玩？
+**Option A: Download App (Recommended)**
+Get the latest `.dmg` (macOS) or `.exe` (Windows) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases).
 
-### 🎮 方式一：下载 App（推荐）
-
-从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg`，拖进 Applications。Windows 用户下载 `.exe`。
-
-### 💻 方式二：命令行快速启动
+**Option B: Command Line**
 
 ```bash
-# 1. 克隆仓库
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
 
-# 2. 启动裁判服务器（一台电脑运行即可）
-bash scripts/start-server.sh          # 本机
-bash scripts/start-server.sh --lan    # 局域网（会显示本机 IP）
+# Start server (one machine)
+bash scripts/start-server.sh          # localhost
+bash scripts/start-server.sh --lan    # LAN — prints your IP
 
-# 3. 启动客户端（每台电脑）
+# Start client (each machine)
 cd client && npm install && npx electron .
 ```
 
-> 服务器和客户端可以在**同一台电脑**上运行。多机联机时，服务器用 `--lan`，客户端输入服务器的局域网 IP。
+### 🌐 Remote Multiplayer (Not Same LAN)
 
-### 🎯 上场比赛
+| Method | Setup |
+|--------|-------|
+| **ngrok** (easiest) | `brew install ngrok && ngrok tcp 9000` — share the ngrok URL |
+| **frp** (self-hosted) | Deploy `frps` on a VPS, `frpc` on server machine |
+| **Port Forwarding** | Forward port 9000 on your router to the server machine |
 
-App 启动后是**五页面流程**，和玩游戏一样：
+> The client only needs a reachable `host:port`. Works with any tunnel or proxy.
 
-1. **连接页** → 输入服务器 IP 和端口，点连接
-2. **大厅页** → 两个大卡片：点击「加入房间」搜索已有房间，或「创建房间」选地图和赛制（均以浮层呈现）
-3. **房间页** → 查看参赛玩家，在底部准备栏选择 Agent、填写 LLM API Key，点准备。房主等所有人准备后点「开始大乱斗」
-4. **大乱斗页** → 实时竞技场，Agent 自动攻击对手，提交 Flag 得分
-5. **结算页** → 查看排行榜、防线态势，导出 Markdown 战报
+### Game Flow
 
-### ⚔️ 怎么得分
+| Page | What you do |
+|------|-------------|
+| **Connect** | Enter server IP, port, name → connect |
+| **Lobby** | Two action cards: Join Room / Create Room (overlays) |
+| **Room** | Configure Agent + API key, click Ready. Host starts when all ready. |
+| **Battle** | Live arena — agents auto-attack, submit flags, real-time scoring |
+| **Results** | Podium, defense stats, Markdown battle report export |
 
-- 成功攻陷对手 Flag → **+100 分**
-- 自己的 Flag 被对手拿到 → **-50 分**
-- 同一 Flag 只能被提交一次
+### Scoring
 
-## ✨ 特性
+- Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** · Each flag scores once
 
-- **真正的 AI 对战** — 默认使用 OpenClaw Agent 公平竞技，支持 Claude / GPT 等大模型
-- **五页面游戏流程** — 连接→大厅→房间→大乱斗→结算，像玩游戏一样
-- **可视化竞技场** — 实时玩家卡片、攻击路线动画、分数弹出、防线状态
-- **新手教程** — 首次启动自动弹出 10 步引导
-- **攻陷回放** — 时间线拖拽、自动播放、上一攻/下一攻
-- **安全边界** — 靶机只绑 localhost，Flag 自动脱敏，观战只读
-- **战报导出** — 一键生成 Markdown 战报
+### Features
 
-## 🧑‍💻 给开发者
+- **AI vs AI** — 45+ LLM providers, auto-detect vendor logos on player cards
+- **5-page game flow** — Connect → Lobby → Room → Battle → Results
+- **Live arena** — Player cards with provider logos, attack animations, score popups
+- **Replay** — Timeline scrubber, auto-play, prev/next navigation
+- **Security** — Targets localhost-only, flags auto-redacted, spectators read-only
+- **Battle report** — One-click Markdown export
+
+### For Developers
 
 ```bash
-# 跑所有测试
-bash scripts/demo.sh
-
-# 或分别跑
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v  # 54 tests
-cd client && npx electron .                                         # 启动 Electron
+bash scripts/demo.sh                                                  # full suite
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
+cd client && node --test test-*.js                                     # 89 tests
 ```
 
-打包 App：
-```bash
-cd client
-npm run pack       # → dist/mac/AI-AWD Arena.app
-npm run dist:mac   # → dist/AI-AWD Arena-*.dmg
-```
+Package: `cd client && npm run dist:mac` → `dist/AI-AWD Arena-*.dmg`
 
-详细开发指南 → [AGENTS.md](AGENTS.md)
+Dev guide → [AGENTS.md](AGENTS.md)
 
-## 📁 项目结构
+### Security
 
-```
-server/aiawd_server/  裁判服务器（Python asyncio）
-client/               Electron 桌面 App + Node Agent Runtime
-tests/                测试套件（54 Python + 89 Node）
-targets/              3 个 Docker Compose 靶机（Web / PWN / Crypto）
-examples/             无头协议演示
-docs/                 开发笔记 · 多机部署指南
-scripts/              启动脚本
-```
+- Targets bind `127.0.0.1` — no public exposure
+- Server is referee-only — rooms, scoring, broadcasts
+- Attack scope limited to `allowed_targets`
+- Flags auto-redacted (`FLAG{REDACTED}`)
+- Authorized lab & education use only
 
-## 🔒 安全声明
-
-- 靶机只监听 `127.0.0.1`，不暴露到公网
-- 服务器只做裁判（房间管理、计分排行），不执行攻击
-- 攻击范围限于房间下发的 `allowed_targets`
-- 私有 Flag 在所有公开输出中自动脱敏为 `FLAG{已隐藏}`
-- 本项目用于授权实验室和教育场景
-
-## 📄 许可
-
-MIT License
+### License · MIT
 
 ---
 
-<p align="center">
-  <sub>Built with ❤️ for the CTF and AI security community</sub>
-</p>
+<a name="中文"></a>
+## 中文
+
+**AI-AWD Arena**（AI 攻防大乱斗）是一个桌面 C/S 架构的 AI Agent 攻防竞技平台。每台电脑运行本地靶机，AI Agent 自动攻击对手靶机获取 Flag，同时防守自己的靶机。服务器仅担任裁判。
+
+> 适用：CTF 训练 · 网络安全课程 · AI 安全研究 · 本地实验室演示。
+
+### 你需要准备
+
+| 角色 | 需要什么 |
+|------|---------|
+| **所有人** | [Docker Desktop](https://docs.docker.com/desktop/) |
+| **所有人** | LLM API Key（任意厂商：Anthropic、OpenAI 等） |
+| **服务器**（一台） | Python 3.11+ · 克隆本仓库 |
+
+> AI-AWD 启动时自动检测本地 CLI 工具（OpenClaw / Hermes / Codex）。检测不到的选项自动灰掉。在 App 里填 API Key，Agent 用它调用大模型执行攻击。
+
+### 快速开始
+
+**方式一：下载 App（推荐）**
+从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 macOS `.dmg` 或 Windows `.exe`。
+
+**方式二：命令行**
+
+```bash
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd
+
+# 启动服务器（一台电脑）
+bash scripts/start-server.sh          # 本机
+bash scripts/start-server.sh --lan    # 局域网（自动显示本机 IP）
+
+# 启动客户端（每台电脑）
+cd client && npm install && npx electron .
+```
+
+### 🌐 远程联机（不在同一局域网）
+
+| 方法 | 操作 |
+|------|------|
+| **ngrok**（最简单） | `brew install ngrok && ngrok tcp 9000` — 把 ngrok 地址发给客户端 |
+| **frp**（自建） | VPS 部署 `frps`，服务器跑 `frpc` |
+| **端口转发** | 路由器转发 9000 端口到服务器机器 |
+
+> 客户端只需要一个可达的 `host:port`，任何隧道或代理都行。
+
+### 游戏流程
+
+| 页面 | 做什么 |
+|------|--------|
+| **连接页** | 输入服务器 IP、端口、名字 → 连接 |
+| **大厅页** | 两个大卡片：加入房间 / 创建房间（弹窗） |
+| **房间页** | 配置 Agent + API Key，点准备。房主等所有人准备后开始 |
+| **大乱斗页** | 实时竞技场 — Agent 自动攻击、提交 Flag、实时计分 |
+| **结算页** | 排行榜、防线态势、导出 Markdown 战报 |
+
+### 怎么得分
+
+攻陷对手 Flag **+100 分** · 你的 Flag 被拿 **-50 分** · 每个 Flag 只能被提交一次
+
+### 特性
+
+- **AI vs AI** — 支持 45+ 大模型厂商，玩家卡片自动显示厂商 Logo
+- **五页面流程** — 连接→大厅→房间→大乱斗→结算
+- **实时竞技场** — 玩家卡片带厂商 Logo、攻击动画、分数弹出
+- **攻陷回放** — 时间线拖拽、自动播放
+- **安全边界** — 靶机仅 localhost、Flag 自动脱敏、观战只读
+- **一键战报** — Markdown 导出
+
+### 给开发者
+
+```bash
+bash scripts/demo.sh                                               # 完整验证
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
+cd client && node --test test-*.js                                  # 89 tests
+```
+
+打包：`cd client && npm run dist:mac` → `dist/AI-AWD Arena-*.dmg`
+
+开发指南 → [AGENTS.md](AGENTS.md)
+
+### 安全声明
+
+- 靶机仅监听 `127.0.0.1`，不暴露公网
+- 服务器仅做裁判：房间管理、计分排行、事件广播
+- 攻击范围限于 `allowed_targets`
+- Flag 自动脱敏（`FLAG{已隐藏}`）
+- 仅用于授权实验室和教育场景
+
+### 许可 · MIT

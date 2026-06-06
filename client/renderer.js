@@ -101,31 +101,34 @@ const VENDOR_LOGOS = {
   phind:            "assets/vendors/phind.png",
 };
 
-// agent_runtime -> logo key mapping
+// Pre-computed entries sorted by key length (longest first) for greedy match
+const VENDOR_LOGOS_ENTRIES = Object.entries(VENDOR_LOGOS)
+  .sort(([a], [b]) => b.length - a.length);
+
+// agent_runtime -> logo path (direct mapping)
 const RUNTIME_LOGO = {
-  hermes:  "anthropic",   // Hermes typically uses Claude API
-  codex:   "openai",      // Codex uses OpenAI API
-  openclaw: "openclaw",
+  hermes:  "assets/vendors/anthropic.png",  // Hermes uses Claude API
+  codex:   "assets/vendors/openai.png",     // Codex uses OpenAI API
+  openclaw: "assets/vendors/openclaw.png",
 };
 
-function providerLogo(player, apiKey) {
-  // 1. Check model_display_name for known keywords
+function runtimeDisplayName(runtime) {
+  if (runtime === "openclaw") return "OpenClaw";
+  if (runtime === "hermes") return "Hermes";
+  if (runtime === "codex") return "Codex";
+  return runtime || "";
+}
+
+function providerLogo(player) {
+  // 1. Check model_display_name for known keywords (longest match first)
   const model = (player.model_display_name || "").toLowerCase();
-  for (const [keyword, logo] of Object.entries(VENDOR_LOGOS)) {
+  for (const [keyword, logo] of VENDOR_LOGOS_ENTRIES) {
     if (model.includes(keyword)) return logo;
   }
 
   // 2. Check agent_runtime mapping
   const runtime = (player.agent_runtime || "").toLowerCase();
-  const mapped = RUNTIME_LOGO[runtime];
-  if (mapped && VENDOR_LOGOS[mapped]) return VENDOR_LOGOS[mapped];
-
-  // 3. Check apiKey prefix (local detection)
-  if (apiKey) {
-    const prov = detectProvider(apiKey);
-    const key = (prov || "").toLowerCase();
-    if (VENDOR_LOGOS[key]) return VENDOR_LOGOS[key];
-  }
+  if (RUNTIME_LOGO[runtime]) return RUNTIME_LOGO[runtime];
 
   // No logo available — return null, caller will show text badge
   return null;
@@ -172,7 +175,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "generateReport","copyReport","downloadReport","reportPreview",
     "rankings","events","messages","matchConfig",
     "agentCommand","agentStart","agentStop","agentStatus",
-    "startOnboarding","apiKey",
+    "apiKey",
     "roomSearch","roomReadyBtn","roomHint","leaveRoom","backToRoom","backToLobby",
     "lobbyPlayerName","roomTitle","roomTargetType","roomFormat","roomPhase",
     "playerCount","playerSlots","spectatorSlots","connectStatus",
@@ -299,13 +302,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (els.leaveRoom) els.leaveRoom.addEventListener("click", leaveCurrentRoom);
   if (els.backToRoom) els.backToRoom.addEventListener("click", () => navigateTo("room"));
   if (els.backToLobby) els.backToLobby.addEventListener("click", leaveCurrentRoom);
-
-  // Onboarding
-  if (typeof OnboardingEngine !== "undefined") {
-    OnboardingEngine.init();
-    setTimeout(() => { if (OnboardingEngine.autoStart()) { addEvent("ONBOARDING_STARTED", {}); render(); } }, 600);
-    if (els.startOnboarding) els.startOnboarding.addEventListener("click", () => { OnboardingEngine.start(); addEvent("ONBOARDING_STARTED", { replay: true }); render(); });
-  }
 
   window.aiawd = window.aiawd || unavailableBridge();
   window.aiawd.onMessage(handleMessage);
@@ -640,12 +636,12 @@ function renderRoomPage(phase) {
       if (isMe) cls += " is-self";
       if (ready) cls += " is-ready";
       if (isHost) cls += " is-host";
-      const logo = providerLogo(p, null);
+      const logo = providerLogo(p);
       const model = p.model_display_name || "";
-      const runtimeName = p.agent_runtime === "openclaw" ? "OpenClaw" : p.agent_runtime === "hermes" ? "Hermes" : p.agent_runtime === "codex" ? "Codex" : p.agent_runtime || "";
+      const runtimeName = runtimeDisplayName(p.agent_runtime);
       const prov = p.api_provider || runtimeName || "";
       const logoHtml = logo
-        ? `<img class="slot-provider-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}">`
+        ? `<img class="provider-logo slot-provider-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}">`
         : (prov ? `<span class="slot-provider">${escapeHtml(prov)}</span>` : "");
       return `<div class="${cls}">
         <div class="slot-avatar">${(p.display_name||"?").charAt(0).toUpperCase()}</div>
@@ -719,9 +715,9 @@ function renderArenaMap(phase, players) {
     const nodeLabel = isSelf && isLeader ? "我方领先" : isSelf ? "我方" : isLeader ? "领先" : "Agent";
     const score = teamScore(teamId);
     const readyText = `${player.target_ready ? "靶机已好" : "靶机待确认"} · ${player.agent_ready ? "Agent已好" : "Agent待确认"}`;
-    const agentName = player.agent_runtime === "openclaw" ? "OpenClaw" : player.agent_runtime === "hermes" ? "Hermes" : player.agent_runtime === "codex" ? "Codex" : player.agent_runtime || "";
+    const agentName = runtimeDisplayName(player.agent_runtime);
     const modelName = player.model_display_name || "";
-    const combatLogo = providerLogo(player, null);
+    const combatLogo = providerLogo(player);
     const providerInfo = [agentName, modelName].filter(Boolean).join(" · ");
     const isBreached = breachCount(teamId) > 0;
     const readiness = readinessPercent(player);
@@ -739,7 +735,7 @@ function renderArenaMap(phase, players) {
         <div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div>
       </div>
       <div class="combatant-provider">
-        ${combatLogo ? `<img class="combatant-provider-logo" src="${escapeHtml(combatLogo)}" alt="${escapeHtml(agentName || modelName)}" title="${escapeHtml(providerInfo)}">` : ""}
+        ${combatLogo ? `<img class="provider-logo combatant-provider-logo" src="${escapeHtml(combatLogo)}" alt="${escapeHtml(agentName || modelName)}" title="${escapeHtml(providerInfo)}">` : ""}
         <small>${escapeHtml(providerInfo || player.display_name || "-")}</small>
       </div>
       <div class="combatant-stats"><em>${escapeHtml(score===null?"暂无分数":`${score} 分`)}</em><b>${escapeHtml(captureCount(teamId))}攻陷 · ${escapeHtml(breachCount(teamId))}失守</b></div>

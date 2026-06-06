@@ -77,18 +77,33 @@ LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
 
 ## Agent Adapters
 
-4 agents, unified via `adapterFor()` in `client/adapters.js`. Default: OpenClaw.
+7 adapters, unified via `adapterFor()` in `client/adapters.js`. Detected automatically at startup via `detectAvailableAdapters()`.
 
 | Agent | Type | How it works |
 |-------|------|-------------|
-| OpenClaw (default) | CLI | `openclaw infer model run --local --json` — uses LLM_API_KEY env var |
+| OpenClaw | CLI | `openclaw infer model run --local --json` — uses LLM_API_KEY env var |
 | Hermes | CLI | `hermes -z <prompt> --yolo` |
 | Codex | CLI | `codex exec --json <prompt>` |
+| OpenCLI | CLI | `opencli browser extract` + `opencli browser open` |
+| Pi | CLI | `pi --print --mode json` |
+| CustomPython | Script | `python3 <script> {target_url}` |
+| CustomCommand | Any | User-defined command with `{target_url}` template |
 | Mock | built-in | `echo FLAG{test}` — no real AI |
 
 API keys are set as environment variables before agent execution:
 - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `LLM_API_KEY` — all set to the key entered in UI
 - Agent CLI tools read the appropriate var from their environment
+
+## Vendor Logo System
+
+`renderer.js` maintains a `VENDOR_LOGOS` mapping (~45 vendors, 70+ keyword aliases) that resolves AI provider logos from model display names or agent runtime selections. Key functions:
+
+- `providerLogo(player)` — returns the logo asset path for a player based on `model_display_name` or `agent_runtime`
+- `runtimeDisplayName(runtime)` — maps agent runtime IDs to human-readable display names
+- `VENDOR_LOGOS_ENTRIES` — pre-sorted entries (longest match first) for correct substring matching
+- `client/assets/vendors/` — 45 PNG icons (640×640) from LobeHub CDN
+
+Supported vendors include Anthropic, OpenAI, Google, Meta, Mistral, Nvidia, Cohere, Grok/xAI, Perplexity, Groq, Together, HuggingFace, Ollama, DeepSeek, Qwen, Baichuan, Hunyuan, Spark, Wenxin, Yi, StepFun, Skywork, Kimi, Doubao, Zhipu, MiniMax, InternLM, CodeGeeX, Yuanbao, and more.
 
 ## Safety Boundary (ScopeGuard)
 
@@ -114,16 +129,24 @@ API keys are set as environment variables before agent execution:
 
 **Electron/UI changes:**
 - Node tests pass (89)
-- `client/test-renderer.js` covers onboarding, arena, replay, battle kit, flag redaction
+- `client/test-renderer.js` covers onboarding, arena, replay, battle kit, flag redaction, vendor logo resolution
 - Main process owns AIAWD TCP; renderer uses `window.aiawd`
 - `npx electron electronWindowEvidence.js` produces 35 passing assertions
+- New vendor logos: `client/assets/vendors/*.png` — 45 icons, check `providerLogo()` + `runtimeDisplayName()` in renderer.js
 
 **Packaging:**
 - `npm run pack` produces `dist/mac/AI-AWD Arena.app`
 - App launches and shows onboarding on first run
 
+## Current Release Status
+
+- macOS `.dmg` (x64 + arm64): built, icon updated (shield-target design)
+- Windows `.exe` (x64): config ready (`npm run dist:win`), needs Windows build host for verification
+- `.icns` (macOS) + `.ico` (Windows) icons in `client/build/`
+
 ## Next Steps
 
-1. Windows build verification
-2. Live Docker all-target evidence (requires Docker Desktop running)
-3. OpenClaw integration test with real LLM API key
+1. Build and verify Windows `.exe` on Windows host
+2. Publish packages to GitHub Releases
+3. Live Docker all-target evidence (requires Docker Desktop running)
+4. Real-CLI agent smoke tests (Hermes/Codex/OpenClaw with live Docker targets)
