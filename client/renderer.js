@@ -122,6 +122,31 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Lobby: toggle create form
+  const showCreateBtn = document.getElementById("showCreateForm");
+  const createPanel = document.getElementById("createFormPanel");
+  if (showCreateBtn && createPanel) {
+    showCreateBtn.addEventListener("click", () => {
+      const visible = createPanel.style.display !== "none";
+      createPanel.style.display = visible ? "none" : "block";
+      showCreateBtn.textContent = visible ? "+ 创建房间" : "收起";
+      showCreateBtn.classList.toggle("btn-ghost", !visible);
+      showCreateBtn.classList.toggle("btn-primary", visible);
+    });
+  }
+
+  // Room: toggle config panels
+  for (const toggle of document.querySelectorAll(".config-toggle")) {
+    toggle.addEventListener("click", () => {
+      const panel = document.querySelector(`[data-panel="${toggle.dataset.toggle}"]`);
+      if (!panel) return;
+      const isOpen = panel.style.display !== "none";
+      panel.style.display = isOpen ? "none" : "block";
+      toggle.classList.toggle("active", !isOpen);
+      toggle.textContent = toggle.textContent.replace(isOpen ? "▾" : "▸", isOpen ? "▸" : "▾");
+    });
+  }
+
   // Room search filter
   if (els.roomSearch) {
     els.roomSearch.addEventListener("input", () => {

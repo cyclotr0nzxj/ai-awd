@@ -63,11 +63,12 @@
 
     <div class="lobby-main">
       <div class="lobby-hero">
-        <h2>创建新房间</h2>
-        <p>成为房主，选择靶机类型和赛制，邀请其他玩家加入</p>
+        <h2>AI 攻防大乱斗</h2>
+        <p>创建或加入房间，开始 AI Agent 之间的攻防竞技</p>
+        <button id="showCreateForm" class="btn-primary btn-lg" style="margin-top:16px">+ 创建房间</button>
       </div>
 
-      <div class="create-form">
+      <div id="createFormPanel" class="create-form" style="display:none">
         <label>房间名称 <input id="roomName" value="AI攻防大乱斗" /></label>
 
         <label>靶机类型 <span style="color:var(--accent);font-weight:400;font-size:12px">— 选择地图</span></label>
@@ -141,28 +142,27 @@
       </div>
 
       <div class="room-config">
-        <h3>🤖 Agent 配置</h3>
-        <p class="config-hint">Agent 会自动攻击对手靶机。OpenClaw 随 AI-AWD 自动部署，无需单独安装。靶机需 Docker Desktop。</p>
+        <button class="config-toggle active" data-toggle="agent">🤖 Agent 配置 ▾</button>
+        <div class="config-panel" data-panel="agent">
+          <p class="config-hint">Agent 会自动攻击对手靶机。OpenClaw 随 AI-AWD 自动部署。</p>
+          <label>Agent
+            <select id="agentRuntime" class="select-field">
+              <option value="openclaw">OpenClaw (默认，公平竞技)</option>
+              <option value="hermes">Hermes</option>
+              <option value="codex">Codex</option>
+              <option value="mock-agent">Mock (演示)</option>
+            </select>
+          </label>
+          <label>LLM API Key
+            <input id="apiKey" type="password" placeholder="Agent 调 LLM 用的 Key（Anthropic / OpenAI）" />
+          </label>
+          <label>LLM 模型
+            <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="例如 claude-sonnet-4-6" />
+          </label>
+        </div>
 
-        <label>Agent
-          <select id="agentRuntime" class="select-field">
-            <option value="openclaw">OpenClaw (默认，公平竞技)</option>
-            <option value="hermes">Hermes</option>
-            <option value="codex">Codex</option>
-            <option value="mock-agent">Mock (演示)</option>
-          </select>
-        </label>
-
-        <label>LLM API Key
-          <input id="apiKey" type="password" placeholder="Agent 调 LLM 用的 Key（Anthropic / OpenAI）" />
-        </label>
-
-        <label>LLM 模型
-          <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="例如 claude-sonnet-4-6" />
-        </label>
-
-        <div class="target-status">
-          <h4>🖥️ 靶机部署</h4>
+        <button class="config-toggle" data-toggle="target">🖥️ 靶机管理 ▸</button>
+        <div class="config-panel" data-panel="target" style="display:none">
           <p id="targetDeployStatus">等待房间配置...</p>
           <div class="lifecycle-actions" style="margin-top:8px">
             <button id="targetDoctor" class="btn-sm">诊断</button>

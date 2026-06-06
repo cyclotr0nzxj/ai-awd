@@ -228,11 +228,18 @@ label {
 .player-slot .slot-status.waiting { background: rgba(230,168,23,0.1); color: var(--amber); }
 
 .room-config {
-  width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;
-  padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  width: 340px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
+  padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: var(--surface); overflow-y: auto;
 }
-.room-config h3 { font-size: 15px; color: var(--accent); }
+.config-toggle {
+  width: 100%; text-align: left; padding: 10px 14px; font-size: 13px; font-weight: 700;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  transition: border-color 120ms;
+}
+.config-toggle:hover { border-color: var(--accent); }
+.config-toggle.active { border-color: var(--accent); color: var(--accent); }
+.config-panel { display: flex; flex-direction: column; gap: 10px; padding: 4px 4px 8px; }
 .config-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
 .target-status { margin-top: 8px; }
