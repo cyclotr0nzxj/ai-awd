@@ -22,12 +22,12 @@
 ## Requirements / 前置要求
 
 Each machine needs / 每台机器需要:
-- Python 3.11+ (server only / 仅服务器)
-- Node.js 18+ (for Electron client / 客户端)
-- macOS / Windows / Linux
-- (Optional) Docker Desktop — for local target lifecycle
+- Docker Desktop — for local target lifecycle
+- One LLM API key (any provider)
 
 Server machine additionally needs / 服务器额外需要:
+- Python 3.11+
+- Git
 - Open TCP port 9000 (client connections / 客户端连接)
 - Open TCP port 9001 (HTTP API, optional / 可选)
 
@@ -92,6 +92,8 @@ cd ai-awd/client
 npm install
 npm start
 ```
+
+> Node.js 18+ required for source builds / 源码运行需要 Node.js 18+
 
 ## Step 3: Play a Match / 进行比赛
 

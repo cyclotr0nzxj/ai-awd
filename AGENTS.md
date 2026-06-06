@@ -8,7 +8,7 @@ This is the technical reference for AI coding agents and developers working on A
 Electron App (client/)          Python Server (server/aiawd_server/)
 ┌──────────────────────┐       ┌──────────────────────────┐
 │  renderer.js + UI    │       │  tcp_gateway.py           │
-│  onboarding.js       │◄─────►│  room_manager.py          │
+│  agentRuntime.js     │ TCP   │  room_manager.py          │
 │  agentRuntime.js     │ TCP   │  match_engine.py          │
 │  adapters.js         │AIAWD  │  session_manager.py       │
 │  scopeguard.js       │/1.0   │  target_registry.py       │
@@ -129,24 +129,25 @@ Supported vendors include Anthropic, OpenAI, Google, Meta, Mistral, Nvidia, Cohe
 
 **Electron/UI changes:**
 - Node tests pass (89)
-- `client/test-renderer.js` covers onboarding, arena, replay, battle kit, flag redaction, vendor logo resolution
+- `client/test-renderer.js` covers arena, replay, battle kit, flag redaction, vendor logo resolution
 - Main process owns AIAWD TCP; renderer uses `window.aiawd`
 - `npx electron electronWindowEvidence.js` produces 35 passing assertions
 - New vendor logos: `client/assets/vendors/*.png` — 45 icons, check `providerLogo()` + `runtimeDisplayName()` in renderer.js
 
 **Packaging:**
 - `npm run pack` produces `dist/mac/AI-AWD Arena.app`
-- App launches and shows onboarding on first run
+- App launches and shows lobby page directly
 
 ## Current Release Status
 
-- macOS `.dmg` (x64 + arm64): built, icon updated (shield-target design)
-- Windows `.exe` (x64): config ready (`npm run dist:win`), needs Windows build host for verification
+- **v1.0.0 published** on [GitHub Releases](https://github.com/cyclotr0nzxj/ai-awd/releases)
+- macOS `.dmg` + `.zip` (x64 + arm64): built and uploaded
+- Windows `.exe` — NSIS installer + portable (x64): built and uploaded
+- GitHub Actions CI: auto-build on `v*` tag push + manual `workflow_dispatch`
 - `.icns` (macOS) + `.ico` (Windows) icons in `client/build/`
 
 ## Next Steps
 
-1. Build and verify Windows `.exe` on Windows host
-2. Publish packages to GitHub Releases
-3. Live Docker all-target evidence (requires Docker Desktop running)
-4. Real-CLI agent smoke tests (Hermes/Codex/OpenClaw with live Docker targets)
+1. Live Docker all-target evidence (requires Docker Desktop running)
+2. Real-CLI agent smoke tests (Hermes/Codex/OpenClaw with live Docker targets)
+3. Code signing for macOS and Windows

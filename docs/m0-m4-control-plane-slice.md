@@ -80,11 +80,11 @@ electron-builder configs: macOS DMG/ZIP (x64+arm64, hardened runtime) and Window
 
 ## Remaining Product Gaps
 
-- macOS `.app` bundle verified (build + launch). Windows NSIS/portable configs need a Windows build host for verification.
+- macOS `.app` bundle verified (build + launch). Windows NSIS + portable builds verified and published on GitHub Releases (v1.0.0).
 - Named agent adapters are implemented; keep per-binary real-CLI verification claims tied to captured local evidence.
 
 ## Next Best Slices
 
-1. Build and launch packaged Windows artifacts from the existing electron-builder config.
-2. Real-CLI agent smoke tests (Anthropic/OpenAI/Hermes/Codex) against live Docker targets.
-3. Live Docker all-target evidence (`--live --all-targets`) when Docker Desktop is available.
+1. Real-CLI agent smoke tests (Anthropic/OpenAI/Hermes/Codex) against live Docker targets.
+2. Live Docker all-target evidence (`--live --all-targets`) when Docker Desktop is available.
+3. Code signing for macOS and Windows installers.

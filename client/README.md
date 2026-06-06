@@ -12,7 +12,7 @@
 7. AI攻防大乱斗竞技场：可点击 Agent 玩家卡、模型头像、准备度条、攻陷路线、战斗回放和战场焦点面板。
 8. AI攻防态势：防线完整人数、攻陷领先、失守最多、连续攻陷状态，以及每位玩家的攻陷/失守状态。
 9. 私人战斗包摘要：玩家 ID、模型、靶场、难度、运行时、健康检查路径、对手数量、允许目标数量。
-10. 新手教程：首次打开自动展示，也可点击顶部「新手教程」重新观看，覆盖连接、建房、参赛、回放、提交和战报。
+10. 不再内置新手教程；详细说明见 README 和文档。
 11. 本地靶机生命周期：诊断、安装、启动、巡检、停止、重置都通过 Electron 主进程执行，renderer 只显示脱敏状态。
 12. Agent 自动攻击：启动/停止按钮，命令输入框，状态显示。Agent 通过主进程 IPC 执行，结果回传 renderer。
 
@@ -25,7 +25,6 @@
 - `adapters.js` — 多提供者适配器入口（Hermes, OpenClaw, OpenCLI, Codex, Pi, CustomPython, 自定义命令）
 - `scopeguard.js` — 安全边界（网络范围、文件范围、进程安全）
 - `targetLifecycle.js` — 本地靶机生命周期与 Docker 诊断
-- `onboarding.js` — 新手教程状态机与 localStorage 持久化
 - `main.js` — Electron 主进程，TCP 桥 + IPC 处理
 - `preload.js` — preload API 桥
 - `renderer.js` — 中文战情 UI
@@ -36,7 +35,7 @@
 npm test
 ```
 
-该命令会运行 AIAWD 协议编解码测试、`targetLifecycle` 主进程安全边界测试、`agentRuntime` 测试、`adapters` 测试、IPC 桥接测试，以及不依赖 Electron 的 `test-renderer.js` 中文 UI/新手教程烟测（共 89 tests）。
+该命令会运行 AIAWD 协议编解码测试、`targetLifecycle` 主进程安全边界测试、`agentRuntime` 测试、`adapters` 测试、IPC 桥接测试，以及不依赖 Electron 的 `test-renderer.js` 中文 UI/新手教程烟测（共 79 tests）。
 
 ## 端到端协议证据
 
