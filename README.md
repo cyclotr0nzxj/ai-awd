@@ -65,21 +65,18 @@ Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** �
 
 The server must be reachable from the internet. Three ways:
 
-**ngrok (easiest — no setup)**
-
-1. `brew install ngrok` (macOS) or download from [ngrok.com](https://ngrok.com/download)
-2. Sign up at [dashboard.ngrok.com/signup](https://dashboard.ngrok.com/signup) (free, no credit card)
+**bore (easiest — no account, one command)**
 
 ```bash
 # Terminal 1 — start server
 PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
 
 # Terminal 2 — expose it
-ngrok tcp 9000
-# Output: Forwarding  tcp://0.tcp.xx.ngrok.io:12345 -> localhost:9000
+bore local 9000 --to bore.pub
+# Output: listening at bore.pub:57893
 ```
 
-3. Share `0.tcp.xx.ngrok.io` and `12345` with other players. They enter these in the Connect page.
+Share `bore.pub` and the port (e.g. `57893`) with other players. They enter these in the Connect page. No registration, no credit card, zero setup.
 
 **Port forwarding (no extra software)**
 
@@ -87,7 +84,7 @@ ngrok tcp 9000
 2. Add a port forwarding rule: external `9000` → internal `9000` (TCP), to your server machine's LAN IP
 3. Find your public IP at [ifconfig.me](https://ifconfig.me) — share it with players
 
-> Some ISPs don't give public IPs. If `ifconfig.me` shows a different IP than your router's WAN IP, use ngrok instead.
+> Some ISPs don't give public IPs. If `ifconfig.me` shows a different IP than your router's WAN IP, use bore instead.
 
 **frp (self-hosted, most stable)**
 
@@ -168,21 +165,18 @@ cd client && npm install && npx electron .  # 启动客户端
 
 服务器需要能被公网访问。三种方式：
 
-**ngrok（最简单，零配置）**
-
-1. `brew install ngrok`（macOS）或从 [ngrok.com](https://ngrok.com/download) 下载
-2. 在 [dashboard.ngrok.com/signup](https://dashboard.ngrok.com/signup) 免费注册（无需信用卡）
+**bore（最简单——免注册，一条命令）**
 
 ```bash
 # 终端 1 — 启动服务器
 PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
 
 # 终端 2 — 暴露公网
-ngrok tcp 9000
-# 输出：Forwarding  tcp://0.tcp.xx.ngrok.io:12345 -> localhost:9000
+bore local 9000 --to bore.pub
+# 输出：listening at bore.pub:57893
 ```
 
-3. 把 `0.tcp.xx.ngrok.io` 和 `12345` 发给其他玩家，他们在连接页填入即可。
+把 `bore.pub` 和端口号（如 `57893`）发给其他玩家，连接页填入即可。无需注册，不用绑卡，零配置。
 
 **端口转发（无需额外软件）**
 
@@ -190,7 +184,7 @@ ngrok tcp 9000
 2. 添加端口转发规则：外部 `9000` → 内部 `9000`（TCP），指向服务器机器的局域网 IP
 3. 在 [ifconfig.me](https://ifconfig.me) 查看公网 IP，发给玩家
 
-> 部分运营商不给公网 IP。如果 `ifconfig.me` 显示的 IP 和路由器 WAN 口 IP 不同，改用 ngrok。
+> 部分运营商不给公网 IP。如果 `ifconfig.me` 显示的 IP 和路由器 WAN 口 IP 不同，改用 bore。
 
 **frp（自建，最稳定）**
 
