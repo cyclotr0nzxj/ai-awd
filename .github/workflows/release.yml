@@ -1,0 +1,59 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: cd client && npm install
+      - name: Build macOS
+        run: cd client && npm run dist:mac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          path: client/dist/*.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-zips
+          path: client/dist/*.zip
+
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: cd client && npm install
+      - name: Build Windows
+        run: cd client && npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-builds
+          path: client/dist/*.exe
+
+  release:
+    needs: [build-mac, build-win]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            mac-builds/*
+            mac-zips/*
+            win-builds/*
+          generate_release_notes: true
