@@ -90,12 +90,8 @@ In the connection page:
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd/client
 npm install
-npx electron .
+npm start
 ```
-
-### First Run / 首次启动
-
-The onboarding tutorial auto-starts on first launch. It walks through connection, room creation, Agent setup, arena replay, and flag submission in 10 steps. Dismiss or complete it, then proceed.
 
 ## Step 3: Play a Match / 进行比赛
 

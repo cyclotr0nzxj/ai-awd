@@ -42,7 +42,7 @@
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
 bash scripts/start-server.sh          # start server (one machine)
-cd client && npm install && npx electron .  # start client
+cd client && npm install && npm start   # start client
 ```
 
 Use `--lan` to bind all network interfaces — the server prints its LAN IP for other players.
@@ -142,7 +142,7 @@ Targets bind `127.0.0.1`. Server is referee-only. Flags auto-redacted. Authorize
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
 bash scripts/start-server.sh          # 启动服务器（一台电脑）
-cd client && npm install && npx electron .  # 启动客户端
+cd client && npm install && npm start   # 启动客户端
 ```
 
 加 `--lan` 绑定所有网络接口，服务器会自动显示局域网 IP 供其他玩家连接。
