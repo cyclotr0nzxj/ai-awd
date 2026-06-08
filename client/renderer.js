@@ -206,7 +206,11 @@ function buildAgentCommand(runtime, modelDisplayName, phase) {
     case "openclaw":
     case "openclaw-local": {
       const cmd = ["openclaw", "infer", "model", "run", "--local", "--json", "--prompt", prompt];
-      if (model) cmd.push("--model", model);
+      // OpenClaw uses --model provider/modelname format
+      if (model) {
+        const provider = model.includes("deepseek") ? "deepseek" : "openai";
+        cmd.push("--model", `${provider}/${model}`);
+      }
       return cmd;
     }
     case "hermes":

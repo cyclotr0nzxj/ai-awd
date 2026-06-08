@@ -202,6 +202,33 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
       env.OPENAI_BASE_URL = env.OPENAI_BASE_URL || "https://api.deepseek.com";
     }
   }
+  // Ensure OpenClaw has a provider configured for the user's API
+  if (apiKey) {
+    try {
+      const fs = require("fs");
+      const os = require("os");
+      const ocConfigPath = path.join(os.homedir(), ".openclaw", "openclaw.json");
+      let ocConfig = {};
+      if (fs.existsSync(ocConfigPath)) {
+        ocConfig = JSON.parse(fs.readFileSync(ocConfigPath, "utf-8"));
+      }
+      const models = ocConfig.models || (ocConfig.models = {});
+      const providers = models.providers || (models.providers = {});
+      const baseUrl = userBaseUrl || "https://api.deepseek.com";
+      const providerKey = baseUrl.includes("deepseek") ? "deepseek" : "openai";
+      if (!providers[providerKey]) {
+        providers[providerKey] = {
+          baseUrl: baseUrl,
+          api: "openai-completions",
+          apiKey: apiKey,
+          models: [{ id: modelName || "deepseek-chat", name: modelName || "DeepSeek Chat", input: ["text"], contextWindow: 128000, maxTokens: 8192 }],
+        };
+        models.mode = models.mode || "merge";
+        fs.writeFileSync(ocConfigPath, JSON.stringify(ocConfig, null, 2));
+      }
+    } catch (_) { /* best-effort provider config */ }
+  }
+
   const adapter = new CustomCommandAdapter(request.command, { env });
 
   // Manual attack loop with per-action activity reporting

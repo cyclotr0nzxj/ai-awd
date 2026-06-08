@@ -75,39 +75,38 @@ LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
 - One flag scores only once globally per room.
 - Spectators are read-only throughout.
 
-## Agent Adapters
+## Agent Runtime
 
-8 adapters. **Direct API is the default** — no CLI tools required.
+**OpenClaw is the default.** Bundled binary auto-downloaded during `npm install`; local install preferred if newer.
 
-| Agent | Type | How it works |
-|-------|------|-------------|
-| **Direct API** | HTTP | `https.request` → OpenAI-compatible `/v1/chat/completions`. Uses user's API key, model name, and base URL. Guarantees token consumption with any provider (DeepSeek, OpenAI, etc.) |
-| OpenClaw | CLI | `openclaw infer model run --local --json` — uses LLM_API_KEY env var |
-| Hermes | CLI | `hermes -z <prompt> --yolo` |
-| Codex | CLI | `codex exec --json <prompt>` |
-| OpenCLI | CLI | `opencli browser extract` + `opencli browser open` |
-| Pi | CLI | `pi --print --mode json` |
-| CustomPython | Script | `python3 <script> {target_url}` |
-| Mock | built-in | `echo FLAG{test}` — no real AI |
+| Runtime | How it works |
+|---------|-------------|
+| **OpenClaw (内置)** | Bundled `bin/openclaw` or local `which openclaw`. `openclawPath()` resolves best available. |
+| Hermes | `hermes -z <prompt> --yolo` (if installed) |
+| Mock | `echo` — no real AI, for UI testing |
 
-API keys are set as environment variables before agent execution:
-- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `LLM_API_KEY` — all set to the key entered in UI
-- `OPENAI_BASE_URL` / `DEEPSEEK_BASE_URL` — set from user-provided Base URL field, or auto-detected for DeepSeek
-- Direct API mode calls `{baseUrl}/v1/chat/completions` directly via Node.js `https.request` — no external CLI dependency
-- Token usage is captured from response and displayed: `[prompt:N completion:M total:X]`
+### API Configuration
+OpenClaw provider auto-configured on first agent start:
+- Writes provider to `~/.openclaw/openclaw.json` matching OpenClaw's native format
+- `baseUrl` from user's Base URL field (default `https://api.deepseek.com`)
+- `apiKey` from user's API Key field
+- Command: `openclaw infer model run --local --json --prompt "..." --model deepseek/deepseek-chat`
 
-Agent execution triggers automatically:
-- **DEFENSE phase**: `PHASE_SYNC` with phase "DEFENSE" — starts defense agent scanning own target
-- **ATTACK phase**: `PHASE_SYNC` with phase "ATTACK" — starts attack agent probing opponents
-- Command auto-populated from runtime dropdown via `buildAgentCommand(runtime, model, phase)`
-- Agent activity broadcast to all room members via `AGENT_ACTIVITY` events
-- Agent output parsed into natural-language steps via `parseActivitySteps()` (13 pattern categories)
+### Docker Auto-Start
+Docker Desktop auto-launched if daemon not running (macOS: `open -a Docker`, Windows: `start Docker Desktop.exe`), waits up to 30s.
 
-Match flow is fully automated:
-- **Auto-ready**: when API key + model + runtime are filled → `TARGET_READY` + `AGENT_READY`
-- **Auto-start**: host sees all players ready → 1.5s delay → `START_MATCH`
-- **Auto-target-lifecycle**: on `MATCH_CONFIG` receipt → install + start Docker targets
-- **Auto-cleanup**: on `FINISHED` phase → stop agent
+### Auto-Match Flow
+- **Auto-ready**: API key + model + runtime filled → `TARGET_READY` + `AGENT_READY`
+- **Auto-start**: host sees all ready → `START_MATCH`
+- **Auto-target-lifecycle**: `MATCH_CONFIG` → install + start Docker targets (Docker auto-launched if needed)
+- **Auto-DEFENSE agent**: `PHASE_SYNC` DEFENSE → defense prompt
+- **Auto-ATTACK agent**: `PHASE_SYNC` ATTACK → attack prompt
+- **Auto-cleanup**: `PHASE_SYNC` FINISHED → stop agent
+
+### Agent Activity
+- Per-player columns with color-coded status borders
+- Natural-language step descriptions via `parseActivitySteps()`
+- Broadcast to all room members via `AGENT_ACTIVITY` events
 
 ## Vendor Logo System
 
