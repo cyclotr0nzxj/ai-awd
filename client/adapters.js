@@ -1,6 +1,8 @@
 "use strict";
 
 const { spawnSync } = require("child_process");
+const path = require("path");
+const fs = require("fs");
 const {
   CustomCommandAdapter,
   contextEnv,
@@ -8,6 +10,34 @@ const {
   expandTemplate,
   sanitizeCommand,
 } = require("./agentRuntime.js");
+
+// Resolve the best available openclaw binary
+function openclawPath() {
+  // 1. Check for locally installed openclaw (user's PATH)
+  const which = process.platform === "win32" ? "where" : "which";
+  try {
+    const result = spawnSync(which, ["openclaw"], { stdio: "pipe", timeout: 5000 });
+    if (result.status === 0 && result.stdout) {
+      const localPath = result.stdout.toString().trim().split("\n")[0].trim();
+      if (localPath && fs.existsSync(localPath)) {
+        return localPath;
+      }
+    }
+  } catch (_) { /* fall through */ }
+
+  // 2. Check bundled binary (in app resources or dev mode)
+  const bundledPaths = [];
+  if (process.resourcesPath) {
+    bundledPaths.push(path.join(process.resourcesPath, "bin", process.platform === "win32" ? "openclaw.exe" : "openclaw"));
+  }
+  bundledPaths.push(path.join(__dirname, "bin", process.platform === "win32" ? "openclaw.exe" : "openclaw"));
+  for (const p of bundledPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 3. Fallback: hope openclaw is in PATH
+  return "openclaw";
+}
 
 /**
  * Base class for named CLI adapters.
@@ -55,7 +85,7 @@ class OpenClawAdapter extends BaseCLIAdapter {
    * @param {string} [options.promptTemplate]
    */
   constructor(options = {}) {
-    const bin = options.openclawBin || "openclaw";
+    const bin = options.openclawBin || openclawPath();
     const model = options.model || "";
     const prompt = options.promptTemplate || (
       "You are an AWD (Attack-Defense) CTF agent. " +
@@ -243,4 +273,5 @@ module.exports = {
   CustomPythonAdapter,
   adapterFor,
   detectAvailableAdapters,
+  openclawPath,
 };

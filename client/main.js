@@ -1,58 +1,8 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const https = require("https");
-const http = require("http");
 const { AiawdClient } = require("./aiawdProtocol");
 const { runTargetAction } = require("./targetLifecycle");
 const { CustomCommandAdapter, AgentManager, sanitizeCommand } = require("./agentRuntime");
-
-// ====== Direct API Client — guaranteed LLM access without CLI tools ======
-function directAPICall(apiKey, modelName, baseUrl, prompt) {
-  return new Promise((resolve) => {
-    const url = new URL(baseUrl.replace(/\/+$/, "") + "/v1/chat/completions");
-    const body = JSON.stringify({
-      model: modelName || "deepseek-chat",
-      messages: [
-        { role: "system", content: "You are an AWD CTF security agent. You output curl commands, SQL injections, XSS payloads, and path traversal attempts to find FLAG{...} patterns. Always include the raw FLAG you discover in your output." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
-    const transport = url.protocol === "https:" ? https : http;
-    const req = transport.request({
-      hostname: url.hostname,
-      port: url.port || (url.protocol === "https:" ? 443 : 80),
-      path: url.pathname + url.search,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      timeout: 300_000,
-    }, (res) => {
-      let data = "";
-      res.on("data", (chunk) => { data += chunk; });
-      res.on("end", () => {
-        try {
-          const json = JSON.parse(data);
-          const content = json.choices?.[0]?.message?.content || "";
-          const usage = json.usage;
-          const tokenInfo = usage
-            ? ` [prompt:${usage.prompt_tokens} completion:${usage.completion_tokens} total:${usage.total_tokens}]`
-            : "";
-          resolve({ content: content + tokenInfo, ok: true, usage });
-        } catch (_) {
-          resolve({ content: data.slice(0, 500), ok: false, usage: null });
-        }
-      });
-    });
-    req.on("error", (err) => resolve({ content: err.message, ok: false, usage: null }));
-    req.on("timeout", () => { req.destroy(); resolve({ content: "API request timed out", ok: false, usage: null }); });
-    req.write(body);
-    req.end();
-  });
-}
 
 let mainWindow = null;
 const client = new AiawdClient();
@@ -202,7 +152,29 @@ ipcMain.handle("aiawd:submitFlag", (_event, request) =>
     { roomId: request.roomId, role: "player" },
   ),
 );
-ipcMain.handle("aiawd:targetAction", (_event, request) => runTargetAction(request));
+ipcMain.handle("aiawd:targetAction", async (_event, request) => {
+  // Auto-start Docker Desktop if daemon isn't running
+  const { execSync } = require("child_process");
+  try {
+    execSync("docker info", { stdio: "pipe", timeout: 5000 });
+  } catch (_) {
+    if (process.platform === "darwin") {
+      try { execSync("open -a Docker", { stdio: "pipe", timeout: 10000 }); } catch (_) {}
+      // Wait up to 30s for Docker to start
+      for (let i = 0; i < 30; i++) {
+        try { execSync("docker info", { stdio: "pipe", timeout: 3000 }); break; }
+        catch (_) { await new Promise(r => setTimeout(r, 1000)); }
+      }
+    } else if (process.platform === "win32") {
+      try { execSync('start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"', { stdio: "pipe", timeout: 10000, shell: true }); } catch (_) {}
+      for (let i = 0; i < 30; i++) {
+        try { execSync("docker info", { stdio: "pipe", timeout: 3000 }); break; }
+        catch (_) { await new Promise(r => setTimeout(r, 1000)); }
+      }
+    }
+  }
+  return runTargetAction(request);
+});
 
 ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   if (!sanitizeCommand(request.command)) {
@@ -230,64 +202,6 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
       env.OPENAI_BASE_URL = env.OPENAI_BASE_URL || "https://api.deepseek.com";
     }
   }
-  // Direct API mode — bypass CLI, call LLM API directly via HTTP (guaranteed token consumption)
-  const isDirectAPI = Array.isArray(request.command) && request.command[0] === "__DIRECT_API__";
-  if (isDirectAPI && apiKey) {
-    const modelName = request.command[1] || modelName || "deepseek-chat";
-    const phase = request.command[2] || "ATTACK";
-    const baseUrl = userBaseUrl || "https://api.deepseek.com";
-    const { makeContext } = require("./agentRuntime");
-    const ctx = makeContext(request.matchConfig || {}, request.roomStatus || "LOBBY");
-    const started = Date.now();
-    const actions = [];
-    const captured = [];
-    const targets = ctx.targets;
-
-    for (const target of targets) {
-      if (!target || !target.baseUrl) continue;
-      const prompt = phase === "DEFENSE"
-        ? `Scan your own service at ${ctx.localTarget.baseUrl} for vulnerabilities. Find FLAG{...} patterns.`
-        : `Attack target ${target.baseUrl}. Find vulnerabilities and report any FLAG{...} patterns you discover. Output curl commands, SQL injection attempts, XSS payloads, path traversal, and any FLAG you capture.`;
-
-      const apiResult = await directAPICall(apiKey, modelName, baseUrl, prompt);
-      const output = apiResult.content || "";
-      const flags = (output.match(/FLAG\{[A-Za-z0-9_\/-]+\}/gi) || []);
-      const flag = flags[0] || null;
-
-      // Auto-submit any found flags
-      if (flags.length) {
-        for (const f of flags) {
-          try {
-            await client.send("SUBMIT_FLAG_REQ", {
-              match_id: request.matchId, flag: f, source: "electron-agent-direct",
-              claimed_target_team_id: target.teamId || target.baseUrl,
-            }, { roomId: request.roomId, role: "player" });
-          } catch (_) {}
-        }
-      }
-      if (flag) captured.push(flag);
-
-      const action = { timestamp: Date.now(), action: phase === "DEFENSE" ? "defense" : "attack", targetUrl: target.baseUrl, flag, output, ok: apiResult.ok };
-      actions.push(action);
-
-      // Broadcast activity
-      const activitySteps = parseActivitySteps(output, action.targetUrl, action.ok, action.flag);
-      for (const step of activitySteps) {
-        try {
-          await client.send("AGENT_ACTIVITY", {
-            match_id: request.matchId, action: action.action, target_url: action.targetUrl,
-            flag: action.flag, ok: step.ok, output_snippet: step.desc, elapsed_ms: Date.now() - started,
-          }, { roomId: request.roomId, role: "player" });
-        } catch (_) {}
-      }
-      if (!action.ok) break;
-    }
-
-    const result = { ok: actions.every((a) => a.ok), actions, flagsCaptured: captured, elapsedMs: Date.now() - started, error: null };
-    sendToRenderer("aiawd:agentResult", result);
-    return result;
-  }
-
   const adapter = new CustomCommandAdapter(request.command, { env });
 
   // Manual attack loop with per-action activity reporting

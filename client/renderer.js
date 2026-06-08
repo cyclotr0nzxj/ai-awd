@@ -232,11 +232,6 @@ function buildAgentCommand(runtime, modelDisplayName, phase) {
       if (model) { cmd.splice(1, 0, "--model", model); }
       return cmd;
     }
-    case "direct":
-    case "direct-api": {
-      // Return a marker that main.js recognizes for direct HTTP API calls
-      return ["__DIRECT_API__", model, phase || "ATTACK"];
-    }
     case "mock-agent": {
       const action = (phase === "DEFENSE") ? "Defense phase — would scan and patch {local_target}" : "Attack phase — would probe {target_url} for FLAG{...}";
       return ["echo", `[mock-agent] ${action}`];
@@ -375,8 +370,7 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     } catch (e) { /* use defaults */ }
     const agents = [
-      { value: "direct", label: "Direct API (直连)", available: true },
-      { value: "openclaw", label: "OpenClaw (默认)", available: available.openclaw !== false },
+      { value: "openclaw", label: "OpenClaw (内置)", available: true },
       { value: "hermes", label: "Hermes", available: available.hermes === true },
       { value: "mock-agent", label: "Mock (演示)", available: true },
     ];
@@ -384,7 +378,7 @@ window.addEventListener("DOMContentLoaded", () => {
       .filter(a => a.available)
       .map(a => `<option value="${a.value}">${a.label}${a.available && a.value !== 'mock-agent' && a.value !== 'openclaw' ? ' ✓' : ''}</option>`)
       .join("");
-    select.value = "direct";
+    select.value = "openclaw";
   }
   populateAgentDropdown();
 

@@ -6,6 +6,7 @@
   "author": "AI-AWD Arena Team",
   "main": "main.js",
   "scripts": {
+    "postinstall": "node scripts/download-openclaw.js",
     "start": "electron .",
     "test": "node --test ./test-aiawdProtocol.js ./test-targetLifecycle.js ./test-renderer.js ./test-agentRuntime.js ./test-adapters.js ./test-main.js",
     "e2e:protocol": "node ./electronE2eEvidence.js",
@@ -35,7 +36,11 @@
       "index.html",
       "styles.css",
       "package.json",
-      "assets/**/*"
+      "assets/**/*",
+      "bin/**/*"
+    ],
+    "extraResources": [
+      { "from": "bin", "to": "bin" }
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
