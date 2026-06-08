@@ -86,6 +86,7 @@ class RoomManager:
                 display_name=str(payload.get("display_name") or session.display_name or session.client_id),
                 agent_runtime=str(payload.get("agent_runtime") or "mock-agent"),
                 model_display_name=str(payload.get("model_display_name") or "mock-model"),
+                api_provider=str(payload.get("api_provider") or ""),
                 team_id=team_id,
             )
             room.members[session.client_id] = member

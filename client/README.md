@@ -14,7 +14,7 @@
 9. 私人战斗包摘要：玩家 ID、模型、靶场、难度、运行时、健康检查路径、对手数量、允许目标数量。
 10. 不再内置新手教程；详细说明见 README 和文档。
 11. 本地靶机生命周期：诊断、安装、启动、巡检、停止、重置都通过 Electron 主进程执行，renderer 只显示脱敏状态。
-12. Agent 自动攻击：启动/停止按钮，命令输入框，状态显示。Agent 通过主进程 IPC 执行，结果回传 renderer。
+12. Agent 自动攻击：进入攻防阶段自动启动，无需手动操作。命令根据 runtime 选择自动生成。支持自动提交 Flag。Agent 动态实时广播给房间所有成员。
 
 注意：比赛配置中的私有 flag 默认在界面中脱敏显示。
 
@@ -27,7 +27,7 @@
 - `targetLifecycle.js` — 本地靶机生命周期与 Docker 诊断
 - `main.js` — Electron 主进程，TCP 桥 + IPC 处理
 - `preload.js` — preload API 桥
-- `renderer.js` — 中文战情 UI
+- `renderer.js` — 中文战情 UI（含 Agent 实时动态播报、厂商 Logo 自动检测、attack 阶段自动启停）
 
 ## 测试
 

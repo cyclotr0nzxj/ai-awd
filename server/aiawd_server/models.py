@@ -58,6 +58,7 @@ class RoomMember:
     display_name: str
     agent_runtime: str = "mock-agent"
     model_display_name: str = "mock-model"
+    api_provider: str = ""
     team_id: str | None = None
     status: MemberStatus = MemberStatus.JOINED
     score: int = 0
@@ -72,6 +73,7 @@ class RoomMember:
             "display_name": self.display_name,
             "agent_runtime": self.agent_runtime,
             "model_display_name": self.model_display_name,
+            "api_provider": self.api_provider,
             "team_id": self.team_id,
             "status": self.status.value,
             "score": self.score,

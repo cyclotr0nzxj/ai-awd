@@ -111,6 +111,7 @@
 
         <label>赛制时长（分钟）
           <div class="format-presets">
+            <button type="button" data-format="speed">极速<br><small>~15min</small></button>
             <button type="button" data-format="quick">快速<br><small>30min</small></button>
             <button type="button" data-format="standard" class="active">标准<br><small>60min</small></button>
             <button type="button" data-format="long">深度<br><small>90min</small></button>
@@ -161,16 +162,36 @@
     </div>
 
     <div class="room-actions">
-      <div class="prepare-module">
-        <span class="prepare-label">Agent</span>
-        <select id="agentRuntime" class="select-field prepare-select">
-          <option value="">检测中...</option>
-        </select>
-        <input id="apiKey" type="password" placeholder="LLM API Key" class="prepare-input" />
-        <input id="modelDisplayName" value="claude-sonnet-4-6" placeholder="模型名" class="prepare-input" />
-        <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
-        <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
-        <small id="roomHint" class="room-hint"></small>
+      <div class="prepare-module prepare-module-lg">
+        <div class="prepare-header">
+          <span class="prepare-label">Agent 配置</span>
+          <span id="prepareProviderBadge" class="prepare-provider-badge"></span>
+        </div>
+        <div class="prepare-grid">
+          <label class="prepare-field">
+            <span>Agent 运行时</span>
+            <select id="agentRuntime" class="select-field prepare-select">
+              <option value="">检测中...</option>
+            </select>
+          </label>
+          <label class="prepare-field">
+            <span>LLM API Key</span>
+            <input id="apiKey" type="password" placeholder="sk-..." class="prepare-input" />
+          </label>
+          <label class="prepare-field">
+            <span>模型名</span>
+            <input id="modelDisplayName" value="" placeholder="如 deepseek-chat" class="prepare-input" />
+          </label>
+          <label class="prepare-field">
+            <span>API Base URL <small>(可选)</small></span>
+            <input id="apiBaseUrl" value="" placeholder="如 https://api.deepseek.com" class="prepare-input" />
+          </label>
+        </div>
+        <div class="prepare-actions">
+          <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
+          <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
+          <small id="roomHint" class="room-hint"></small>
+        </div>
       </div>
     </div>
     </div>
@@ -195,6 +216,11 @@
     </div>
 
     <div id="arenaMap" class="arena-full"></div>
+
+    <div class="battle-activity">
+      <h4>⚡ Agent 实时动态</h4>
+      <div id="agentActivityFeed" class="agent-activity-feed"></div>
+    </div>
 
     <div class="battle-bottom">
       <div class="battle-submit">

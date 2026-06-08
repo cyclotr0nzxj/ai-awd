@@ -59,7 +59,7 @@ cd client && npx electron electronWindowEvidence.js
 
 AIAWD/1.0 — 4-byte big-endian length prefix + UTF-8 JSON body. Max frame 1 MB.
 
-Key message types: `HELLO`/`WELCOME`, `CREATE_ROOM_REQ`/`RES`, `JOIN_ROOM_REQ`/`RES`, `START_MATCH_REQ`/`RES`, `MATCH_CONFIG`, `PHASE_SYNC`, `SUBMIT_FLAG_REQ`/`RES`, `RANKING_UPDATE`, `EVENT`, `ROOM_UPDATE`, `LIST_ROOMS_REQ`/`RES`, `LIST_TARGETS_REQ`/`RES`, `ERROR`.
+Key message types: `HELLO`/`WELCOME`, `CREATE_ROOM_REQ`/`RES`, `JOIN_ROOM_REQ`/`RES`, `START_MATCH_REQ`/`RES`, `MATCH_CONFIG`, `PHASE_SYNC`, `SUBMIT_FLAG_REQ`/`RES`, `RANKING_UPDATE`, `EVENT`, `ROOM_UPDATE`, `LIST_ROOMS_REQ`/`RES`, `LIST_TARGETS_REQ`/`RES`, `AGENT_ACTIVITY`, `ERROR`.
 
 All messages include: `v`, `seq`, `type`, `client_id`, `room_id`, `role`, `ts`, `payload`.
 
@@ -77,28 +77,44 @@ LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
 
 ## Agent Adapters
 
-7 adapters, unified via `adapterFor()` in `client/adapters.js`. Detected automatically at startup via `detectAvailableAdapters()`.
+8 adapters. **Direct API is the default** — no CLI tools required.
 
 | Agent | Type | How it works |
 |-------|------|-------------|
+| **Direct API** | HTTP | `https.request` → OpenAI-compatible `/v1/chat/completions`. Uses user's API key, model name, and base URL. Guarantees token consumption with any provider (DeepSeek, OpenAI, etc.) |
 | OpenClaw | CLI | `openclaw infer model run --local --json` — uses LLM_API_KEY env var |
 | Hermes | CLI | `hermes -z <prompt> --yolo` |
 | Codex | CLI | `codex exec --json <prompt>` |
 | OpenCLI | CLI | `opencli browser extract` + `opencli browser open` |
 | Pi | CLI | `pi --print --mode json` |
 | CustomPython | Script | `python3 <script> {target_url}` |
-| CustomCommand | Any | User-defined command with `{target_url}` template |
 | Mock | built-in | `echo FLAG{test}` — no real AI |
 
 API keys are set as environment variables before agent execution:
-- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `LLM_API_KEY` — all set to the key entered in UI
-- Agent CLI tools read the appropriate var from their environment
+- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` / `LLM_API_KEY` — all set to the key entered in UI
+- `OPENAI_BASE_URL` / `DEEPSEEK_BASE_URL` — set from user-provided Base URL field, or auto-detected for DeepSeek
+- Direct API mode calls `{baseUrl}/v1/chat/completions` directly via Node.js `https.request` — no external CLI dependency
+- Token usage is captured from response and displayed: `[prompt:N completion:M total:X]`
+
+Agent execution triggers automatically:
+- **DEFENSE phase**: `PHASE_SYNC` with phase "DEFENSE" — starts defense agent scanning own target
+- **ATTACK phase**: `PHASE_SYNC` with phase "ATTACK" — starts attack agent probing opponents
+- Command auto-populated from runtime dropdown via `buildAgentCommand(runtime, model, phase)`
+- Agent activity broadcast to all room members via `AGENT_ACTIVITY` events
+- Agent output parsed into natural-language steps via `parseActivitySteps()` (13 pattern categories)
+
+Match flow is fully automated:
+- **Auto-ready**: when API key + model + runtime are filled → `TARGET_READY` + `AGENT_READY`
+- **Auto-start**: host sees all players ready → 1.5s delay → `START_MATCH`
+- **Auto-target-lifecycle**: on `MATCH_CONFIG` receipt → install + start Docker targets
+- **Auto-cleanup**: on `FINISHED` phase → stop agent
 
 ## Vendor Logo System
 
 `renderer.js` maintains a `VENDOR_LOGOS` mapping (~45 vendors, 70+ keyword aliases) that resolves AI provider logos from model display names or agent runtime selections. Key functions:
 
-- `providerLogo(player)` — returns the logo asset path for a player based on `model_display_name` or `agent_runtime`
+- `providerLogo(player)` — returns the logo asset path for a player based on `model_display_name`, `agent_runtime`, or `api_provider` (detected from API key + model name)
+- `detectProvider(apiKey, modelName)` — identifies AI vendor from API key prefix + model name heuristics (19+ vendors)
 - `runtimeDisplayName(runtime)` — maps agent runtime IDs to human-readable display names
 - `VENDOR_LOGOS_ENTRIES` — pre-sorted entries (longest match first) for correct substring matching
 - `client/assets/vendors/` — 45 PNG icons (640×640) from LobeHub CDN
@@ -112,6 +128,10 @@ Supported vendors include Anthropic, OpenAI, Google, Meta, Mistral, Nvidia, Cohe
 - Process safety → `sanitize_command()` blocks shell metacharacters (`;`, `|`, `&`, `` ` ``)
 - Environment → allowlisted vars only
 - Audit trail → every guard call logged
+
+## Design System
+
+Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green accent (#22c55e). Inter for headings/body, JetBrains Mono for data/code. Rounded corners (8/12/16px). No gradients. No backdrop-filter. Page transitions: quick fade-in (0.25s). Blink cursor for running status. Agent activity feed: per-player columns with colored status borders. Dark-exclusive — immersive competitive gaming aesthetic.
 
 ## Coding Rules
 

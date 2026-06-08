@@ -27,7 +27,7 @@
       "main.js",
       "preload.js",
       "renderer.js",
-            "aiawdProtocol.js",
+      "aiawdProtocol.js",
       "agentRuntime.js",
       "adapters.js",
       "scopeguard.js",
@@ -40,8 +40,20 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] },
-        { "target": "zip", "arch": ["x64", "arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "build/icon.icns",
       "entitlements": "build/entitlements.mac.plist",
@@ -50,8 +62,18 @@
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico"
     },
@@ -69,6 +91,7 @@
     "compression": "maximum"
   },
   "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
     "electron": "^30.0.0",
     "electron-builder": "^25.0.0"
   }

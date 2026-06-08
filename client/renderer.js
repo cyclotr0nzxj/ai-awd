@@ -4,30 +4,86 @@ const state = {
   configs: [], reportText: "",
   targetActionStatus: { state: "idle", message: "等待本地靶机计划" },
   agentStatus: { state: "idle", message: "Agent 未启动" },
+  agentActivities: [],
   captureCounts: {}, breachCounts: {},
   scorePopup: null, focusedTeamId: null, replayIndex: 0,
   autoPlayActive: false, autoPlayTimer: null,
   isHost: false, iAmReady: false, _currentPage: "connect",
+  autoAgentStarted: false,
+  autoDefenseStarted: false,
 };
 
 // ====== Provider Detection ======
-function detectProvider(apiKey) {
-  if (!apiKey || !apiKey.trim()) return null;
+function detectProvider(apiKey, modelDisplayName) {
+  if (!apiKey || !apiKey.trim()) {
+    // Fallback: detect from model name alone
+    if (modelDisplayName) {
+      const m = modelDisplayName.toLowerCase();
+      if (m.includes("deepseek")) return "DeepSeek";
+      if (m.includes("claude") || m.includes("anthropic")) return "Anthropic";
+      if (m.includes("gpt") || m.includes("openai")) return "OpenAI";
+      if (m.includes("gemini")) return "Google";
+      if (m.includes("qwen") || m.includes("tongyi")) return "Alibaba";
+      if (m.includes("hunyuan")) return "Tencent";
+      if (m.includes("glm") || m.includes("chatglm") || m.includes("zhipu")) return "Zhipu";
+      if (m.includes("kimi") || m.includes("moonshot")) return "Moonshot";
+      if (m.includes("doubao")) return "ByteDance";
+      if (m.includes("ernie") || m.includes("wenxin")) return "Baidu";
+      if (m.includes("spark")) return "iFlytek";
+      if (m.includes("yi-") || m.includes("yi ")) return "Yi";
+      if (m.includes("minimax")) return "MiniMax";
+      if (m.includes("stepfun") || m.includes("step-")) return "StepFun";
+      if (m.includes("skywork")) return "Skywork";
+      if (m.includes("baichuan")) return "Baichuan";
+      if (m.includes("grok")) return "xAI";
+      if (m.includes("mistral")) return "Mistral";
+      if (m.includes("llama")) return "Meta";
+      if (m.includes("cohere")) return "Cohere";
+    }
+    return null;
+  }
   const k = apiKey.trim();
   if (k.startsWith("sk-ant")) return "Anthropic";
   if (k.startsWith("sk-or-")) return "OpenRouter";
-  if (k.startsWith("sk-")) return "OpenAI";
+  // DeepSeek keys start with 'sk-', same as OpenAI — use model name to disambiguate
+  if (k.startsWith("sk-")) {
+    if (modelDisplayName) {
+      const m = modelDisplayName.toLowerCase();
+      if (m.includes("deepseek")) return "DeepSeek";
+      if (m.includes("qwen") || m.includes("tongyi")) return "Alibaba";
+      if (m.includes("hunyuan")) return "Tencent";
+      if (m.includes("glm") || m.includes("zhipu")) return "Zhipu";
+      if (m.includes("kimi") || m.includes("moonshot")) return "Moonshot";
+      if (m.includes("doubao")) return "ByteDance";
+      if (m.includes("ernie") || m.includes("wenxin")) return "Baidu";
+      if (m.includes("minimax")) return "MiniMax";
+      if (m.includes("yi-")) return "Yi";
+      if (m.includes("grok")) return "xAI";
+      if (m.includes("mistral")) return "Mistral";
+      if (m.includes("cohere")) return "Cohere";
+    }
+    return "OpenAI";
+  }
   if (k.startsWith("anthropic-")) return "Anthropic";
   if (k.startsWith("openai-")) return "OpenAI";
+  if (k.startsWith("deepseek-")) return "DeepSeek";
   return "Custom";
 }
 
-function providerLabel(apiKey) {
-  const p = detectProvider(apiKey);
+function providerLabel(apiKey, modelDisplayName) {
+  const p = detectProvider(apiKey, modelDisplayName);
   if (!p) return "";
   if (p === "Anthropic") return "🔹 Anthropic";
   if (p === "OpenAI") return "🟢 OpenAI";
   if (p === "OpenRouter") return "🔶 OpenRouter";
+  if (p === "DeepSeek") return "🐋 DeepSeek";
+  if (p === "Alibaba") return "☁️ Alibaba";
+  if (p === "Tencent") return "💬 Tencent";
+  if (p === "Zhipu") return "🧠 Zhipu";
+  if (p === "Moonshot") return "🌙 Moonshot";
+  if (p === "ByteDance") return "🎵 ByteDance";
+  if (p === "Baidu") return "🔍 Baidu";
+  if (p === "iFlytek") return "🎤 iFlytek";
   return `🔧 ${p}`;
 }
 
@@ -130,8 +186,73 @@ function providerLogo(player) {
   const runtime = (player.agent_runtime || "").toLowerCase();
   if (RUNTIME_LOGO[runtime]) return RUNTIME_LOGO[runtime];
 
+  // 3. Check api_provider field (explicit provider from API key detection)
+  const provider = (player.api_provider || "").toLowerCase();
+  for (const [keyword, logo] of VENDOR_LOGOS_ENTRIES) {
+    if (provider.includes(keyword)) return logo;
+  }
+
   // No logo available — return null, caller will show text badge
   return null;
+}
+
+// ====== Agent Command Builder ======
+function buildAgentCommand(runtime, modelDisplayName, phase) {
+  const model = modelDisplayName || "";
+  const attackPrompt = "You are an AWD CTF security agent. Target: {target_url}. Find and report any FLAG{...} you discover. Use web tools to probe the target for vulnerabilities.";
+  const defensePrompt = "You are an AWD CTF defender. Your own target is at {local_target}. Scan your own service for vulnerabilities (SQL injection, XSS, RCE, path traversal, auth bypass). Patch any vulnerabilities you find. Monitor for intrusions. Report any suspicious activity or FLAG{...} you discover on your own system.";
+  const prompt = (phase === "DEFENSE") ? defensePrompt : attackPrompt;
+  switch ((runtime || "").toLowerCase().trim()) {
+    case "openclaw":
+    case "openclaw-local": {
+      const cmd = ["openclaw", "infer", "model", "run", "--local", "--json", "--prompt", prompt];
+      if (model) cmd.push("--model", model);
+      return cmd;
+    }
+    case "hermes":
+    case "hermes-local": {
+      const cmd = ["hermes", "-z", prompt, "--yolo"];
+      if (model) cmd.push("-m", model);
+      return cmd;
+    }
+    case "codex":
+    case "codex-local": {
+      const cmd = ["codex", "exec", "--json", prompt];
+      return cmd;
+    }
+    case "pi":
+    case "pi-local": {
+      const systemPrompt = phase === "DEFENSE"
+        ? "You are an AWD CTF defender. Use read and bash to scan your own service for vulnerabilities and patch them."
+        : "You are an AWD CTF security agent. Use your read and bash tools to probe the target for vulnerabilities. Report any FLAG{...} you discover.";
+      const userPrompt = phase === "DEFENSE"
+        ? "Defend {local_target} — scan for vulnerabilities, patch them, monitor for intrusions."
+        : "Find vulnerabilities at {target_url} and report any FLAG{...} patterns you find.";
+      const cmd = ["pi", "--print", "--mode", "json", "--system-prompt", systemPrompt, userPrompt];
+      if (model) { cmd.splice(1, 0, "--model", model); }
+      return cmd;
+    }
+    case "direct":
+    case "direct-api": {
+      // Return a marker that main.js recognizes for direct HTTP API calls
+      return ["__DIRECT_API__", model, phase || "ATTACK"];
+    }
+    case "mock-agent": {
+      const action = (phase === "DEFENSE") ? "Defense phase — would scan and patch {local_target}" : "Attack phase — would probe {target_url} for FLAG{...}";
+      return ["echo", `[mock-agent] ${action}`];
+    }
+    default: {
+      // Try to parse as a custom CLI command
+      const tokens = (runtime || "").trim().split(/\s+/).filter(Boolean);
+      if (tokens.length) return tokens;
+      return [];
+    }
+  }
+}
+
+function formatCommandForDisplay(command) {
+  if (!command || !command.length) return "";
+  return command.map(t => t.includes(" ") ? `"${t}"` : t).join(" ");
 }
 
 const els = {};
@@ -155,6 +276,7 @@ function updateNavigation() {
 }
 
 const FORMAT_PRESETS = {
+  speed: { prepare: 10, defense: 300, attack: 600 },
   quick: { prepare: 30, defense: 600, attack: 1200 },
   standard: { prepare: 60, defense: 1200, attack: 2400 },
   long: { prepare: 60, defense: 1800, attack: 3600 },
@@ -175,7 +297,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "generateReport","copyReport","downloadReport","reportPreview",
     "rankings","events","messages","matchConfig",
     "agentCommand","agentStart","agentStop","agentStatus",
-    "apiKey",
+    "apiKey","apiBaseUrl",
     "roomSearch","roomReadyBtn","roomHint","leaveRoom","backToRoom","backToLobby",
     "lobbyPlayerName","roomTitle","roomTargetType","roomFormat","roomPhase",
     "playerCount","playerSlots","spectatorSlots","connectStatus",
@@ -253,6 +375,7 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     } catch (e) { /* use defaults */ }
     const agents = [
+      { value: "direct", label: "Direct API (直连)", available: true },
       { value: "openclaw", label: "OpenClaw (默认)", available: available.openclaw !== false },
       { value: "hermes", label: "Hermes", available: available.hermes === true },
       { value: "mock-agent", label: "Mock (演示)", available: true },
@@ -261,9 +384,59 @@ window.addEventListener("DOMContentLoaded", () => {
       .filter(a => a.available)
       .map(a => `<option value="${a.value}">${a.label}${a.available && a.value !== 'mock-agent' && a.value !== 'openclaw' ? ' ✓' : ''}</option>`)
       .join("");
-    select.value = available.openclaw !== false ? "openclaw" : agents.find(a => a.available)?.value || "mock-agent";
+    select.value = "direct";
   }
   populateAgentDropdown();
+
+  // Auto-detect provider logo from API key / model name
+  function refreshPrepareProviderBadge() {
+    const badge = document.getElementById("prepareProviderBadge");
+    if (!badge) return;
+    const apiKey = els.apiKey?.value?.trim() || "";
+    const modelName = els.modelDisplayName?.value?.trim() || "";
+    const prov = detectProvider(apiKey, modelName);
+    if (!prov) { badge.innerHTML = ""; badge.style.display = "none"; return; }
+    badge.style.display = "";
+    const logoPath = providerLogo({ api_provider: prov });
+    if (logoPath) {
+      badge.innerHTML = `<img class="provider-logo prepare-provider-logo" src="${escapeHtml(logoPath)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}"><span>${escapeHtml(prov)}</span>`;
+    } else {
+      badge.innerHTML = `<span>${escapeHtml(providerLabel(apiKey, modelName))}</span>`;
+    }
+  }
+  if (els.apiKey) els.apiKey.addEventListener("input", () => { refreshPrepareProviderBadge(); checkAutoReady(); });
+  if (els.modelDisplayName) els.modelDisplayName.addEventListener("input", () => { refreshPrepareProviderBadge(); checkAutoReady(); });
+  refreshPrepareProviderBadge();
+
+  // Auto-ready: when API key + model + runtime are filled, auto-mark ready
+  function checkAutoReady() {
+    if (!state.roomId || state.role !== "player") return;
+    const phase = state.match?.phase || state.room?.status || "LOBBY";
+    if (phase !== "LOBBY") return;
+    if (state.iAmReady) return;
+    const apiKey = (els.apiKey?.value || "").trim();
+    const modelName = (els.modelDisplayName?.value || "").trim();
+    const runtime = (els.agentRuntime?.value || "").trim();
+    if (apiKey && modelName && runtime) {
+      state.iAmReady = true;
+      markReady("TARGET_READY");
+      markReady("AGENT_READY");
+      addEvent("AUTO_READY", { message: "Agent 配置完整，自动进入准备状态" });
+    }
+  }
+
+  // Wire agentRuntime dropdown to auto-populate agentCommand
+  if (els.agentRuntime) {
+    els.agentRuntime.addEventListener("change", () => {
+      checkAutoReady();
+      const runtime = els.agentRuntime.value;
+      const modelName = els.modelDisplayName?.value?.trim() || "";
+      const cmd = buildAgentCommand(runtime, modelName, "ATTACK");
+      if (cmd.length && els.agentCommand) {
+        els.agentCommand.value = formatCommandForDisplay(cmd);
+      }
+    });
+  }
 
   // Room search filter
   if (els.roomSearch) {
@@ -344,7 +517,7 @@ async function createRoom() {
     targetTemplateId: els.targetTemplateId.value.trim() || "real_ctf_web_awd_01",
     displayName: els.displayName.value.trim() || "本地玩家",
     agentRuntime: els.agentRuntime.value.trim() || "mock-agent",
-    modelDisplayName: els.modelDisplayName.value.trim() || "claude-sonnet-4-6",
+    modelDisplayName: els.modelDisplayName.value.trim() || "",
     apiKey: els.apiKey?.value?.trim() || "",
     allowSpectators: true,
     phaseSeconds: {
@@ -362,7 +535,7 @@ async function joinRoom(role) {
   await action("JOIN_ROOM", () => window.aiawd.joinRoom({
     displayName: els.displayName.value.trim() || "本地玩家",
     agentRuntime: els.agentRuntime.value.trim() || "mock-agent",
-    modelDisplayName: els.modelDisplayName.value.trim() || "claude-sonnet-4-6",
+    modelDisplayName: els.modelDisplayName.value.trim() || "",
     apiKey: els.apiKey?.value?.trim() || "",
     roomId, role,
   }));
@@ -400,6 +573,7 @@ function leaveCurrentRoom() {
   state.room = null; state.match = null; state.isHost = false; state.iAmReady = false;
   state.rankings = []; state.events = []; state.configs = [];
   state.captureCounts = {}; state.breachCounts = {};
+  state.autoAgentStarted = false; state.autoDefenseStarted = false; state.agentActivities = [];
   render();
 }
 
@@ -430,7 +604,7 @@ async function agentStart() {
   state.agentStatus = { state: "running", message: "Agent 攻击中..." };
   render();
   try {
-    const result = await window.aiawd.agentStart({ command, apiKey: els.apiKey?.value?.trim() || "", matchConfig: config, roomStatus: state.match?.phase || state.room?.status || "LOBBY", matchId: state.matchId, roomId: state.roomId });
+    const result = await window.aiawd.agentStart({ command, apiKey: els.apiKey?.value?.trim() || "", modelDisplayName: els.modelDisplayName?.value?.trim() || "", apiBaseUrl: els.apiBaseUrl?.value?.trim() || "", matchConfig: config, roomStatus: state.match?.phase || state.room?.status || "LOBBY", matchId: state.matchId, roomId: state.roomId });
     state.agentStatus = { state: result.ok ? "ok" : "warn", message: result.ok ? `Agent 完成 · ${result.flagsCaptured?.length || 0} Flag · ${result.elapsedMs}ms` : result.error || "Agent 执行失败" };
     if (result.flagsCaptured?.length) addEvent("AGENT_FLAGS_FOUND", { flags: result.flagsCaptured, elapsedMs: result.elapsedMs });
     else addEvent("AGENT_DONE", { message: state.agentStatus.message });
@@ -476,15 +650,79 @@ function handleMessage(message) {
       state.isHost = state.room?.owner_client_id === state.clientId;
       syncArenaFocus();
       if (state.roomId) els.roomId.value = state.roomId;
+      // Auto-start: if host and all players ready, start match automatically
+      if (state.isHost && state.room && (state.room.status || "") === "LOBBY") {
+        const players = state.room.players || [];
+        if (players.length >= 2 && players.every(p => p.target_ready && p.agent_ready)) {
+          setTimeout(() => {
+            if (state.isHost && state.roomId) {
+              addEvent("AUTO_START", { message: "所有玩家已准备，自动开始大乱斗" });
+              window.aiawd.startMatch({ roomId: state.roomId }).catch(() => {});
+            }
+          }, 1500);
+        }
+      }
       break;
     case "MATCH_CONFIG":
       state.configs.unshift(message.payload); state.configs = state.configs.slice(0, 3);
       state.matchId = message.payload?.match_id || state.matchId;
       state.targetActionStatus = { state: "idle", message: targetRuntimePlanText(message.payload) || "等待本地靶机计划" };
+      // Auto-target-lifecycle: install and start target on config receipt
+      if (message.payload?.target_runtime?.project_name) {
+        addEvent("TARGET_AUTO_SETUP", { message: "自动安装并启动本地靶机" });
+        // Chain: install → start
+        setTimeout(async () => {
+          try {
+            state.targetActionStatus = { state: "running", action: "install", message: "自动安装靶机中..." };
+            render();
+            await window.aiawd.runTargetAction({ action: "install", runtime: message.payload.target_runtime, flag: message.payload.flag });
+            state.targetActionStatus = { state: "running", action: "start", message: "自动启动靶机中..." };
+            render();
+            await window.aiawd.runTargetAction({ action: "start", runtime: message.payload.target_runtime, flag: message.payload.flag });
+            state.targetActionStatus = { state: "ok", message: "靶机已自动安装并启动" };
+            addEvent("TARGET_AUTO_SETUP_DONE", { message: "靶机自动安装启动完成" });
+          } catch (err) {
+            state.targetActionStatus = { state: "bad", message: `靶机自动安装失败: ${err.message}` };
+            addEvent("TARGET_AUTO_SETUP_FAILED", { message: err.message });
+          }
+          render();
+        }, 2000);
+      }
       break;
     case "PHASE_SYNC":
       state.match = message.payload?.match || state.match;
       state.matchId = state.match?.match_id || state.matchId;
+      // Auto-start agent on DEFENSE phase
+      if (state.match?.phase === "DEFENSE" && !state.autoDefenseStarted && state.role === "player") {
+        state.autoDefenseStarted = true;
+        if (els.agentCommand) {
+          const runtime = els.agentRuntime?.value || "";
+          const modelName = els.modelDisplayName?.value?.trim() || "";
+          const cmd = buildAgentCommand(runtime, modelName, "DEFENSE");
+          if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
+        }
+        addEvent("AUTO_DEFENSE", { message: "进入加固阶段，Agent 自动开始防御扫描" });
+        setTimeout(() => agentStart(), 1000);
+      }
+      // Auto-start agent when entering ATTACK phase
+      if (state.match?.phase === "ATTACK" && !state.autoAgentStarted && state.role === "player") {
+        state.autoAgentStarted = true;
+        // Auto-populate command from selected runtime if empty
+        if (els.agentCommand && !els.agentCommand.value.trim()) {
+          const runtime = els.agentRuntime?.value || "";
+          const modelName = els.modelDisplayName?.value?.trim() || "";
+          const cmd = buildAgentCommand(runtime, modelName, "ATTACK");
+          if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
+        }
+        // Auto-trigger agent start
+        addEvent("AUTO_ATTACK", { message: "进入攻防阶段，Agent 自动开始攻击" });
+        setTimeout(() => agentStart(), 1000);
+      }
+      // Auto-cleanup when match finishes
+      if (state.match?.phase === "FINISHED" && state.role === "player") {
+        window.aiawd.agentStop().catch(() => {});
+        addEvent("MATCH_FINISHED_AUTO", { message: "比赛结束，Agent 自动停止" });
+      }
       break;
     case "RANKING_UPDATE":
       state.rankings = message.payload?.rankings || [];
@@ -493,6 +731,11 @@ function handleMessage(message) {
       const et = message.payload?.event_type;
       const ep = message.payload?.event || message.payload;
       addEvent(et || "EVENT", ep);
+      // Capture agent activity separately for the live feed
+      if (et === "AGENT_ACTIVITY" && ep) {
+        state.agentActivities.unshift(ep);
+        state.agentActivities = state.agentActivities.slice(0, 100);
+      }
       if (et === "FLAG_CAPTURED" && ep) {
         const s = ep.submitter_team_id, t = ep.target_team_id;
         if (s) state.captureCounts[s] = (state.captureCounts[s] || 0) + 1;
@@ -644,7 +887,6 @@ function renderRoomPage(phase) {
         ? `<img class="provider-logo slot-provider-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}">`
         : (prov ? `<span class="slot-provider">${escapeHtml(prov)}</span>` : "");
       return `<div class="${cls}">
-        <div class="slot-avatar">${(p.display_name||"?").charAt(0).toUpperCase()}</div>
         <div class="slot-info">
           <strong>${escapeHtml(p.display_name||p.team_id||"-")}</strong>
           <div class="slot-provider-row">
@@ -664,6 +906,48 @@ function renderBattle(phase) {
   const players = state.room?.players || [];
   renderArenaMap(phase, players);
   renderSurvivalBoard(phase, players);
+  renderAgentActivityFeed();
+}
+
+function renderAgentActivityFeed() {
+  const el = document.getElementById("agentActivityFeed");
+  if (!el) return;
+  if (!state.agentActivities.length) {
+    el.innerHTML = "<div class='activity-empty'>等待 Agent 行动...</div>";
+    return;
+  }
+  // Group by team_id
+  const groups = {};
+  for (const a of state.agentActivities) {
+    const tid = a.team_id || a.client_id || "?";
+    if (!groups[tid]) groups[tid] = [];
+    if (groups[tid].length < 15) groups[tid].push(a);
+  }
+  const entries = Object.entries(groups);
+  if (!entries.length) { el.innerHTML = ""; return; }
+
+  el.innerHTML = `<div class="activity-grid" style="grid-template-columns: repeat(${Math.min(entries.length, 4)}, 1fr);">` +
+    entries.map(([teamId, activities]) => {
+      const latest = activities[0];
+      const displayName = escapeHtml(latest.display_name || teamId);
+      const model = escapeHtml(latest.model_display_name || latest.agent_runtime || "");
+      return `<div class="activity-column">
+        <div class="activity-player-header">
+          <strong>${displayName}</strong>
+          <small>${model}</small>
+        </div>
+        <div class="activity-player-log">
+          ${activities.map(a => {
+            const ok = a.ok !== false ? "ok" : "fail";
+            const snippet = escapeHtml((a.output_snippet || "").slice(0, 80));
+            return `<div class="activity-row" data-status="${ok}">
+              <span class="activity-action">${snippet}</span>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+    }).join("") +
+  "</div>";
 }
 
 function renderResultsPage(phase) {
@@ -724,14 +1008,9 @@ function renderArenaMap(phase, players) {
     const popup = state.scorePopup;
     const showScorePopup = popup && popup.teamId === teamId && Date.now() - popup.timestamp < 2000;
     const scorePopupHtml = showScorePopup ? `<div class="score-popup${popup.delta > 0 ? " is-gain" : " is-loss"}">${popup.delta > 0 ? "+" : ""}${popup.delta}</div>` : "";
-    const shieldPct = isBreached ? Math.max(0, 100 - breachCount(teamId) * 25) : 100;
     return `<button type="button" class="arena-combatant${isSelf?" is-self":""}${isLeader?" is-leader":""}${isBreached?" is-breached":""}${isFocused?" is-focused":""}${isAttacker?" is-attacker":""}${isTarget?" is-target":""}" data-team-id="${escapeHtml(teamId)}">
       ${scorePopupHtml}
       <div class="combatant-head">
-        <div class="combatant-avatar-wrap">
-          <div class="combatant-shield${isBreached?" breached":""}" style="--shield-pct:${shieldPct}"></div>
-          <div class="combatant-avatar" data-status="${escapeHtml(isBreached?"breached":"alive")}">${escapeHtml(combatantInitials(player, teamId))}</div>
-        </div>
         <div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div>
       </div>
       <div class="combatant-provider">

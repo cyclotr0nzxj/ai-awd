@@ -213,6 +213,8 @@ class TCPGateway:
                 return await self._mark_ready(session, message, "target_ready")
             if message.type == "AGENT_READY":
                 return await self._mark_ready(session, message, "agent_ready")
+            if message.type == "AGENT_ACTIVITY":
+                return await self._handle_agent_activity(session, message)
             if message.type == "BYE":
                 return Message(type="BYE", seq=message.seq, client_id=session.client_id, payload={"ok": True})
             return make_error("BAD_REQUEST", f"不支持的消息类型：{message.type}", seq=message.seq, client_id=session.client_id)
@@ -234,6 +236,37 @@ class TCPGateway:
             port=int(local_target.get("port") or 0),
         )
         return instance.public_snapshot()
+
+    async def _handle_agent_activity(self, session: Session, message: Message) -> Message | None:
+        room = self.room_manager.get_room(message.room_id or session.room_id)
+        member = room.members.get(session.client_id)
+        if not member:
+            raise RoomError("BAD_REQUEST", "客户端尚未加入房间")
+        activity_payload = {
+            "client_id": session.client_id,
+            "team_id": member.team_id,
+            "display_name": member.display_name,
+            "agent_runtime": member.agent_runtime,
+            "model_display_name": member.model_display_name,
+            "action": message.payload.get("action", "attack"),
+            "target_url": message.payload.get("target_url", ""),
+            "flag": message.payload.get("flag"),
+            "ok": message.payload.get("ok", False),
+            "output_snippet": message.payload.get("output_snippet", "")[:300],
+            "elapsed_ms": message.payload.get("elapsed_ms", 0),
+            "ts": message.ts or time(),
+        }
+        # Broadcast to all room members as an EVENT
+        await self._broadcast_event(room, "AGENT_ACTIVITY", activity_payload)
+        # Also log it
+        self.log_store.append("AGENT_ACTIVITY", activity_payload)
+        return Message(
+            type="AGENT_ACTIVITY_ACK",
+            seq=message.seq,
+            client_id=session.client_id,
+            room_id=room.room_id,
+            payload={"ok": True},
+        )
 
     async def _mark_ready(self, session: Session, message: Message, field: str) -> Message:
         room = self.room_manager.get_room(message.room_id or session.room_id)
