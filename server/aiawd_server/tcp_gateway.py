@@ -345,6 +345,19 @@ class TCPGateway:
                 )
                 await self._send(session.writer, outgoing)
 
+    async def _sync_timer(self, room_id: str) -> None:
+        """Broadcast PHASE_SYNC every 5 seconds to keep clients in sync."""
+        try:
+            while True:
+                await asyncio.sleep(5)
+                room = self.room_manager.get_room(room_id)
+                match = self.match_engine.get_match(room_id)
+                if match.phase in (Phase.FINISHED,):
+                    break
+                await self._broadcast_phase(room)
+        except (asyncio.CancelledError, Exception):
+            pass  # room deleted or phase ended
+
     def _schedule_phases(self, room: Room) -> None:
         existing = self._phase_tasks.pop(room.room_id, None)
         if existing:
@@ -365,6 +378,10 @@ class TCPGateway:
                 else:
                     self.match_engine.set_phase(room, Phase.FINISHED)
                 await self._broadcast_phase(room)
+                # During active phases, keep broadcasting timer sync every 5s
+                # so all clients stay in sync regardless of clock skew
+                if phase in (Phase.DEFENSE, Phase.ATTACK):
+                    asyncio.create_task(self._sync_timer(room_id))
             await self._broadcast_rankings(room)
         except asyncio.CancelledError:
             raise

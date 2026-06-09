@@ -159,9 +159,9 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
   try {
     execSync("docker info", { stdio: "pipe", timeout: 5000 });
   } catch (_) {
+    sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_STARTING", event: { message: "Docker 未运行，正在自动启动..." } } });
     if (process.platform === "darwin") {
       try { execSync("open -a Docker", { stdio: "pipe", timeout: 10000 }); } catch (_) {}
-      // Wait up to 30s for Docker to start
       for (let i = 0; i < 30; i++) {
         try { execSync("docker info", { stdio: "pipe", timeout: 3000 }); break; }
         catch (_) { await new Promise(r => setTimeout(r, 1000)); }
@@ -173,6 +173,13 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
         catch (_) { await new Promise(r => setTimeout(r, 1000)); }
       }
     }
+    // Check if Docker came up
+    try { execSync("docker info", { stdio: "pipe", timeout: 5000 }); }
+    catch (_) {
+      sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_FAILED", event: { message: "Docker 启动失败，请手动打开 Docker Desktop" } } });
+      return { ok: false, message: "Docker 未运行" };
+    }
+    sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_READY", event: { message: "Docker 已就绪" } } });
   }
   return runTargetAction(request);
 });
