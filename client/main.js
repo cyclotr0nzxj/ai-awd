@@ -206,27 +206,27 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   // Ensure OpenClaw has a provider configured (once per session)
   if (apiKey && !openclawProviderConfigured) {
     try {
-      const fs = require("fs");
-      const os = require("os");
-      const ocConfigPath = path.join(os.homedir(), ".openclaw", "openclaw.json");
-      let ocConfig = {};
-      if (fs.existsSync(ocConfigPath)) {
-        ocConfig = JSON.parse(fs.readFileSync(ocConfigPath, "utf-8"));
-      }
-      const models = ocConfig.models || (ocConfig.models = {});
-      const providers = models.providers || (models.providers = {});
+      const { execSync } = require("child_process");
       const baseUrl = userBaseUrl || "https://api.deepseek.com";
       const providerKey = baseUrl.includes("deepseek") ? "deepseek" : "openai";
-      if (!providers[providerKey]) {
-        providers[providerKey] = {
-          baseUrl: baseUrl,
-          api: "openai-completions",
-          apiKey: apiKey,
-          models: [{ id: modelName || "deepseek-chat", name: modelName || "DeepSeek Chat", input: ["text"], contextWindow: 128000, maxTokens: 8192 }],
-        };
-        models.mode = models.mode || "merge";
-        fs.writeFileSync(ocConfigPath, JSON.stringify(ocConfig, null, 2));
-      }
+      const patch = {
+        models: {
+          mode: "merge",
+          providers: {
+            [providerKey]: {
+              baseUrl: baseUrl,
+              api: "openai-completions",
+              apiKey: apiKey,
+              models: [{ id: modelName || "deepseek-chat", name: modelName || "DeepSeek Chat", input: ["text"], contextWindow: 128000, maxTokens: 8192 }],
+            }
+          }
+        }
+      };
+      execSync("openclaw config patch --stdin", {
+        input: JSON.stringify(patch),
+        timeout: 10000,
+        stdio: "pipe",
+      });
       openclawProviderConfigured = true;
     } catch (_) { /* best-effort provider config */ }
   }
