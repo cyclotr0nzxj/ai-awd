@@ -182,15 +182,15 @@ function providerLogo(player) {
     if (model.includes(keyword)) return logo;
   }
 
-  // 2. Check agent_runtime mapping
-  const runtime = (player.agent_runtime || "").toLowerCase();
-  if (RUNTIME_LOGO[runtime]) return RUNTIME_LOGO[runtime];
-
-  // 3. Check api_provider field (explicit provider from API key detection)
+  // 2. Check api_provider field (from API key detection — takes priority over runtime)
   const provider = (player.api_provider || "").toLowerCase();
   for (const [keyword, logo] of VENDOR_LOGOS_ENTRIES) {
     if (provider.includes(keyword)) return logo;
   }
+
+  // 3. Check agent_runtime mapping (fallback)
+  const runtime = (player.agent_runtime || "").toLowerCase();
+  if (RUNTIME_LOGO[runtime]) return RUNTIME_LOGO[runtime];
 
   // No logo available — return null, caller will show text badge
   return null;

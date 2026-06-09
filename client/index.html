@@ -223,15 +223,11 @@
     </div>
 
     <div class="battle-bottom">
-      <div class="battle-submit">
-        <input id="flagInput" placeholder="粘贴 FLAG{...} 提交得分" />
-        <button id="submitFlag" class="btn-primary">提交</button>
-      </div>
-      <div class="battle-agent">
-        <input id="agentCommand" placeholder="Agent 命令（留空自动）" />
-        <button id="agentStart">启动 Agent</button>
+      <div class="battle-agent" style="flex:1">
+        <input id="agentCommand" placeholder="Agent 命令（留空自动）" style="flex:1" />
+        <button id="agentStart">启动</button>
         <button id="agentStop">停止</button>
-        <span id="agentStatus">Agent 未启动</span>
+        <span id="agentStatus" class="status-text">Agent 未启动</span>
       </div>
     </div>
   </div>
