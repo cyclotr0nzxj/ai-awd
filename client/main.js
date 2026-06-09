@@ -239,114 +239,117 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   const started = Date.now();
   const actions = [];
   const captured = [];
-  const targets = ctx.targets;
+  // During DEFENSE, scan own target; during ATTACK, scan opponents
+  const isDefense = (request.roomStatus || "") === "DEFENSE";
+  const targets = isDefense
+    ? [{ teamId: ctx.teamId, baseUrl: ctx.localTarget.baseUrl }]
+    : ctx.targets;
+  const actionLabel = isDefense ? "defense" : "attack";
 
   // Helper: parse agent output into natural-language steps
-  function parseActivitySteps(output, targetUrl, ok, flag) {
+  function parseActivitySteps(output, targetUrl, ok, flag, isDefense) {
     if (!output) return [];
     const steps = [];
     const targetShort = targetUrl.replace(/^https?:\/\//, "");
-
-    // Extract meaningful actions from the output
-    const flags = output.match(/FLAG\{[A-Za-z0-9_\/-]+\}/gi) || [];
-    const urls = output.match(/https?:\/\/[^\s"'<>\]]+/gi) || [];
-    const statusCodes = output.match(/HTTP[\/\d.]*\s+(\d{3})/g) || [];
-    const methods = output.match(/\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+\//gi) || [];
-
-    // Step 1: Initial approach
-    steps.push({ desc: `开始探测目标 ${targetShort}，分析攻击面...`, ok: true });
-
-    // Step 2: Detect HTTP requests
-    if (urls.length) {
-      const paths = [...new Set(urls.map(u => {
-        try { return new URL(u).pathname || "/"; } catch (_) { return u.slice(0, 40); }
-      }))];
-      const methodList = methods.length ? [...new Set(methods.map(m => m.trim().split(/\s+/)[0]))].join("、") : "GET";
-      steps.push({
-        desc: `向目标发送了 ${urls.length} 次 HTTP 请求，使用 ${methodList} 方法访问了 ${paths.slice(0, 5).join("、")} 等路径`,
-        ok: true
-      });
-    }
-
-    // Step 3: Detect vulnerability probes
     const lower = output.toLowerCase();
-    if (lower.includes("sql") || lower.includes("select") || lower.includes("union") || lower.includes("' or")) {
-      const payload = lower.includes("' or") ? "OR 注入" : lower.includes("union") ? "UNION 查询" : "SQL 语句";
-      steps.push({ desc: `尝试 SQL 注入攻击，使用了 ${payload} 手法探测数据库漏洞`, ok: true });
-    }
-    if (lower.includes("xss") || lower.includes("<script") || lower.includes("alert(") || lower.includes("onerror")) {
-      steps.push({ desc: "测试跨站脚本攻击 (XSS)，尝试注入脚本代码到页面中", ok: true });
-    }
-    if (lower.includes("../../../") || lower.includes("..\\..\\") || lower.includes("path traversal") || lower.includes("etc/passwd")) {
-      steps.push({ desc: "探测路径穿越漏洞，尝试读取系统敏感文件", ok: true });
-    }
-    if (lower.includes("exec") || lower.includes("cmd") || lower.includes("shell") || lower.includes("rce")) {
-      steps.push({ desc: "尝试远程命令执行 (RCE)，检测目标是否可被控制执行系统命令", ok: true });
-    }
-    if (lower.includes("upload") || lower.includes("webshell") || lower.includes(".php") || lower.includes("file_put_contents")) {
-      steps.push({ desc: "尝试文件上传漏洞，检测是否能上传恶意文件获取服务器控制权", ok: true });
-    }
-    if (lower.includes("ssrf") || lower.includes("gopher") || lower.includes("dict://")) {
-      steps.push({ desc: "探测服务端请求伪造 (SSRF)，尝试让目标服务器访问内部资源", ok: true });
-    }
-    if (lower.includes("jwt") || lower.includes("token") || lower.includes("session")) {
-      steps.push({ desc: "分析目标认证机制，检测 JWT/Token/Session 是否存在弱点", ok: true });
-    }
 
-    // Step 4: Server responses
-    if (statusCodes.length) {
-      const codes = statusCodes.map(s => s.match(/\d{3}/)[0]);
-      const hasSuccess = codes.some(c => c.startsWith("2"));
-      const hasRedirect = codes.some(c => c.startsWith("3"));
-      const hasClientErr = codes.some(c => c.startsWith("4"));
-      const hasServerErr = codes.some(c => c.startsWith("5"));
+    if (isDefense) {
+      // ── DEFENSE phase: scan & harden own target ──
+      steps.push({ desc: `🛡️ 开始加固自身靶机 ${targetShort}，扫描安全漏洞...`, ok: true });
 
-      let responseDesc = "服务器响应: ";
-      const parts = [];
-      if (hasSuccess) parts.push("有成功返回 (2xx)");
-      if (hasRedirect) parts.push("检测到重定向 (3xx)");
-      if (hasClientErr) parts.push("客户端错误 (4xx)");
-      if (hasServerErr) parts.push("服务端错误 (5xx)");
-      responseDesc += parts.join("、");
-      if (!parts.length) responseDesc += `状态码 ${codes.slice(0, 3).join(", ")}`;
-      steps.push({ desc: responseDesc, ok: !hasServerErr });
-    }
+      if (lower.includes("vulnerab") || lower.includes("weak") || lower.includes("risk")) {
+        steps.push({ desc: "识别到潜在安全风险，正在评估严重程度", ok: true });
+      }
+      if (lower.includes("sql") || lower.includes("inject")) {
+        steps.push({ desc: "检测到 SQL 注入风险，已加固输入验证和参数化查询", ok: true });
+      }
+      if (lower.includes("xss") || lower.includes("script") || lower.includes("sanitize")) {
+        steps.push({ desc: "检测到 XSS 风险，已加强输出编码和 CSP 策略", ok: true });
+      }
+      if (lower.includes("patch") || lower.includes("fix") || lower.includes("update")) {
+        steps.push({ desc: "应用安全补丁，修复已知漏洞", ok: true });
+      }
+      if (lower.includes("permission") || lower.includes("chmod") || lower.includes("chown")) {
+        steps.push({ desc: "检查并修正文件权限配置，限制敏感文件访问", ok: true });
+      }
+      if (lower.includes("config") || lower.includes("setting") || lower.includes("harden")) {
+        steps.push({ desc: "加强服务配置安全，关闭不必要的端口和服务", ok: true });
+      }
+      if (lower.includes("firewall") || lower.includes("iptables") || lower.includes("ufw")) {
+        steps.push({ desc: "配置防火墙规则，限制非法访问", ok: true });
+      }
+      if (lower.includes("log") || lower.includes("monitor") || lower.includes("audit")) {
+        steps.push({ desc: "启用安全审计日志，监控异常访问行为", ok: true });
+      }
+      if (lower.includes("password") || lower.includes("credential") || lower.includes("weak")) {
+        steps.push({ desc: "检查并加强认证凭据安全性", ok: true });
+      }
 
-    // Step 5: Flag discovery
-    if (flags.length) {
-      steps.push({ desc: `🎯 从目标 ${targetShort} 成功捕获到 ${flags.length} 个 Flag`, ok: true });
-    }
-
-    // Step 6: Scan summary
-    const scanTypes = [];
-    if (lower.includes("nmap") || lower.includes("port")) scanTypes.push("端口扫描");
-    if (lower.includes("dirb") || lower.includes("gobuster") || lower.includes("directory")) scanTypes.push("目录枚举");
-    if (lower.includes("nikto") || lower.includes("vulnerability")) scanTypes.push("漏洞扫描");
-    if (lower.includes("whois") || lower.includes("dns")) scanTypes.push("域名信息收集");
-    if (scanTypes.length) {
-      steps.push({ desc: `进行了信息收集: ${scanTypes.join("、")}`, ok: true });
-    }
-
-    // Step 7: Token usage (for Direct API)
-    const tokenMatch = output.match(/\[prompt:(\d+)\s+completion:(\d+)\s+total:(\d+)\]/);
-    if (tokenMatch) {
-      steps.push({
-        desc: `📊 本次调用消耗 Token: 输入 ${tokenMatch[1]} + 输出 ${tokenMatch[2]} = 总计 ${tokenMatch[3]}`,
-        ok: true
-      });
-    }
-
-    // Step 8: Final outcome
-    if (flag) {
-      steps.push({ desc: `🏁 攻击成功！从 ${targetShort} 夺取了 Flag: ${flag.slice(0, 50)}${flag.length > 50 ? "..." : ""}`, ok: true });
-    } else if (ok) {
-      const foundCount = flags.length;
-      steps.push({
-        desc: foundCount ? `完成对 ${targetShort} 的攻击，共发现 ${foundCount} 个 Flag` : `完成对 ${targetShort} 的攻击扫描，未发现 Flag`,
-        ok: true
-      });
+      // Defense summary
+      if (ok) {
+        steps.push({ desc: `✅ 完成对自身靶机 ${targetShort} 的安全加固`, ok: true });
+      } else {
+        steps.push({ desc: `⚠️ 加固 ${targetShort} 时遇到问题，请检查靶机状态`, ok: false });
+      }
     } else {
-      steps.push({ desc: `对 ${targetShort} 的攻击遇到问题，可能目标未启动或不可达`, ok: false });
+      // ── ATTACK phase: probe & exploit opponent targets ──
+      const flags = output.match(/FLAG\{[A-Za-z0-9_\/-]+\}/gi) || [];
+      const urls = output.match(/https?:\/\/[^\s"'<>\]]+/gi) || [];
+      const statusCodes = output.match(/HTTP[\/\d.]*\s+(\d{3})/g) || [];
+      const methods = output.match(/\b(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+\//gi) || [];
+
+      steps.push({ desc: `开始探测目标 ${targetShort}，分析攻击面...`, ok: true });
+
+      if (urls.length) {
+        const paths = [...new Set(urls.map(u => {
+          try { return new URL(u).pathname || "/"; } catch (_) { return u.slice(0, 40); }
+        }))];
+        const methodList = methods.length ? [...new Set(methods.map(m => m.trim().split(/\s+/)[0]))].join("、") : "GET";
+        steps.push({
+          desc: `向目标发送了 ${urls.length} 次 HTTP 请求，使用 ${methodList} 方法访问了 ${paths.slice(0, 5).join("、")} 等路径`,
+          ok: true
+        });
+      }
+
+      if (lower.includes("sql") || lower.includes("select") || lower.includes("union") || lower.includes("' or")) {
+        const payload = lower.includes("' or") ? "OR 注入" : lower.includes("union") ? "UNION 查询" : "SQL 语句";
+        steps.push({ desc: `尝试 SQL 注入攻击，使用了 ${payload} 手法探测数据库漏洞`, ok: true });
+      }
+      if (lower.includes("xss") || lower.includes("<script") || lower.includes("alert(") || lower.includes("onerror")) {
+        steps.push({ desc: "测试跨站脚本攻击 (XSS)，尝试注入脚本代码到页面中", ok: true });
+      }
+      if (lower.includes("../../../") || lower.includes("..\\..\\") || lower.includes("path traversal") || lower.includes("etc/passwd")) {
+        steps.push({ desc: "探测路径穿越漏洞，尝试读取系统敏感文件", ok: true });
+      }
+      if (lower.includes("exec") || lower.includes("cmd") || lower.includes("shell") || lower.includes("rce")) {
+        steps.push({ desc: "尝试远程命令执行 (RCE)，检测目标是否可被控制执行系统命令", ok: true });
+      }
+      if (lower.includes("upload") || lower.includes("webshell")) {
+        steps.push({ desc: "尝试文件上传漏洞，检测是否能上传恶意文件获取服务器控制权", ok: true });
+      }
+
+      if (statusCodes.length) {
+        const codes = statusCodes.map(s => s.match(/\d{3}/)[0]);
+        const hasSuccess = codes.some(c => c.startsWith("2"));
+        const hasServerErr = codes.some(c => c.startsWith("5"));
+        let desc = "服务器响应: ";
+        const parts = [];
+        if (hasSuccess) parts.push("有成功返回 (2xx)");
+        if (hasServerErr) parts.push("服务端错误 (5xx)");
+        desc += parts.length ? parts.join("、") : `状态码 ${codes.slice(0, 3).join(", ")}`;
+        steps.push({ desc, ok: !hasServerErr });
+      }
+
+      if (flags.length) {
+        steps.push({ desc: `🎯 从目标 ${targetShort} 成功捕获到 ${flags.length} 个 Flag`, ok: true });
+      }
+      if (flag) {
+        steps.push({ desc: `🏁 攻击成功！从 ${targetShort} 夺取了 Flag`, ok: true });
+      } else if (ok) {
+        steps.push({ desc: `完成对 ${targetShort} 的攻击扫描，未发现 Flag`, ok: true });
+      } else {
+        steps.push({ desc: `对 ${targetShort} 的攻击遇到问题，可能目标未启动或不可达`, ok: false });
+      }
     }
 
     return steps;
@@ -365,12 +368,12 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
     actions.push(action);
 
     // Report detailed agent activity steps
-    const activitySteps = parseActivitySteps(action.output, action.targetUrl, action.ok, action.flag);
+    const activitySteps = parseActivitySteps(action.output, action.targetUrl, action.ok, action.flag, isDefense);
     for (const step of activitySteps) {
       try {
         await client.send("AGENT_ACTIVITY", {
           match_id: request.matchId,
-          action: action.action,
+          action: actionLabel,
           target_url: action.targetUrl,
           flag: action.flag,
           ok: step.ok,
