@@ -411,31 +411,13 @@ window.addEventListener("DOMContentLoaded", () => {
       badge.innerHTML = `<span>${escapeHtml(providerLabel(apiKey, modelName))}</span>`;
     }
   }
-  if (els.apiKey) els.apiKey.addEventListener("input", () => { refreshPrepareProviderBadge(); checkAutoReady(); });
-  if (els.modelDisplayName) els.modelDisplayName.addEventListener("input", () => { refreshPrepareProviderBadge(); checkAutoReady(); });
+  if (els.apiKey) els.apiKey.addEventListener("input", refreshPrepareProviderBadge);
+  if (els.modelDisplayName) els.modelDisplayName.addEventListener("input", refreshPrepareProviderBadge);
   refreshPrepareProviderBadge();
-
-  // Auto-ready: when API key + model + runtime are filled, auto-mark ready
-  function checkAutoReady() {
-    if (!state.roomId || state.role !== "player") return;
-    const phase = state.match?.phase || state.room?.status || "LOBBY";
-    if (phase !== "LOBBY") return;
-    if (state.iAmReady) return;
-    const apiKey = (els.apiKey?.value || "").trim();
-    const modelName = (els.modelDisplayName?.value || "").trim();
-    const runtime = (els.agentRuntime?.value || "").trim();
-    if (apiKey && modelName && runtime) {
-      state.iAmReady = true;
-      markReady("TARGET_READY");
-      markReady("AGENT_READY");
-      addEvent("AUTO_READY", { message: "Agent 配置完整，自动进入准备状态" });
-    }
-  }
 
   // Wire agentRuntime dropdown to auto-populate agentCommand
   if (els.agentRuntime) {
     els.agentRuntime.addEventListener("change", () => {
-      checkAutoReady();
       const runtime = els.agentRuntime.value;
       const modelName = els.modelDisplayName?.value?.trim() || "";
       const cmd = buildAgentCommand(runtime, modelName, "ATTACK");
@@ -657,18 +639,6 @@ function handleMessage(message) {
       state.isHost = state.room?.owner_client_id === state.clientId;
       syncArenaFocus();
       if (state.roomId) els.roomId.value = state.roomId;
-      // Auto-start: if host and all players ready, start match automatically
-      if (state.isHost && state.room && (state.room.status || "") === "LOBBY") {
-        const players = state.room.players || [];
-        if (players.length >= 2 && players.every(p => p.target_ready && p.agent_ready)) {
-          setTimeout(() => {
-            if (state.isHost && state.roomId) {
-              addEvent("AUTO_START", { message: "所有玩家已准备，自动开始大乱斗" });
-              window.aiawd.startMatch({ roomId: state.roomId }).catch(() => {});
-            }
-          }, 1500);
-        }
-      }
       break;
     case "MATCH_CONFIG":
       state.configs.unshift(message.payload); state.configs = state.configs.slice(0, 3);
@@ -804,7 +774,7 @@ function render() {
 
   // Page-specific renders
   if (state._currentPage === "lobby") renderLobby();
-  if (state._currentPage === "room") { renderRoomPage(phase); checkAutoReady(); }
+  if (state._currentPage === "room") renderRoomPage(phase);
   if (state._currentPage === "battle") renderBattle(phase);
   if (state._currentPage === "results") renderResultsPage(phase);
 
@@ -836,18 +806,21 @@ function render() {
   els.downloadReport.disabled = !state.reportText;
   els.reportPreview.textContent = state.reportText || "战报将在这里生成，私有 Flag 会保持隐藏。";
 
-  // Room page buttons — auto-ready takes priority, buttons are fallback
+  // Room page buttons — manual confirmation for player coordination
   if (els.roomReadyBtn) {
     const players = state.room?.players || [];
-    const readyCount = players.filter(p => p.target_ready && p.agent_ready).length;
     const allReady = players.length >= 2 && players.every(p => p.target_ready && p.agent_ready);
-    // Always show status, hide manual buttons when auto is active
-    els.roomReadyBtn.style.display = state.iAmReady ? "none" : "";
-    els.startMatch.style.display = (state.isHost && allReady) ? "" : "none";
-    els.roomReadyBtn.textContent = "准备";
+    if (state.isHost && state.iAmReady && allReady) {
+      els.roomReadyBtn.style.display = "none"; els.startMatch.style.display = "";
+    } else {
+      els.roomReadyBtn.style.display = ""; els.startMatch.style.display = "none";
+      els.roomReadyBtn.textContent = state.iAmReady ? "取消准备" : "准备";
+      if (state.iAmReady) els.roomReadyBtn.classList.remove("btn-primary");
+      else els.roomReadyBtn.classList.add("btn-primary");
+    }
     els.roomHint.textContent = state.isHost
-      ? `房主 · ${players.length} 位玩家 · ${readyCount} 已准备${allReady ? " — 自动开始中..." : ""}`
-      : `${players.length} 位玩家 · ${readyCount} 已准备`;
+      ? `房主 · ${players.length} 位玩家 · ${players.filter(p=>p.target_ready&&p.agent_ready).length} 已准备${allReady ? " — 可以开始！" : ""}`
+      : `${players.length} 位玩家 · 等待房主开始...`;
   }
 }
 
