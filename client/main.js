@@ -304,7 +304,7 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
       try {
         await client.send("AGENT_ACTIVITY", {
           match_id: request.matchId,
-          action: isDefense ? "defense" : "attack",
+          action: (request.roomStatus || "ATTACK").toLowerCase(),
           target_url: action.targetUrl,
           flag: action.flag,
           ok: step.ok,

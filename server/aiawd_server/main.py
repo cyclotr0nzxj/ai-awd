@@ -9,7 +9,7 @@ from .tcp_gateway import TCPGateway
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the AI-AWD Arena referee server.")
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", default=9000, type=int, help="TCP (AIAWD/1.0) port")
     parser.add_argument("--http-port", default=9001, type=int, help="HTTP API port (0 to disable)")
     return parser.parse_args()
