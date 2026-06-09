@@ -804,7 +804,7 @@ function render() {
 
   // Page-specific renders
   if (state._currentPage === "lobby") renderLobby();
-  if (state._currentPage === "room") renderRoomPage(phase);
+  if (state._currentPage === "room") { renderRoomPage(phase); checkAutoReady(); }
   if (state._currentPage === "battle") renderBattle(phase);
   if (state._currentPage === "results") renderResultsPage(phase);
 
@@ -836,21 +836,18 @@ function render() {
   els.downloadReport.disabled = !state.reportText;
   els.reportPreview.textContent = state.reportText || "战报将在这里生成，私有 Flag 会保持隐藏。";
 
-  // Room page buttons
+  // Room page buttons — auto-ready takes priority, buttons are fallback
   if (els.roomReadyBtn) {
     const players = state.room?.players || [];
+    const readyCount = players.filter(p => p.target_ready && p.agent_ready).length;
     const allReady = players.length >= 2 && players.every(p => p.target_ready && p.agent_ready);
-    if (state.isHost && state.iAmReady && allReady) {
-      els.roomReadyBtn.style.display = "none"; els.startMatch.style.display = "";
-    } else {
-      els.roomReadyBtn.style.display = ""; els.startMatch.style.display = "none";
-      els.roomReadyBtn.textContent = state.iAmReady ? "取消准备" : "准备";
-      if (state.iAmReady) els.roomReadyBtn.classList.remove("btn-primary");
-      else els.roomReadyBtn.classList.add("btn-primary");
-    }
+    // Always show status, hide manual buttons when auto is active
+    els.roomReadyBtn.style.display = state.iAmReady ? "none" : "";
+    els.startMatch.style.display = (state.isHost && allReady) ? "" : "none";
+    els.roomReadyBtn.textContent = "准备";
     els.roomHint.textContent = state.isHost
-      ? `房主 · ${players.length} 位玩家 · ${players.filter(p=>p.target_ready&&p.agent_ready).length} 已准备${allReady ? " — 可以开始！" : ""}`
-      : `${players.length} 位玩家 · 等待房主开始...`;
+      ? `房主 · ${players.length} 位玩家 · ${readyCount} 已准备${allReady ? " — 自动开始中..." : ""}`
+      : `${players.length} 位玩家 · ${readyCount} 已准备`;
   }
 }
 
