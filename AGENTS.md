@@ -9,9 +9,9 @@ Electron App (client/)          Python Server (server/aiawd_server/)
 ┌──────────────────────┐       ┌──────────────────────────┐
 │  renderer.js + UI    │       │  tcp_gateway.py           │
 │  agentRuntime.js     │ TCP   │  room_manager.py          │
-│  agentRuntime.js     │ TCP   │  match_engine.py          │
-│  adapters.js         │AIAWD  │  session_manager.py       │
-│  scopeguard.js       │/1.0   │  target_registry.py       │
+│  adapters.js         │AIAWD  │  match_engine.py          │
+│  providerDetect.js   │/1.0   │  session_manager.py       │
+│  scopeguard.js       │       │  target_registry.py       │
 │  targetLifecycle.js  │       │  http_api.py              │
 │  aiawdProtocol.js    │       │  protocol.py              │
 └──────────────────────┘       └──────────────────────────┘
@@ -33,11 +33,14 @@ node --test test-aiawdProtocol.js test-targetLifecycle.js test-renderer.js \
 # Full verification suite
 bash scripts/demo.sh --quick
 
-# Start server (local)
+# Start server (default binds 0.0.0.0 for LAN multiplayer)
+PYTHONPATH=server python3 -m aiawd_server.main --port 9000
+
+# Start server (localhost only — single-machine testing)
 PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
 
-# Start server with HTTP API
-PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000 --http-port 9001
+# Start server with HTTP API (default 0.0.0.0:9000 + HTTP :9001)
+PYTHONPATH=server python3 -m aiawd_server.main --port 9000 --http-port 9001
 
 # Start Electron
 cd client && npx electron .
@@ -110,7 +113,7 @@ Docker Desktop auto-launched if daemon not running (macOS: `open -a Docker`, Win
 
 ## Vendor Logo System
 
-`renderer.js` maintains a `VENDOR_LOGOS` mapping (~45 vendors, 70+ keyword aliases) that resolves AI provider logos from model display names or agent runtime selections. Key functions:
+`providerDetect.js` is the canonical source for provider detection and vendor logo mapping (~45 vendors, 70+ keyword aliases). It's loaded as a `<script>` tag for the renderer and `require()`d by the main process. Key functions:
 
 - `providerLogo(player)` — returns the logo asset path for a player based on `model_display_name`, `agent_runtime`, or `api_provider` (detected from API key + model name)
 - `detectProvider(apiKey, modelName)` — identifies AI vendor from API key prefix + model name heuristics (19+ vendors)

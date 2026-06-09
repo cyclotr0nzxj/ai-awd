@@ -21,8 +21,9 @@
 ## 模块
 
 - `aiawdProtocol.js` — AIAWD/1.0 协议编解码
-- `agentRuntime.js` — Agent 运行时管理（AgentManager, CustomCommandAdapter）
+- `agentRuntime.js` — Agent 运行时管理（AgentManager, CustomCommandAdapter, parseActivitySteps）
 - `adapters.js` — 多提供者适配器入口（Hermes, OpenClaw, OpenCLI, Codex, Pi, CustomPython, 自定义命令）
+- `providerDetect.js` — 厂商检测 + Logo 映射，主进程/渲染进程共享
 - `scopeguard.js` — 安全边界（网络范围、文件范围、进程安全）
 - `targetLifecycle.js` — 本地靶机生命周期与 Docker 诊断
 - `main.js` — Electron 主进程，TCP 桥 + IPC 处理

@@ -39,8 +39,8 @@ On the **server machine** / 在服务器机器上:
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
 
-# LAN mode — listens on all network interfaces / 监听所有网络接口
-bash scripts/start-server.sh --lan
+# Default binds 0.0.0.0:9000 — ready for LAN / 默认监听所有接口，局域网即用
+bash scripts/start-server.sh
 ```
 
 Output / 输出:

@@ -67,10 +67,10 @@ bash scripts/start-server.sh
 
 **🏠 本地** — 客户端填 `127.0.0.1:9000`，无需额外配置。
 
-**🏢 局域网** — 服务器启动加 `--lan`，会自动显示本机 IP。其他电脑填这个 IP 即可。
+**🏢 局域网** — 服务器默认监听 `0.0.0.0`，启动后自动显示本机 IP。其他电脑填这个 IP 即可。
 
 ```bash
-bash scripts/start-server.sh --lan
+bash scripts/start-server.sh
 # 输出：📡 本机局域网 IP: 192.168.1.100
 ```
 

@@ -17,7 +17,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-HOST="127.0.0.1"
+HOST="0.0.0.0"
 PORT="9000"
 HTTP_PORT="9001"
 
