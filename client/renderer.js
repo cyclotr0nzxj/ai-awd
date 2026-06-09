@@ -389,10 +389,26 @@ window.addEventListener("DOMContentLoaded", () => {
   // Auto-detect provider logo from API key / model name
   function refreshPrepareProviderBadge() {
     const badge = document.getElementById("prepareProviderBadge");
-    if (!badge) return;
     const apiKey = els.apiKey?.value?.trim() || "";
     const modelName = els.modelDisplayName?.value?.trim() || "";
     const prov = detectProvider(apiKey, modelName);
+
+    // Auto-fill Base URL based on provider
+    const baseUrlField = document.getElementById("apiBaseUrlField");
+    const baseUrlInput = els.apiBaseUrl;
+    if (prov === "DeepSeek") {
+      if (baseUrlInput && !baseUrlInput.value) baseUrlInput.value = "https://api.deepseek.com";
+      if (baseUrlField) baseUrlField.style.display = "";
+    } else if (prov === "OpenAI") {
+      if (baseUrlInput) baseUrlInput.value = "";
+      if (baseUrlField) baseUrlField.style.display = "none";
+    } else if (prov && prov !== "Custom" && prov !== "Anthropic") {
+      if (baseUrlField) baseUrlField.style.display = "";
+    } else {
+      if (baseUrlField) baseUrlField.style.display = "none";
+    }
+
+    if (!badge) return;
     if (!prov) { badge.innerHTML = ""; badge.style.display = "none"; return; }
     badge.style.display = "";
     const logoPath = providerLogo({ api_provider: prov });
@@ -929,9 +945,13 @@ function renderAgentActivityFeed() {
       const latest = activities[0];
       const displayName = escapeHtml(latest.display_name || teamId);
       const model = escapeHtml(latest.model_display_name || latest.agent_runtime || "");
+      // Find the player to get their vendor logo
+      const player = (state.room?.players || []).find(p => p.team_id === teamId);
+      const logo = player ? providerLogo(player) : null;
+      const logoHtml = logo ? `<img class="provider-logo combatant-provider-logo" src="${escapeHtml(logo)}" style="width:14px;height:14px">` : "";
       return `<div class="activity-column">
         <div class="activity-player-header">
-          <strong>${displayName}</strong>
+          ${logoHtml}<strong>${displayName}</strong>
           <small>${model}</small>
         </div>
         <div class="activity-player-log">
