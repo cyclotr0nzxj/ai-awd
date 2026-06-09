@@ -75,18 +75,8 @@ function detectProvider(apiKey, modelDisplayName) {
 function providerLabel(apiKey, modelDisplayName) {
   const p = detectProvider(apiKey, modelDisplayName);
   if (!p) return "";
-  if (p === "Anthropic") return "🔹 Anthropic";
-  if (p === "OpenAI") return "🟢 OpenAI";
-  if (p === "OpenRouter") return "🔶 OpenRouter";
-  if (p === "DeepSeek") return "🐋 DeepSeek";
-  if (p === "Alibaba") return "☁️ Alibaba";
-  if (p === "Tencent") return "💬 Tencent";
-  if (p === "Zhipu") return "🧠 Zhipu";
-  if (p === "Moonshot") return "🌙 Moonshot";
-  if (p === "ByteDance") return "🎵 ByteDance";
-  if (p === "Baidu") return "🔍 Baidu";
-  if (p === "iFlytek") return "🎤 iFlytek";
-  return `🔧 ${p}`;
+  const labels = { Anthropic:"🔹", OpenAI:"🟢", OpenRouter:"🔶", DeepSeek:"🐋", Alibaba:"☁️", Tencent:"💬", Zhipu:"🧠", Moonshot:"🌙", ByteDance:"🎵", Baidu:"🔍", iFlytek:"🎤" };
+  return labels[p] ? `${labels[p]} ${p}` : `🔧 ${p}`;
 }
 
 // ====== Provider Logo Mapping ======
@@ -716,43 +706,24 @@ function handleMessage(message) {
         state.phaseRemainingSeconds = Math.max(0, phaseEndsAt - serverTime);
         state.phaseLocalStart = Date.now();
       }
-      // Auto-start agent on PREPARE phase
-      if (state.match?.phase === "PREPARE" && !state.autoPrepareStarted && state.role === "player") {
-        state.autoPrepareStarted = true;
-        if (els.agentCommand) {
-          const runtime = els.agentRuntime?.value || "";
-          const modelName = els.modelDisplayName?.value?.trim() || "";
-          const cmd = buildAgentCommand(runtime, modelName, "PREPARE");
-          if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
+      // Auto-start agent on active phases (PREPARE/DEFENSE/ATTACK)
+      const phaseAgents = [
+        { phase: "PREPARE", flag: "autoPrepareStarted", label: "准备", message: "Agent 开始环境检查" },
+        { phase: "DEFENSE", flag: "autoDefenseStarted", label: "加固", message: "Agent 自动开始防御扫描" },
+        { phase: "ATTACK",  flag: "autoAgentStarted",  label: "攻防", message: "Agent 自动开始攻击" },
+      ];
+      for (const pa of phaseAgents) {
+        if (state.match?.phase === pa.phase && !state[pa.flag] && state.role === "player") {
+          state[pa.flag] = true;
+          if (els.agentCommand && !els.agentCommand.value.trim()) {
+            const runtime = els.agentRuntime?.value || "";
+            const modelName = els.modelDisplayName?.value?.trim() || "";
+            const cmd = buildAgentCommand(runtime, modelName, pa.phase);
+            if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
+          }
+          addEvent("AUTO_" + pa.phase, { message: "进入" + pa.label + "阶段，" + pa.message });
+          setTimeout(() => agentStart(), 1000);
         }
-        addEvent("AUTO_PREPARE", { message: "进入准备阶段，Agent 开始环境检查" });
-        setTimeout(() => agentStart(), 1000);
-      }
-      // Auto-start agent on DEFENSE phase
-      if (state.match?.phase === "DEFENSE" && !state.autoDefenseStarted && state.role === "player") {
-        state.autoDefenseStarted = true;
-        if (els.agentCommand) {
-          const runtime = els.agentRuntime?.value || "";
-          const modelName = els.modelDisplayName?.value?.trim() || "";
-          const cmd = buildAgentCommand(runtime, modelName, "DEFENSE");
-          if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
-        }
-        addEvent("AUTO_DEFENSE", { message: "进入加固阶段，Agent 自动开始防御扫描" });
-        setTimeout(() => agentStart(), 1000);
-      }
-      // Auto-start agent when entering ATTACK phase
-      if (state.match?.phase === "ATTACK" && !state.autoAgentStarted && state.role === "player") {
-        state.autoAgentStarted = true;
-        // Auto-populate command from selected runtime if empty
-        if (els.agentCommand && !els.agentCommand.value.trim()) {
-          const runtime = els.agentRuntime?.value || "";
-          const modelName = els.modelDisplayName?.value?.trim() || "";
-          const cmd = buildAgentCommand(runtime, modelName, "ATTACK");
-          if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
-        }
-        // Auto-trigger agent start
-        addEvent("AUTO_ATTACK", { message: "进入攻防阶段，Agent 自动开始攻击" });
-        setTimeout(() => agentStart(), 1000);
       }
       // Auto-cleanup when match finishes
       if (state.match?.phase === "FINISHED" && state.role === "player") {
