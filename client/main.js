@@ -8,6 +8,7 @@ let mainWindow = null;
 const client = new AiawdClient();
 /** @type {AgentManager|null} */
 let agentManager = null;
+let openclawProviderConfigured = false;
 
 // ====== Provider Detection (mirrored from renderer.js) ======
 function detectProvider(apiKey, modelDisplayName) {
@@ -154,7 +155,7 @@ ipcMain.handle("aiawd:submitFlag", (_event, request) =>
 );
 ipcMain.handle("aiawd:targetAction", async (_event, request) => {
   // Auto-start Docker Desktop if daemon isn't running
-  const { execSync } = require("child_process");
+  const { execSync } = require("child_process"); // eslint-disable-line
   try {
     execSync("docker info", { stdio: "pipe", timeout: 5000 });
   } catch (_) {
@@ -202,8 +203,8 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
       env.OPENAI_BASE_URL = env.OPENAI_BASE_URL || "https://api.deepseek.com";
     }
   }
-  // Ensure OpenClaw has a provider configured for the user's API
-  if (apiKey) {
+  // Ensure OpenClaw has a provider configured (once per session)
+  if (apiKey && !openclawProviderConfigured) {
     try {
       const fs = require("fs");
       const os = require("os");
@@ -226,6 +227,7 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
         models.mode = models.mode || "merge";
         fs.writeFileSync(ocConfigPath, JSON.stringify(ocConfig, null, 2));
       }
+      openclawProviderConfigured = true;
     } catch (_) { /* best-effort provider config */ }
   }
 

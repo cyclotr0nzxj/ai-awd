@@ -1,0 +1,2 @@
+{"ts":1780913370.9888792,"type":"SERVER_STARTED","payload":{"host":"127.0.0.1","port":9000}}
+{"ts":1780913571.9555898,"type":"CLIENT_CONNECTED","payload":{"client_id":"client_0001","display_name":"玩家","platform":"darwin","capabilities":["player","spectator"],"role":null,"room_id":null,"team_id":null,"last_seen_at":1780913571.9528089}}
