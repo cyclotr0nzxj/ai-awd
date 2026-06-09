@@ -2,67 +2,14 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { AiawdClient } = require("./aiawdProtocol");
 const { runTargetAction } = require("./targetLifecycle");
-const { CustomCommandAdapter, AgentManager, sanitizeCommand } = require("./agentRuntime");
+const { CustomCommandAdapter, AgentManager, sanitizeCommand, parseActivitySteps } = require("./agentRuntime");
+const { detectProvider } = require("./providerDetect");
 
 let mainWindow = null;
 const client = new AiawdClient();
 /** @type {AgentManager|null} */
 let agentManager = null;
 let openclawProviderConfigured = false;
-
-// ====== Provider Detection (mirrored from renderer.js) ======
-function detectProvider(apiKey, modelDisplayName) {
-  if (!apiKey || !apiKey.trim()) {
-    if (modelDisplayName) {
-      const m = modelDisplayName.toLowerCase();
-      if (m.includes("deepseek")) return "DeepSeek";
-      if (m.includes("claude") || m.includes("anthropic")) return "Anthropic";
-      if (m.includes("gpt") || m.includes("openai")) return "OpenAI";
-      if (m.includes("gemini")) return "Google";
-      if (m.includes("qwen") || m.includes("tongyi")) return "Alibaba";
-      if (m.includes("hunyuan")) return "Tencent";
-      if (m.includes("glm") || m.includes("chatglm") || m.includes("zhipu")) return "Zhipu";
-      if (m.includes("kimi") || m.includes("moonshot")) return "Moonshot";
-      if (m.includes("doubao")) return "ByteDance";
-      if (m.includes("ernie") || m.includes("wenxin")) return "Baidu";
-      if (m.includes("spark")) return "iFlytek";
-      if (m.includes("minimax")) return "MiniMax";
-      if (m.includes("stepfun") || m.includes("step-")) return "StepFun";
-      if (m.includes("skywork")) return "Skywork";
-      if (m.includes("baichuan")) return "Baichuan";
-      if (m.includes("grok")) return "xAI";
-      if (m.includes("mistral")) return "Mistral";
-      if (m.includes("llama")) return "Meta";
-      if (m.includes("cohere")) return "Cohere";
-    }
-    return "Custom";
-  }
-  const k = apiKey.trim();
-  if (k.startsWith("sk-ant")) return "Anthropic";
-  if (k.startsWith("sk-or-")) return "OpenRouter";
-  if (k.startsWith("sk-")) {
-    if (modelDisplayName) {
-      const m = modelDisplayName.toLowerCase();
-      if (m.includes("deepseek")) return "DeepSeek";
-      if (m.includes("qwen") || m.includes("tongyi")) return "Alibaba";
-      if (m.includes("hunyuan")) return "Tencent";
-      if (m.includes("glm") || m.includes("zhipu")) return "Zhipu";
-      if (m.includes("kimi") || m.includes("moonshot")) return "Moonshot";
-      if (m.includes("doubao")) return "ByteDance";
-      if (m.includes("ernie") || m.includes("wenxin")) return "Baidu";
-      if (m.includes("minimax")) return "MiniMax";
-      if (m.includes("yi-")) return "Yi";
-      if (m.includes("grok")) return "xAI";
-      if (m.includes("mistral")) return "Mistral";
-      if (m.includes("cohere")) return "Cohere";
-    }
-    return "OpenAI";
-  }
-  if (k.startsWith("anthropic-")) return "Anthropic";
-  if (k.startsWith("openai-")) return "OpenAI";
-  if (k.startsWith("deepseek-")) return "DeepSeek";
-  return "Custom";
-}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -158,7 +105,8 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
   const { execSync } = require("child_process"); // eslint-disable-line
   try {
     execSync("docker info", { stdio: "pipe", timeout: 5000 });
-  } catch (_) {
+  } catch (dockerCheckErr) {
+    console.error("Docker check failed:", dockerCheckErr.message);
     sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_STARTING", event: { message: "Docker 未运行，正在自动启动..." } } });
     if (process.platform === "darwin") {
       try { execSync("open -a Docker", { stdio: "pipe", timeout: 10000 }); } catch (_) {}
@@ -175,9 +123,10 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
     }
     // Check if Docker came up
     try { execSync("docker info", { stdio: "pipe", timeout: 5000 }); }
-    catch (_) {
-      sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_FAILED", event: { message: "Docker 启动失败，请手动打开 Docker Desktop" } } });
-      return { ok: false, message: "Docker 未运行" };
+    catch (dockerStartErr) {
+      console.error("Docker daemon still not available:", dockerStartErr.message);
+      sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_FAILED", event: { message: `Docker 启动失败: ${dockerStartErr.message}` } } });
+      return { ok: false, message: `Docker 未运行: ${dockerStartErr.message}` };
     }
     sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_READY", event: { message: "Docker 已就绪" } } });
   }
@@ -253,38 +202,6 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   const targets = isSelfTarget
     ? [{ teamId: ctx.teamId, baseUrl: ctx.localTarget.baseUrl }]
     : ctx.targets;
-
-  // Split agent output into natural-language steps — use agent's own words only
-  function parseActivitySteps(output, targetUrl, ok, flag) {
-    if (!output) return [];
-    const steps = [];
-
-    // Split into meaningful chunks
-    const chunks = output
-      .split(/\n\n+/)
-      .flatMap(para => {
-        const trimmed = para.trim();
-        if (!trimmed) return [];
-        if (trimmed.length > 200) {
-          return trimmed.split(/(?<=[.!?。！？])\s+/).filter(Boolean);
-        }
-        return [trimmed];
-      })
-      .map(s => s.trim().replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").replace(/\s+/g, " "))
-      .filter(s => s.length > 15)
-      .slice(0, 25);
-
-    for (const chunk of chunks) {
-      const isError = /error|fail|refused|denied|timeout/i.test(chunk);
-      steps.push({ desc: chunk.slice(0, 200), ok: !isError });
-    }
-
-    if (flag) {
-      steps.push({ desc: `Flag captured: ${flag}`, ok: true });
-    }
-
-    return steps;
-  }
 
   for (const target of targets) {
     if (!target || !target.baseUrl) continue;

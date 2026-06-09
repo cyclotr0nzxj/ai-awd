@@ -347,12 +347,47 @@ class AgentManager {
   }
 }
 
+/**
+ * Split agent output into natural-language activity steps.
+ * Used by the Electron main process to report per-step AGENT_ACTIVITY events.
+ */
+function parseActivitySteps(output, targetUrl, ok, flag) {
+  if (!output) return [];
+  const steps = [];
+
+  const chunks = output
+    .split(/\n\n+/)
+    .flatMap(para => {
+      const trimmed = para.trim();
+      if (!trimmed) return [];
+      if (trimmed.length > 200) {
+        return trimmed.split(/(?<=[.!?。！？])\s+/).filter(Boolean);
+      }
+      return [trimmed];
+    })
+    .map(s => s.trim().replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "").replace(/\s+/g, " "))
+    .filter(s => s.length > 15)
+    .slice(0, 25);
+
+  for (const chunk of chunks) {
+    const isError = /error|fail|refused|denied|timeout/i.test(chunk);
+    steps.push({ desc: chunk.slice(0, 200), ok: !isError });
+  }
+
+  if (flag) {
+    steps.push({ desc: `Flag captured: ${flag}`, ok: true });
+  }
+
+  return steps;
+}
+
 module.exports = {
   makeContext,
   contextEnv,
   extractFlags,
   expandTemplate,
   sanitizeCommand,
+  parseActivitySteps,
   CustomCommandAdapter,
   AgentManager,
   FLAG_PATTERN,

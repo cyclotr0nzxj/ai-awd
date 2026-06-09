@@ -111,6 +111,10 @@ class TCPGateway:
                 await self._send(writer, make_error("BAD_REQUEST", str(exc), client_id=session.client_id if session else None))
         finally:
             if session:
+                # Purge response cache entries for this session
+                stale = [k for k in self._response_cache if k[0] == session.client_id]
+                for k in stale:
+                    del self._response_cache[k]
                 self.session_manager.disconnect(session.client_id)
                 room = self.room_manager.mark_disconnected(session)
                 if room:
