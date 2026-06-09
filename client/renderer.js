@@ -12,6 +12,7 @@ const state = {
   isHost: false, iAmReady: false, _currentPage: "connect",
   autoAgentStarted: false,
   autoDefenseStarted: false,
+  autoPrepareStarted: false,
 };
 
 // ====== Provider Detection ======
@@ -200,9 +201,10 @@ function providerLogo(player) {
 // ====== Agent Command Builder ======
 function buildAgentCommand(runtime, modelDisplayName, phase) {
   const model = modelDisplayName || "";
+  const preparePrompt = "You are an AWD CTF agent in preparation phase. Verify your environment is ready: check connectivity to {local_target}, verify Docker containers are running, test basic HTTP access. Report any issues found.";
   const attackPrompt = "You are an AWD CTF security agent. Target: {target_url}. Find and report any FLAG{...} you discover. Use web tools to probe the target for vulnerabilities.";
   const defensePrompt = "You are an AWD CTF defender. Your own target is at {local_target}. Scan your own service for vulnerabilities (SQL injection, XSS, RCE, path traversal, auth bypass). Patch any vulnerabilities you find. Monitor for intrusions. Report any suspicious activity or FLAG{...} you discover on your own system.";
-  const prompt = (phase === "DEFENSE") ? defensePrompt : attackPrompt;
+  const prompt = (phase === "PREPARE") ? preparePrompt : (phase === "DEFENSE") ? defensePrompt : attackPrompt;
   switch ((runtime || "").toLowerCase().trim()) {
     case "openclaw":
     case "openclaw-local": {
@@ -588,7 +590,7 @@ function leaveCurrentRoom() {
   state.room = null; state.match = null; state.isHost = false; state.iAmReady = false;
   state.rankings = []; state.events = []; state.configs = [];
   state.captureCounts = {}; state.breachCounts = {};
-  state.autoAgentStarted = false; state.autoDefenseStarted = false; state.agentActivities = [];
+  state.autoAgentStarted = false; state.autoDefenseStarted = false; state.autoPrepareStarted = false; state.agentActivities = [];
   render();
 }
 
@@ -713,6 +715,18 @@ function handleMessage(message) {
       if (serverTime && phaseEndsAt) {
         state.phaseRemainingSeconds = Math.max(0, phaseEndsAt - serverTime);
         state.phaseLocalStart = Date.now();
+      }
+      // Auto-start agent on PREPARE phase
+      if (state.match?.phase === "PREPARE" && !state.autoPrepareStarted && state.role === "player") {
+        state.autoPrepareStarted = true;
+        if (els.agentCommand) {
+          const runtime = els.agentRuntime?.value || "";
+          const modelName = els.modelDisplayName?.value?.trim() || "";
+          const cmd = buildAgentCommand(runtime, modelName, "PREPARE");
+          if (cmd.length) els.agentCommand.value = formatCommandForDisplay(cmd);
+        }
+        addEvent("AUTO_PREPARE", { message: "进入准备阶段，Agent 开始环境检查" });
+        setTimeout(() => agentStart(), 1000);
       }
       // Auto-start agent on DEFENSE phase
       if (state.match?.phase === "DEFENSE" && !state.autoDefenseStarted && state.role === "player") {

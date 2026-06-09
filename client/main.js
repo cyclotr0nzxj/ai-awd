@@ -248,9 +248,9 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   const started = Date.now();
   const actions = [];
   const captured = [];
-  // During DEFENSE, scan own target; during ATTACK, scan opponents
-  const isDefense = (request.roomStatus || "") === "DEFENSE";
-  const targets = isDefense
+  // During PREPARE/DEFENSE, scan own target; during ATTACK, scan opponents
+  const isSelfTarget = (request.roomStatus || "") !== "ATTACK";
+  const targets = isSelfTarget
     ? [{ teamId: ctx.teamId, baseUrl: ctx.localTarget.baseUrl }]
     : ctx.targets;
 
