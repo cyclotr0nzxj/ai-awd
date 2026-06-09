@@ -298,7 +298,10 @@ class TCPGateway:
         match = self.match_engine.get_match(room.room_id)
         await self._broadcast(
             room,
-            Message(type="PHASE_SYNC", room_id=room.room_id, payload={"match": match.public_snapshot()}),
+            Message(type="PHASE_SYNC", room_id=room.room_id, payload={
+                "match": match.public_snapshot(),
+                "server_time": time(),  # server's clock for client sync
+            }),
         )
 
     async def _broadcast_rankings(self, room: Room) -> None:

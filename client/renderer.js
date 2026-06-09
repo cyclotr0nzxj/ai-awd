@@ -8,6 +8,7 @@ const state = {
   captureCounts: {}, breachCounts: {},
   scorePopup: null, focusedTeamId: null, replayIndex: 0,
   autoPlayActive: false, autoPlayTimer: null,
+  phaseRemainingSeconds: 0, phaseLocalStart: 0,
   isHost: false, iAmReady: false, _currentPage: "connect",
   autoAgentStarted: false,
   autoDefenseStarted: false,
@@ -706,6 +707,13 @@ function handleMessage(message) {
     case "PHASE_SYNC":
       state.match = message.payload?.match || state.match;
       state.matchId = state.match?.match_id || state.matchId;
+      // Sync countdown: use server time to avoid clock skew between clients
+      const serverTime = message.payload?.server_time;
+      const phaseEndsAt = state.match?.phase_ends_at;
+      if (serverTime && phaseEndsAt) {
+        state.phaseRemainingSeconds = Math.max(0, phaseEndsAt - serverTime);
+        state.phaseLocalStart = Date.now();
+      }
       // Auto-start agent on DEFENSE phase
       if (state.match?.phase === "DEFENSE" && !state.autoDefenseStarted && state.role === "player") {
         state.autoDefenseStarted = true;
@@ -1311,7 +1319,7 @@ function capturePayload(event) { return event.payload?.submission || event.paylo
 function captureRoute(event) { const s = capturePayload(event); return `${s.submitter_team_id||"未知"} 攻陷 ${s.target_team_id||"未知"}${s.score_delta ? ` +${s.score_delta} 分` : ""}`; }
 function teamScore(tid) { const r = state.rankings.find(r => r.team_id === tid); return r ? Number(r.score || 0) : null; }
 function rankingMeta(row, i) { const name = row.display_name || ""; const own = state.configs[0]?.team_id; const labels = [name, own && row.team_id === own ? "我方" : ""].filter(Boolean); if (i === 0) labels.push("领先"); else { const l = state.rankings[0]; if (l) labels.push(`落后 ${Number(l.score||0) - Number(row.score||0)} 分`); } return labels.join(" · ") || "等待分数变化"; }
-function phaseTimerSummary() { const ends = state.match?.phase_ends_at; if (!ends) return "等待同步"; const left = Math.max(0, Math.ceil(ends - Date.now()/1000)); return left <= 0 ? "等待切换" : `${formatDuration(left)} 后切换`; }
+function phaseTimerSummary() { if (state.phaseRemainingSeconds > 0 && state.phaseLocalStart) { const elapsed = (Date.now() - state.phaseLocalStart) / 1000; const left = Math.max(0, Math.ceil(state.phaseRemainingSeconds - elapsed)); return left <= 0 ? "等待切换" : `${formatDuration(left)} 后切换`; } const ends = state.match?.phase_ends_at; if (!ends) return "等待同步"; const left = Math.max(0, Math.ceil(ends - Date.now()/1000)); return left <= 0 ? "等待切换" : `${formatDuration(left)} 后切换`; }
 function formatDuration(s) { const m = Math.floor(s/60); return m <= 0 ? `${s} 秒` : `${m}:${String(s%60).padStart(2,"0")}`; }
 function safeFilePart(v) { return String(v).replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"") || "aiawd"; }
 function escapeHtml(v) { return String(v).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;"); }
