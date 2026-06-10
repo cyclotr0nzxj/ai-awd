@@ -20,7 +20,7 @@ Owner-only start, `MATCH_CONFIG`, `PHASE_SYNC`, timed phase progression.
 Generated per-player flags, attack-phase submit, self/duplicate/invalid rejection, scoring and ranking. Current protocol payloads still use `team_id` as the internal player id.
 
 ### M5 — Docker targets
-- 3 target templates: `real_ctf_web_awd_01` (web, HTTP healthcheck), `pwn_awd_echo_01` (binary, TCP healthcheck), `crypto_awd_oracle_01` (crypto, TCP healthcheck).
+- 4 target templates: `real_ctf_web_awd_02` (web beginner, HTTP — flag visible on `/`), `real_ctf_web_awd_01` (web professional, HTTP — hidden behind auth bypass/SQLi/debug/backup), `pwn_awd_echo_01` (binary, TCP healthcheck), `crypto_awd_oracle_01` (crypto, TCP healthcheck). Default: `DEFAULT_TARGET_TEMPLATE_ID = "real_ctf_web_awd_02"` in `target_registry.py`.
 - `TargetRuntime` builds safe Docker Compose install/start/stop/reset argv, injects room/player/flag env vars, redacts private flag snapshots.
 - TCP and HTTP healthcheck support.
 - Electron local lifecycle runner with Docker readiness diagnostics, localhost-only binding, argv allowlists, project-local path checks.
@@ -70,8 +70,8 @@ electron-builder configs: macOS DMG/ZIP (x64+arm64, hardened runtime) and Window
 
 ## Evidence
 
-- `PYTHONPATH=server python3 -m unittest discover -s tests -t . -v` — 54 tests
-- `cd client && npm test` — 89 tests
+- `PYTHONPATH=server python3 -m unittest discover -s tests -t . -v` — 54 tests (all pass)
+- `cd client && npm test` — 80 tests
 - `cd client && npm run e2e:protocol` — redacted Electron protocol bridge evidence
 - `cd client && npm run e2e:windows` — redacted Electron BrowserWindow screenshots
 - `examples/three_clients_demo.py`

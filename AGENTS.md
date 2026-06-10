@@ -139,19 +139,20 @@ Supported vendors include Anthropic, OpenAI, Google, Meta, Mistral, Nvidia, Cohe
 
 ## Design System
 
-Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green accent (#22c55e). Inter for headings/body, JetBrains Mono for data/code. Rounded corners (8/12/16px). No gradients. No backdrop-filter. Page transitions: quick fade-in (0.25s). Blink cursor for running status. Agent activity feed: per-player columns with colored status borders. Dark-exclusive — immersive competitive gaming aesthetic.
+Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green accent (#22c55e). Inter for headings/body, JetBrains Mono for data/code. Rounded corners (8/12/16px). No gradients. No backdrop-filter. Page transitions: quick fade-in (0.25s). Blink cursor for running status. Agent activity feed: per-player columns with colored status borders. Dark-exclusive — immersive competitive gaming aesthetic. Global failure/warning notices via `.app-notice` fixed bar (red for `bad`, amber for `warn`), driven by `showNotice()` in renderer.
 
 ## Coding Rules
 
 - Python server: stdlib only. Tests use `unittest`.
 - Electron renderer: no direct TCP. All server communication through `window.aiawd` (preload API).
 - Flag redaction: never log API keys or flag plaintext. `MATCH_CONFIG.flag` always redacted in UI/logs/screenshots.
+- Default target template: `DEFAULT_TARGET_TEMPLATE_ID = "real_ctf_web_awd_02"` in `target_registry.py`. Referenced by `room_manager.py` and `tcp_gateway.py`.
 - Language: `AI攻防大乱斗`, `攻陷`, `失守`, `防线完整`. Do not use `大逃杀`, `击杀`, `生存态势`.
 
 ## Verification Gates
 
 **Server/protocol changes:**
-- Python tests pass (22)
+- Python tests pass (54)
 - `examples/three_clients_demo.py` produces readable transcript
 - Protocol unit tests pass
 

@@ -110,7 +110,7 @@ bore local 9000 --to bore.pub
 
 ```bash
 bash scripts/demo.sh                                               # 全部验证
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 22 tests
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
 cd client && node --test test-*.js                                  # 80 tests
 cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 ```
@@ -212,7 +212,7 @@ Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** �
 
 ```bash
 bash scripts/demo.sh                                                  # full suite
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 22 tests
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
 cd client && node --test test-*.js                                     # 80 tests
 cd client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
 ```
