@@ -107,6 +107,7 @@ const FORMAT_PRESETS = {
 
 // ====== DOM Ready ======
 window.addEventListener("DOMContentLoaded", () => {
+  try {
   const ids = [
     "host","port","displayName","connect","disconnect","connectionState","clientId",
     "roomName","maxPlayers","targetTemplateId","prepareSeconds","defenseSeconds","attackSeconds",
@@ -302,6 +303,9 @@ window.addEventListener("DOMContentLoaded", () => {
   setInterval(refreshPhaseTimer, 1000);
   navigateTo("connect");
   render();
+  } catch (initErr) {
+    document.body.innerHTML = `<div style="color:#ef4444;padding:40px;font-family:monospace"><h2>初始化失败</h2><pre>${initErr.message}\n${initErr.stack||""}</pre></div>`;
+  }
 });
 
 // ====== Network Actions ======
