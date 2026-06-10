@@ -310,6 +310,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 // ====== Network Actions ======
 async function connect() {
+  window.__aiawdConnected = false;
   els.connect.disabled = true;
   els.connect.textContent = "连接中...";
   state._connectError = null;
@@ -323,6 +324,7 @@ async function connect() {
     state.connected = snapshot.connected;
     state.clientId = snapshot.clientId;
     state._connectError = null;
+    window.__aiawdConnected = true;
     addEvent("CLIENT_CONNECTED", snapshot);
     await window.aiawd.listTargets();
     await window.aiawd.listRooms();
@@ -333,6 +335,7 @@ async function connect() {
   els.connect.textContent = "连接服务器";
   render();
 }
+window.__connectAiawd = connect;
 
 async function disconnect() {
   await window.aiawd.disconnect();
