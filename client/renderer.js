@@ -1,7 +1,7 @@
 const state = {
   connected: false, clientId: null, roomId: null, role: null, matchId: null,
   room: null, match: null, rankings: [], targets: [], events: [], messages: [],
-  configs: [], reportText: "",
+  configs: [], reportText: "", _connectError: null,
   targetActionStatus: { state: "idle", message: "等待本地靶机计划" },
   agentStatus: { state: "idle", message: "Agent 未启动" },
   agentActivities: [],
@@ -306,6 +306,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
 // ====== Network Actions ======
 async function connect() {
+  els.connect.disabled = true;
+  els.connect.textContent = "连接中...";
+  state._connectError = null;
+  render();
   try {
     const snapshot = await window.aiawd.connect({
       host: els.host.value.trim() || "127.0.0.1",
@@ -314,10 +318,15 @@ async function connect() {
     });
     state.connected = snapshot.connected;
     state.clientId = snapshot.clientId;
+    state._connectError = null;
     addEvent("CLIENT_CONNECTED", snapshot);
     await window.aiawd.listTargets();
     await window.aiawd.listRooms();
-  } catch (error) { addEvent("CONNECT_FAILED", { message: error.message }); }
+  } catch (error) {
+    state._connectError = error.message || "连接失败";
+    addEvent("CONNECT_FAILED", { message: state._connectError });
+  }
+  els.connect.textContent = "连接服务器";
   render();
 }
 
@@ -325,7 +334,7 @@ async function disconnect() {
   await window.aiawd.disconnect();
   state.connected = false; state.clientId = null; state.roomId = null;
   state.role = null; state.matchId = null; state.room = null; state.match = null;
-  state.isHost = false; state.iAmReady = false;
+  state.isHost = false; state.iAmReady = false; state._connectError = null;
   addEvent("CLIENT_DISCONNECTED", {});
   render();
 }
@@ -592,7 +601,18 @@ function render() {
   els.connectionState.textContent = state.connected ? "已连接" : "未连接";
   els.connectionState.dataset.state = state.connected ? "connected" : "offline";
   els.clientId.textContent = state.clientId || "-";
-  if (els.connectStatus) { els.connectStatus.textContent = state.connected ? "● 已连接" : "● 未连接"; els.connectStatus.dataset.state = state.connected ? "connected" : "offline"; }
+  if (els.connectStatus) {
+    if (state.connected) {
+      els.connectStatus.textContent = "● 已连接";
+      els.connectStatus.dataset.state = "connected";
+    } else if (state._connectError) {
+      els.connectStatus.textContent = "⚠ " + state._connectError;
+      els.connectStatus.dataset.state = "error";
+    } else {
+      els.connectStatus.textContent = "● 未连接";
+      els.connectStatus.dataset.state = "offline";
+    }
+  }
 
   const phase = state.match?.phase || state.room?.status || "LOBBY";
   els.phase.textContent = displayPhase(phase);

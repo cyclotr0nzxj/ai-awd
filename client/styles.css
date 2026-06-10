@@ -155,6 +155,7 @@ label {
 .connect-status { margin-top: 12px; font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
 .connect-status[data-state="offline"] { color: var(--red); }
 .connect-status[data-state="connected"] { color: var(--green); }
+.connect-status[data-state="error"] { color: var(--amber); }
 
 .connect-footer {
   margin-top: 30px; display: flex; gap: 20px; justify-content: center;
