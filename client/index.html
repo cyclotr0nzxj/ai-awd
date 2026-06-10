@@ -21,7 +21,10 @@
       <label>服务器地址 <input id="host" value="127.0.0.1" placeholder="127.0.0.1" /></label>
       <label>端口 <input id="port" type="number" value="9000" /></label>
       <label>你的名字 <input id="displayName" value="玩家" /></label>
-      <button id="connect" class="btn-primary btn-lg">连接服务器</button>
+      <button id="connect" class="btn-primary btn-lg" onclick="
+  var st = document.getElementById('connectStatus');
+  if(st){st.textContent='⏳ 连接中...';st.dataset.state='connected';setTimeout(function(){if(!window.__aiawdConnected){st.textContent='⚠ 事件未触发，初始化可能失败';st.dataset.state='error';}},3000);}
+">连接服务器</button>
       <p id="connectStatus" class="connect-status" data-state="offline">● 未连接</p>
     </div>
     <div class="connect-footer">
