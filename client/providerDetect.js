@@ -1,5 +1,6 @@
 "use strict";
-window.__providerDetectOK = false;
+var __isBrowser = typeof window !== "undefined";
+if (__isBrowser) window.__providerDetectOK = false;
 try {
 
 // ====== Shared Provider Detection ======
@@ -194,7 +195,11 @@ if (typeof module !== "undefined" && module.exports) {
     runtimeDisplayName,
   };
 }
-window.__providerDetectOK = true;
+if (__isBrowser) window.__providerDetectOK = true;
 } catch (e) {
-  document.body.innerHTML = '<div style="color:#ef4444;padding:40px;font-family:monospace;background:#0f172a;height:100vh"><h2>ProviderDetect 初始化失败</h2><pre style="white-space:pre-wrap;word-break:break-all">'+e.message+'\n'+e.stack+'</pre></div>';
+  if (__isBrowser) {
+    document.body.innerHTML = '<div style="color:#ef4444;padding:40px;font-family:monospace;background:#0f172a;height:100vh"><h2>ProviderDetect 初始化失败</h2><pre style="white-space:pre-wrap;word-break:break-all">'+e.message+'\n'+e.stack+'</pre></div>';
+  } else {
+    throw e;
+  }
 }
