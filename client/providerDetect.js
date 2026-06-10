@@ -1,4 +1,6 @@
 "use strict";
+window.__providerDetectOK = false;
+try {
 
 // ====== Shared Provider Detection ======
 // Used by both main process (via require) and renderer (via <script> tag).
@@ -191,4 +193,8 @@ if (typeof module !== "undefined" && module.exports) {
     providerLogo,
     runtimeDisplayName,
   };
+}
+window.__providerDetectOK = true;
+} catch (e) {
+  document.body.innerHTML = '<div style="color:#ef4444;padding:40px;font-family:monospace;background:#0f172a;height:100vh"><h2>ProviderDetect 初始化失败</h2><pre style="white-space:pre-wrap;word-break:break-all">'+e.message+'\n'+e.stack+'</pre></div>';
 }

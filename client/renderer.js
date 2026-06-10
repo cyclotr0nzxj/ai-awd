@@ -1,3 +1,5 @@
+window.__rendererOK = false;
+try {
 const state = {
   connected: false, clientId: null, roomId: null, role: null, matchId: null,
   room: null, match: null, rankings: [], targets: [], events: [], messages: [],
@@ -1155,3 +1157,7 @@ function eventSummary(event) { const p = event.payload || {}; const s = p.submis
 function eventTone(event) { if (event.type==="FLAG_CAPTURED") return "good"; if (event.type==="FLAG_REJECTED"||event.type==="ERROR"||event.type==="SEND_FAILED"||event.type==="TARGET_ACTION_FAILED") return "bad"; if (event.type==="TARGET_ACTION_DONE") return "good"; if (event.type==="SUBMIT_SKIPPED"||event.type==="JOIN_SKIPPED"||event.type==="SEND_SKIPPED"||event.type==="TARGET_ACTION_SKIPPED") return "warn"; return "neutral"; }
 function displayEventType(type) { return { CLIENT_CONNECTED:"已连接", CLIENT_DISCONNECTED:"已断开", CONNECT_FAILED:"连接失败", JOIN_SKIPPED:"未加入", SUBMIT_SKIPPED:"未提交", SEND_SKIPPED:"未发送", SEND_FAILED:"发送失败", ROOM_SELECTED:"已选房间", REPORT_GENERATED:"战报已生成", REPORT_COPIED:"战报已复制", REPORT_DOWNLOADED:"战报已下载", TARGET_ACTION_DONE:"本地靶机", TARGET_ACTION_FAILED:"靶机失败", FLAG_CAPTURED:"攻陷得分", FLAG_REJECTED:"Flag拒绝", ERROR:"错误", EVENT:"事件" }[type] || type; }
 function refreshPhaseTimer() { if (els.phaseTimer) els.phaseTimer.textContent = phaseTimerSummary(); if (state.scorePopup && Date.now() - state.scorePopup.timestamp > 2000) { state.scorePopup = null; render(); } }
+window.__rendererOK = true;
+} catch (rendererErr) {
+  document.body.innerHTML = '<div style="color:#ef4444;padding:40px;font-family:monospace;background:#0f172a;height:100vh"><h2>Renderer 初始化失败</h2><pre style="white-space:pre-wrap;word-break:break-all">'+rendererErr.message+'\n'+rendererErr.stack+'</pre></div>';
+}

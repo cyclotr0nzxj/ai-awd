@@ -24,8 +24,16 @@
       <button id="connect" class="btn-primary btn-lg" onclick="
   var st=document.getElementById('connectStatus');
   if(st){st.textContent='⏳ 连接中...';st.dataset.state='connected';}
-  if(window.__connectAiawd){window.__connectAiawd();}
-  else{setTimeout(function(){if(!window.__aiawdConnected&&st){st.textContent='⚠ 函数未加载，renderer.js 初始化失败';st.dataset.state='error';}},1000);}
+  if(window.__connectAiawd){window.__connectAiawd();return;}
+  setTimeout(function(){
+    if(window.__aiawdConnected)return;
+    if(st){
+      if(!window.__providerDetectOK)st.textContent='⚠ providerDetect.js 加载失败';
+      else if(!window.__rendererOK)st.textContent='⚠ renderer.js 初始化失败';
+      else st.textContent='⚠ 未知错误，请查看终端输出';
+      st.dataset.state='error';
+    }
+  },1000);
 ">连接服务器</button>
       <p id="connectStatus" class="connect-status" data-state="offline">● 未连接</p>
     </div>
