@@ -97,11 +97,12 @@ class HttpApiTest(unittest.TestCase):
         status, body = asyncio.run(self._start_and_fetch("/health"))
         self.assertEqual(body["clients"], 2)
 
-    def test_targets_endpoint_returns_three_templates(self):
+    def test_targets_endpoint_returns_registered_templates(self):
         status, body = asyncio.run(self._start_and_fetch("/api/v1/targets"))
         self.assertEqual(status, 200)
         self.assertIn("targets", body)
-        self.assertEqual(len(body["targets"]), 3)
+        self.assertEqual(len(body["targets"]), 4)
+        self.assertEqual(body["targets"][0]["template_id"], "real_ctf_web_awd_02")
 
     def test_rooms_endpoint_empty(self):
         status, body = asyncio.run(self._start_and_fetch("/api/v1/rooms"))

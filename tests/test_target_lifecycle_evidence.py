@@ -60,11 +60,11 @@ class TargetLifecycleEvidenceTest(unittest.TestCase):
 
         self.assertTrue(result.ok)
         self.assertEqual(result.mode, "dry-run-all")
-        self.assertEqual(result.summary["target_count"], 3)
-        for template_id in ("real_ctf_web_awd_01", "pwn_awd_echo_01", "crypto_awd_oracle_01"):
+        self.assertEqual(result.summary["target_count"], 4)
+        for template_id in ("real_ctf_web_awd_02", "real_ctf_web_awd_01", "pwn_awd_echo_01", "crypto_awd_oracle_01"):
             self.assertIn(template_id, evidence)
             self.assertIn(template_id, transcript)
-        self.assertEqual(evidence.count('"action": "health"'), 3)
+        self.assertEqual(evidence.count('"action": "health"'), 4)
         self.assertNotIn(DEMO_FLAG, evidence)
         self.assertNotIn(DEMO_FLAG, transcript)
 

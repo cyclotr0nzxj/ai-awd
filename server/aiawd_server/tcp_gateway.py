@@ -11,7 +11,7 @@ from .models import Phase, Role, Room, Session
 from .protocol import Message, ProtocolError, make_error, read_message, write_message
 from .room_manager import RoomError, RoomManager
 from .session_manager import SessionManager
-from .target_registry import TargetRegistry
+from .target_registry import DEFAULT_TARGET_TEMPLATE_ID, TargetRegistry
 from .target_runtime import TargetRuntime, TargetRuntimeError
 
 
@@ -142,7 +142,7 @@ class TCPGateway:
                     payload={"targets": self.target_registry.list_targets()},
                 )
             if message.type == "CREATE_ROOM_REQ":
-                target_template_id = str(message.payload.get("target_template_id") or "real_ctf_web_awd_01")
+                target_template_id = str(message.payload.get("target_template_id") or DEFAULT_TARGET_TEMPLATE_ID)
                 if not self.target_registry.has(target_template_id):
                     raise RoomError("BAD_REQUEST", "未知靶机模板")
                 room = self.room_manager.create_room(session, message.payload)

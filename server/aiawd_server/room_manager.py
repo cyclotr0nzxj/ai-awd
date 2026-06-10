@@ -4,6 +4,7 @@ from itertools import count
 from typing import Any
 
 from .models import MemberStatus, Phase, Role, Room, RoomMember, Session
+from .target_registry import DEFAULT_TARGET_TEMPLATE_ID
 
 
 class RoomError(ValueError):
@@ -38,7 +39,7 @@ class RoomManager:
             room_name=str(payload.get("room_name") or room_id),
             owner_client_id=owner.client_id,
             max_players=max_players,
-            target_template_id=str(payload.get("target_template_id") or "real_ctf_web_awd_01"),
+            target_template_id=str(payload.get("target_template_id") or DEFAULT_TARGET_TEMPLATE_ID),
             allow_spectators=bool(payload.get("allow_spectators", True)),
             phase_seconds={
                 "prepare": float(phase_seconds.get("prepare", 60)),

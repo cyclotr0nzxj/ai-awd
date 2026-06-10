@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from typing import Any
 
 
+DEFAULT_TARGET_TEMPLATE_ID = "real_ctf_web_awd_02"
+
+
 @dataclass(frozen=True, slots=True)
 class TargetTemplate:
     template_id: str

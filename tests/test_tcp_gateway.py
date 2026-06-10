@@ -30,8 +30,8 @@ async def _three_clients_room_and_match_flow(tmp_path: Path) -> None:
         await client_a.send("LIST_TARGETS_REQ", seq=10)
         targets_res = await client_a.read_until_type("LIST_TARGETS_RES")
         target = targets_res.payload["targets"][0]
-        assert target["template_id"] == "real_ctf_web_awd_01"
-        assert target["difficulty"] == "professional"
+        assert target["template_id"] == "real_ctf_web_awd_02"
+        assert target["difficulty"] == "beginner"
         assert target["runtime"] == "docker-compose"
         assert target["manifest"]["healthcheck"]["path"] == "/health"
 

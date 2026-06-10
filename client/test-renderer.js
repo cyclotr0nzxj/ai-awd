@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const ELEMENT_IDS = [
+  "appNotice", "appNoticeTitle", "appNoticeBody",
   "host", "port", "displayName", "connect", "disconnect",
   "connectionState", "clientId",
   "roomName", "maxPlayers", "targetTemplateId",
@@ -299,6 +300,7 @@ test("renderer initializes offline Chinese dashboard state", () => {
 
   assert.equal(elements.connectionState.textContent, "未连接");
   assert.equal(elements.connectionState.dataset.state, "offline");
+  assert.equal(elements.appNotice.dataset.state, "hidden");
   assert.equal(elements.phase.textContent, "大厅");
   assert.equal(elements.phaseTimer.textContent, "等待同步");
   assert.equal(elements.selectedRoom.textContent, "未选择");
@@ -340,6 +342,7 @@ test("index.html keeps Chinese shell text and defaults", () => {
 
   assert.match(html, /<html lang="zh-CN">/);
   assert.match(html, /AI攻防大乱斗<\/title>/);
+  assert.match(html, /id="appNotice"/);
   assert.match(html, /id="displayName" value="玩家"/);
   assert.match(html, /id="agentRuntime"/);
   assert.match(html, /id="modelDisplayName"/);
@@ -352,7 +355,7 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /AI攻防大乱斗/);
   assert.match(html, /Agent/);
   assert.match(html, /参赛|加入/);
-  assert.match(html, /id="agentStatus"/);
+  assert.match(html, /agent-status-badge/);
   assert.match(html, /防线/);
   assert.match(html, /生成战报/);
   assert.match(html, /targetLifecycleStatus/);
@@ -594,11 +597,11 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.match(elements.defenseBoard.innerHTML, /连续攻陷/);
   assert.match(elements.defenseBoard.innerHTML, /team_a x1/);
   assert.doesNotMatch(elements.defenseBoard.innerHTML, /FLAG\{secret\}/);
-  assert.match(elements.resultSummary.textContent, /当前防线完整王 team_a/);
+  assert.match(elements.resultSummary.textContent, /当前防线完整王 Alice/);
   assert.match(elements.resultSummary.textContent, /攻陷 1/);
   assert.match(elements.resultSummary.textContent, /防线完整/);
   assert.match(elements.podiumList.innerHTML, /冠军/);
-  assert.match(elements.podiumList.innerHTML, /team_a/);
+  assert.match(elements.podiumList.innerHTML, /Alice/);
   assert.match(elements.captureRecap.textContent, /最近攻陷：team_a 攻陷 team_b \+100 分/);
   assert.match(elements.players.innerHTML, /Alice/);
   assert.match(elements.players.innerHTML, /靶机已好/);
@@ -606,7 +609,7 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.equal(elements.markTargetReady.disabled, false);
   assert.equal(elements.markAgentReady.disabled, false);
   assert.match(elements.spectators.innerHTML, /观察员/);
-  assert.match(elements.rankings.innerHTML, /team_a/);
+  assert.match(elements.rankings.innerHTML, /Alice/);
   assert.match(elements.rankings.innerHTML, /100 分/);
   assert.match(elements.rankings.innerHTML, /Alice · 我方 · 领先/);
   assert.match(elements.rankings.innerHTML, /Bob · 落后 150 分/);
@@ -747,6 +750,9 @@ test("renderer runs local target diagnostics through the preload bridge", async 
   assert.equal(calls.at(-1)[1].action, "doctor");
   assert.match(elements.targetLifecycleStatus.textContent, /Docker daemon/);
   assert.equal(elements.targetLifecycleStatus.dataset.state, "warn");
+  assert.equal(elements.appNotice.dataset.state, "warn");
+  assert.match(elements.appNoticeTitle.textContent, /靶机警告/);
+  assert.match(elements.appNoticeBody.textContent, /Docker daemon/);
   assert.doesNotMatch(elements.targetLifecycleStatus.textContent, /FLAG\{secret\}/);
 });
 
@@ -804,10 +810,10 @@ test("renderer shows AI attack-defense final results after finished phase", () =
   assert.equal(elements.phase.textContent, "结束");
   assert.match(elements.nextStepBody.textContent, /比赛已结束|结算|完成|FINISHED|冠军|复盘/);
   assert.equal(elements.submitFlag.disabled, true);
-  assert.match(elements.resultSummary.textContent, /冠军 team_b · Bob · 150 分 · 攻陷 1 · 防线完整/);
-  assert.match(elements.podiumList.innerHTML, /team_b/);
-  assert.match(elements.podiumList.innerHTML, /team_a/);
-  assert.match(elements.podiumList.innerHTML, /team_c/);
+  assert.match(elements.resultSummary.textContent, /冠军 Bob · 150 分 · 攻陷 1 · 防线完整/);
+  assert.match(elements.podiumList.innerHTML, /Bob/);
+  assert.match(elements.podiumList.innerHTML, /Alice/);
+  assert.match(elements.podiumList.innerHTML, /Charlie/);
   assert.match(elements.captureRecap.textContent, /最近攻陷：team_b 攻陷 team_c \+100 分/);
   assert.match(elements.arenaMap.innerHTML, /领先/);
   assert.match(elements.arenaMap.innerHTML, /AI攻防大乱斗/);
@@ -1096,6 +1102,9 @@ test("renderer records Chinese validation event when submitting an empty flag", 
 
   assert.match(elements.events.innerHTML, /未提交/);
   assert.match(elements.events.innerHTML, /data-tone="warn"/);
+  assert.equal(elements.appNotice.dataset.state, "warn");
+  assert.match(elements.appNoticeTitle.textContent, /未提交/);
+  assert.match(elements.appNoticeBody.textContent, /需要填写 Flag/);
 });
 
 test("renderer shows floating score delta popup on FLAG_CAPTURED", () => {
