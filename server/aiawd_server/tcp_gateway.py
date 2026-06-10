@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
+from time import time
 from typing import Any
 
 from .log_store import LogStore
