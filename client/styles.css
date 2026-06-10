@@ -155,7 +155,6 @@ label {
 .connect-status { margin-top: 12px; font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
 .connect-status[data-state="offline"] { color: var(--red); }
 .connect-status[data-state="connected"] { color: var(--green); }
-.connect-status[data-state="error"] { color: var(--amber); }
 
 .connect-footer {
   margin-top: 30px; display: flex; gap: 20px; justify-content: center;
@@ -370,13 +369,31 @@ label {
 
 /* Agent Activity Feed — per-player columns */
 .battle-activity {
-  padding: 10px 20px; border-top: 1px solid var(--border);
-  background: rgba(2,6,23,0.9); flex-shrink: 0;
+  padding: 12px 24px; border-top: 1px solid var(--border);
+  background: rgba(2,6,23,0.9); flex: 1; min-height: 200px;
+  display: flex; flex-direction: column;
 }
 .battle-activity h4 {
-  font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 1.5px;
-  font-family: var(--font-display); margin-bottom: 8px;
+  font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1.5px;
+  font-family: var(--font-display); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
 }
+/* Status badges in activity header */
+.agent-status-badge, .target-status-badge {
+  font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+  text-transform: none; letter-spacing: 0; font-family: var(--font-mono);
+  border: 1px solid var(--border);
+}
+.agent-status-badge[data-state="running"], .agent-status-badge[data-state="looping"] {
+  background: rgba(34,197,94,0.12); color: var(--green); border-color: var(--green);
+}
+.agent-status-badge[data-state="ok"] { background: rgba(34,197,94,0.08); color: var(--green); }
+.agent-status-badge[data-state="warn"] { background: rgba(245,158,11,0.12); color: var(--amber); border-color: var(--amber); }
+.agent-status-badge[data-state="bad"] { background: rgba(239,68,68,0.12); color: var(--red); border-color: var(--red); }
+.agent-status-badge[data-state="idle"] { color: var(--muted); }
+.target-status-badge[data-state="running"] { background: rgba(34,197,94,0.1); color: var(--green); }
+.target-status-badge[data-state="bad"] { background: rgba(239,68,68,0.12); color: var(--red); border-color: var(--red); }
+.target-status-badge[data-state="idle"], .target-status-badge[data-state="warn"] { color: var(--muted); }
 .activity-empty {
   padding: 12px; text-align: center; color: var(--muted); font-style: italic; font-size: 12px;
 }
@@ -398,7 +415,7 @@ label {
   font-size: 9px; color: var(--muted); font-family: var(--font-mono);
 }
 .activity-player-log {
-  display: flex; flex-direction: column; max-height: 150px; overflow-y: auto;
+  display: flex; flex-direction: column; max-height: 300px; overflow-y: auto;
 }
 .activity-row {
   padding: 5px 10px; font-size: 10px; font-family: var(--font-mono);
@@ -441,8 +458,6 @@ label {
 }
 .battle-submit { display: flex; gap: 8px; flex: 2; }
 .battle-submit input { flex: 1; }
-.battle-agent { display: flex; gap: 8px; align-items: center; flex: 1; }
-.battle-agent span { font-size: 11px; color: var(--muted); white-space: nowrap; font-family: var(--font-mono); }
 
 /* ----- Arena Components ----- */
 .arena-core { text-align: center; margin-bottom: 24px; }

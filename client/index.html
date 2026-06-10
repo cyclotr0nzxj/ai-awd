@@ -180,11 +180,11 @@
           </label>
           <label class="prepare-field">
             <span>模型名</span>
-            <input id="modelDisplayName" value="" placeholder="如 deepseek-chat" class="prepare-input" />
+            <input id="modelDisplayName" value="deepseek-chat" placeholder="如 deepseek-chat" class="prepare-input" />
           </label>
           <label class="prepare-field" id="apiBaseUrlField" style="display:none">
             <span>API Base URL</span>
-            <input id="apiBaseUrl" value="" placeholder="https://api.deepseek.com" class="prepare-input" />
+            <input id="apiBaseUrl" value="https://api.deepseek.com" placeholder="https://api.deepseek.com" class="prepare-input" />
           </label>
         </div>
         <div class="prepare-actions">
@@ -218,18 +218,13 @@
     <div id="arenaMap" class="arena-full"></div>
 
     <div class="battle-activity">
-      <h4>⚡ Agent 实时动态</h4>
+      <h4>⚡ Agent 实时动态
+        <span class="agent-status-badge" data-state="idle">⏸ 未启动</span>
+        <span class="target-status-badge" data-state="idle" id="battleTargetStatus">等待靶机</span>
+      </h4>
       <div id="agentActivityFeed" class="agent-activity-feed"></div>
     </div>
 
-    <div class="battle-bottom">
-      <div class="battle-agent" style="flex:1">
-        <input id="agentCommand" placeholder="Agent 命令（留空自动）" style="flex:1" />
-        <button id="agentStart">启动</button>
-        <button id="agentStop">停止</button>
-        <span id="agentStatus" class="status-text">Agent 未启动</span>
-      </div>
-    </div>
   </div>
 </div>
 

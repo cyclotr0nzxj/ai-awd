@@ -14,6 +14,9 @@ const state = {
   autoDefenseStarted: false,
   autoPrepareStarted: false,
   _agentCommandArray: null,
+  _agentLoopActive: false,
+  _agentRunning: false,
+  _agentTimer: null,
 };
 
 // ====== Provider Detection (shared with main process via providerDetect.js) ======
@@ -134,10 +137,9 @@ window.addEventListener("DOMContentLoaded", () => {
     "selectedRoom","myRole","phase","phaseTimer","scoreSummary","attackHeat",
     "nextStepBody","roomSummary","matchSummary","attackKit",
     "targetLifecycleStatus","targetDoctor","targetInstall","targetStart","targetHealth","targetStop","targetReset",
-    "arenaMap","defenseBoard","resultSummary","podiumList","captureRecap",
+    "arenaMap","defenseBoard","resultSummary","podiumList","captureRecap","battleTargetStatus",
     "generateReport","copyReport","downloadReport","reportPreview",
     "rankings","events","messages","matchConfig",
-    "agentCommand","agentStart","agentStop","agentStatus",
     "apiKey","apiBaseUrl",
     "roomSearch","roomReadyBtn","roomHint","leaveRoom","backToRoom","backToLobby",
     "lobbyPlayerName","roomTitle","roomTargetType","roomFormat","roomPhase",
@@ -264,18 +266,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (els.modelDisplayName) els.modelDisplayName.addEventListener("input", refreshPrepareProviderBadge);
   refreshPrepareProviderBadge();
 
-  // Wire agentRuntime dropdown to auto-populate agentCommand
-  if (els.agentRuntime) {
-    els.agentRuntime.addEventListener("change", () => {
-      const runtime = els.agentRuntime.value;
-      const modelName = currentModelDisplayName();
-      const cmd = buildAgentCommand(runtime, modelName, "ATTACK");
-      if (cmd.length && els.agentCommand) {
-        els.agentCommand.value = formatCommandForDisplay(cmd);
-        state._agentCommandArray = cmd;
-      }
-    });
-  }
+  // agentRuntime dropdown — command is built on-demand per phase, no UI wiring needed
 
   // Room search filter
   if (els.roomSearch) {
@@ -303,10 +294,6 @@ window.addEventListener("DOMContentLoaded", () => {
   els.targetHealth.addEventListener("click", () => runTargetLifecycle("health"));
   els.targetStop.addEventListener("click", () => runTargetLifecycle("stop"));
   els.targetReset.addEventListener("click", () => runTargetLifecycle("reset"));
-  if (els.agentStart) els.agentStart.addEventListener("click", agentStart);
-  if (els.agentStop) els.agentStop.addEventListener("click", agentStop);
-  // Invalidate cached command array when user manually edits the field
-  if (els.agentCommand) els.agentCommand.addEventListener("input", () => { state._agentCommandArray = null; });
   els.generateReport.addEventListener("click", generateReport);
   els.copyReport.addEventListener("click", copyReport);
   els.downloadReport.addEventListener("click", downloadReport);
@@ -412,6 +399,8 @@ function toggleReady() {
 }
 
 function leaveCurrentRoom() {
+  // Stop agent loop
+  agentStop();
   state.roomId = null; state.role = null; state.matchId = null;
   state.room = null; state.match = null; state.isHost = false; state.iAmReady = false;
   state.rankings = []; state.events = []; state.configs = [];
@@ -438,23 +427,18 @@ async function runTargetLifecycle(actionName) {
   render();
 }
 
-// ====== Agent ======
+// ====== Agent (auto, continuous) ======
 async function agentStart() {
   const config = state.configs[0];
   if (!config) { addEvent("AGENT_SKIPPED", { message: "等待比赛配置" }); render(); return; }
-  if (!els.agentCommand.value.trim()) {
-    const runtime = els.agentRuntime?.value || "openclaw";
-    const phase = state.match?.phase || state.room?.status || "ATTACK";
-    const cmd = buildAgentCommand(runtime, currentModelDisplayName(), phase);
-    if (cmd.length) { els.agentCommand.value = formatCommandForDisplay(cmd); state._agentCommandArray = cmd; }
-  }
-  // Use the pre-built command array to preserve quoted arguments (e.g. --prompt "...")
-  const command = state._agentCommandArray
-    && els.agentCommand.value.trim() === formatCommandForDisplay(state._agentCommandArray)
-    ? state._agentCommandArray
-    : els.agentCommand.value.trim().split(/\s+/).filter(Boolean);
-  if (!command.length) { addEvent("AGENT_SKIPPED", { message: "需要指定 Agent 命令" }); render(); return; }
-  state.agentStatus = { state: "running", message: "Agent 攻击中..." };
+  const runtime = els.agentRuntime?.value || "openclaw";
+  const phase = state.match?.phase || state.room?.status || "ATTACK";
+  // Always build the command from scratch for the current phase
+  const command = buildAgentCommand(runtime, currentModelDisplayName(), phase);
+  state._agentCommandArray = command;
+  if (!command.length) { addEvent("AGENT_SKIPPED", { message: "无法构建 Agent 命令" }); render(); return; }
+  const phaseLabel = phase === "DEFENSE" ? "防御中" : "攻击中";
+  state.agentStatus = { state: "running", message: `Agent ${phaseLabel}...` };
   render();
   try {
     const result = await window.aiawd.agentStart({ command, apiKey: els.apiKey?.value?.trim() || "", modelDisplayName: currentModelDisplayName(), apiBaseUrl: currentApiBaseUrl(), matchConfig: config, roomStatus: state.match?.phase || state.room?.status || "LOBBY", matchId: state.matchId, roomId: state.roomId });
@@ -462,12 +446,34 @@ async function agentStart() {
     if (result.flagsCaptured?.length) addEvent("AGENT_FLAGS_FOUND", { flags: result.flagsCaptured, elapsedMs: result.elapsedMs });
     else addEvent("AGENT_DONE", { message: state.agentStatus.message });
   } catch (error) { state.agentStatus = { state: "bad", message: error.message || "Agent 失败" }; addEvent("AGENT_FAILED", { message: state.agentStatus.message }); }
+  state._agentRunning = false;
+  render();
+  // Schedule next run if still in active phase
+  scheduleNextAgentRun();
+}
+
+function agentStop() {
+  state._agentLoopActive = false;
+  if (state._agentTimer) { clearTimeout(state._agentTimer); state._agentTimer = null; }
+  // Best-effort stop on server side
+  window.aiawd.agentStop().catch(() => {});
+  state.agentStatus = { state: "idle", message: "Agent 已停止" };
   render();
 }
-async function agentStop() {
-  try { await window.aiawd.agentStop(); state.agentStatus = { state: "idle", message: "Agent 已停止" }; }
-  catch (error) { state.agentStatus = { state: "idle", message: `停止失败: ${error.message}` }; }
-  render();
+
+function scheduleNextAgentRun() {
+  if (!state._agentLoopActive) return;
+  // Don't overlap with running agent
+  if (state._agentRunning) return;
+  // Only loop in ATTACK and DEFENSE phases
+  const phase = state.match?.phase || "";
+  if (phase !== "ATTACK" && phase !== "DEFENSE") return;
+  // Wait 3s between rounds
+  const delay = 3000;
+  state._agentTimer = setTimeout(() => {
+    state._agentRunning = true;
+    agentStart();
+  }, delay);
 }
 
 async function listRooms() { await action("LIST_ROOMS", () => window.aiawd.listRooms()); }
@@ -549,20 +555,25 @@ function handleMessage(message) {
       for (const pa of phaseAgents) {
         if (state.match?.phase === pa.phase && !state[pa.flag] && state.role === "player") {
           state[pa.flag] = true;
-          // Always rebuild the command for the new phase — each phase has a different prompt
-          if (els.agentCommand) {
-            const runtime = els.agentRuntime?.value || "";
-            const modelName = currentModelDisplayName();
-            const cmd = buildAgentCommand(runtime, modelName, pa.phase);
-            if (cmd.length) { els.agentCommand.value = formatCommandForDisplay(cmd); state._agentCommandArray = cmd; }
-          }
           addEvent("AUTO_" + pa.phase, { message: "进入" + pa.label + "阶段，" + pa.message });
-          setTimeout(() => agentStart(), 1000);
+          // Start continuous agent loop for ATTACK and DEFENSE phases
+          if (pa.phase === "ATTACK" || pa.phase === "DEFENSE") {
+            state._agentLoopActive = true;
+            state._agentRunning = true;
+            setTimeout(() => agentStart(), 1000);
+          } else {
+            // PREPARE: run once
+            setTimeout(() => agentStart(), 1000);
+          }
         }
+      }
+      // Stop loop when leaving active phases
+      if (state.match?.phase !== "ATTACK" && state.match?.phase !== "DEFENSE" && state._agentLoopActive) {
+        agentStop();
       }
       // Auto-cleanup when match finishes
       if (state.match?.phase === "FINISHED" && state.role === "player") {
-        window.aiawd.agentStop().catch(() => {});
+        agentStop();
         addEvent("MATCH_FINISHED_AUTO", { message: "比赛结束，Agent 自动停止" });
       }
       break;
@@ -948,18 +959,36 @@ function renderBattleKit() {
 function renderTargetLifecycle() {
   const config = state.configs[0];
   const hasRuntime = Boolean(config?.target_runtime?.project_name);
-  els.targetLifecycleStatus.textContent = state.targetActionStatus.message || (hasRuntime ? targetRuntimePlanText(config) : "等待本地靶机计划");
-  els.targetLifecycleStatus.dataset.state = state.targetActionStatus.state || "idle";
+  const msg = state.targetActionStatus.message || (hasRuntime ? targetRuntimePlanText(config) : "等待本地靶机计划");
+  const st = state.targetActionStatus.state || "idle";
+  els.targetLifecycleStatus.textContent = msg;
+  els.targetLifecycleStatus.dataset.state = st;
+  // Also update battle page header badge
+  if (els.battleTargetStatus) {
+    els.battleTargetStatus.textContent = st === "running" ? "靶机执行中"
+      : st === "ok" ? "靶机就绪" : st === "bad" ? "靶机异常"
+      : hasRuntime ? "靶机待启动" : "无靶机";
+    els.battleTargetStatus.dataset.state = st;
+  }
 }
 
 function renderAgentStatus() {
-  if (!els.agentStatus) return;
-  els.agentStatus.textContent = state.agentStatus?.message || "Agent 未启动";
-  els.agentStatus.dataset.state = state.agentStatus?.state || "idle";
-  const hasConfig = Boolean(state.configs[0]);
-  const isAttack = (state.match?.phase || "") === "ATTACK";
-  if (els.agentStart) els.agentStart.disabled = !state.connected || !hasConfig || !isAttack || state.role === "spectator";
-  if (els.agentStop) els.agentStop.disabled = state.agentStatus?.state !== "running";
+  // Agent status is shown in the activity feed header — no separate UI bar
+  const phase = state.match?.phase || "";
+  const loopActive = state._agentLoopActive && (phase === "ATTACK" || phase === "DEFENSE");
+  // Update the agent activity feed header with status badge
+  if (els.agentActivityFeed) {
+    const existingBadge = els.agentActivityFeed.parentElement?.querySelector(".agent-status-badge");
+    if (existingBadge) {
+      const statusText = state.agentStatus?.state === "running" ? "⚡ 执行中"
+        : state.agentStatus?.state === "ok" ? "✓ 完成"
+        : state.agentStatus?.state === "warn" ? "⚠ 异常"
+        : state.agentStatus?.state === "bad" ? "✗ 失败"
+        : loopActive ? "🔄 等待下一轮" : "⏸ 未启动";
+      existingBadge.textContent = statusText;
+      existingBadge.dataset.state = state.agentStatus?.state || (loopActive ? "looping" : "idle");
+    }
+  }
 }
 
 function setTargetLifecycleDisabled() {

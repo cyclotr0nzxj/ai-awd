@@ -127,7 +127,9 @@ function extractFromAppBundle(zipDir, dest) {
 }
 
 /**
- * Install openclaw via npm as a local package.
+ * Install openclaw via npm.
+ * On Windows: tries global install first (more reliable in PATH),
+ * then local install as fallback.
  * Creates a shim at bin/openclaw that can be used by the Electron app.
  */
 function installViaNpm() {
@@ -136,28 +138,59 @@ function installViaNpm() {
   const shimName = process.platform === "win32" ? "openclaw.cmd" : "openclaw";
   const shimPath = path.join(npmBinDir, shimName);
 
-  // Check if already installed via npm
+  // Quick check: is openclaw already reachable via PATH?
+  const whichCmd = process.platform === "win32" ? "where" : "which";
+  try {
+    const result = execSync(`${whichCmd} openclaw`, { encoding: "utf-8", timeout: 5000 }).trim();
+    if (result && fs.existsSync(result.split("\n")[0].trim())) {
+      console.log(`openclaw found in PATH: ${result.split("\n")[0].trim()}`);
+      return true;
+    }
+  } catch (_) { /* not in PATH */ }
+
+  // Check if already installed via npm locally
   if (fs.existsSync(shimPath)) {
     try {
       const out = execSync(`"${shimPath}" --version`, { encoding: "utf-8", timeout: 5000 }).trim();
-      console.log(`openclaw (npm) already available: ${out}`);
-      // Symlink/copy to bin dir
-      fs.mkdirSync(BIN_DIR, { recursive: true });
-      const dest = path.join(BIN_DIR, process.platform === "win32" ? "openclaw.cmd" : "openclaw");
-      if (!fs.existsSync(dest)) {
-        // Create a wrapper that calls the npm-installed version
-        if (process.platform === "win32") {
-          fs.writeFileSync(dest, `@echo off\r\n"${shimPath}" %*`);
-        } else {
-          fs.writeFileSync(dest, `#!/bin/sh\nexec "${shimPath}" "$@"`);
-          fs.chmodSync(dest, 0o755);
-        }
-      }
+      console.log(`openclaw (npm local) already available: ${out}`);
+      createBinWrapper(shimPath);
       return true;
     } catch (_) { /* not working */ }
   }
 
-  console.log("Installing openclaw via npm...");
+  // On Windows, try global install first (more reliable, puts openclaw.cmd in PATH)
+  if (process.platform === "win32") {
+    console.log("Installing openclaw globally via npm...");
+    try {
+      execSync("npm install -g openclaw", { stdio: "pipe", timeout: 180000 });
+      // Verify: global openclaw.cmd should now be in PATH
+      try {
+        const gResult = execSync("where openclaw", { encoding: "utf-8", timeout: 5000 }).trim();
+        if (gResult) {
+          console.log(`openclaw installed globally: ${gResult.split("\n")[0].trim()}`);
+          return true;
+        }
+      } catch (_) { /* check npm prefix */ }
+      // Fallback: check common global npm locations
+      const appData = process.env.APPDATA || "";
+      const globalPaths = [
+        path.join(appData, "npm", "openclaw.cmd"),
+        path.join(process.env.ProgramFiles || "C:\\Program Files", "nodejs", "openclaw.cmd"),
+      ];
+      for (const gp of globalPaths) {
+        if (fs.existsSync(gp)) {
+          console.log(`openclaw found at: ${gp}`);
+          return true;
+        }
+      }
+    } catch (globalErr) {
+      console.error(`Global npm install failed: ${globalErr.message}`);
+      console.log("Falling back to local npm install...");
+    }
+  }
+
+  // Local npm install (cross-platform)
+  console.log("Installing openclaw locally via npm...");
   try {
     execSync("npm install openclaw --no-save --no-audit --no-fund", {
       cwd: clientDir,
@@ -166,22 +199,34 @@ function installViaNpm() {
     });
     console.log("openclaw npm package installed successfully.");
 
-    // Create wrapper in bin/
     if (fs.existsSync(shimPath)) {
-      fs.mkdirSync(BIN_DIR, { recursive: true });
-      const dest = path.join(BIN_DIR, process.platform === "win32" ? "openclaw.cmd" : "openclaw");
-      if (process.platform === "win32") {
-        fs.writeFileSync(dest, `@echo off\r\n"${shimPath}" %*`);
-      } else {
-        fs.writeFileSync(dest, `#!/bin/sh\nexec "${shimPath}" "$@"`);
-        fs.chmodSync(dest, 0o755);
-      }
+      createBinWrapper(shimPath);
+      return true;
     }
-    return true;
+    console.error("npm install succeeded but shim not found at", shimPath);
+    return false;
   } catch (npmErr) {
     console.error(`npm install openclaw failed: ${npmErr.message}`);
+    console.log("");
+    console.log("Manual install options:");
+    console.log("  npm install -g openclaw");
+    console.log("  macOS: brew install openclaw");
+    console.log("  Windows: download from https://github.com/openclaw/openclaw/releases");
     return false;
   }
+}
+
+function createBinWrapper(shimPath) {
+  fs.mkdirSync(BIN_DIR, { recursive: true });
+  const dest = path.join(BIN_DIR, process.platform === "win32" ? "openclaw.cmd" : "openclaw");
+  if (fs.existsSync(dest)) return;
+  if (process.platform === "win32") {
+    fs.writeFileSync(dest, `@echo off\r\n@"${shimPath}" %*`);
+  } else {
+    fs.writeFileSync(dest, `#!/bin/sh\nexec "${shimPath}" "$@"`);
+    fs.chmodSync(dest, 0o755);
+  }
+  console.log(`Created wrapper: ${dest}`);
 }
 
 async function main() {
