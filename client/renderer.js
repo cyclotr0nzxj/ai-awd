@@ -549,7 +549,8 @@ function handleMessage(message) {
       for (const pa of phaseAgents) {
         if (state.match?.phase === pa.phase && !state[pa.flag] && state.role === "player") {
           state[pa.flag] = true;
-          if (els.agentCommand && !els.agentCommand.value.trim()) {
+          // Always rebuild the command for the new phase — each phase has a different prompt
+          if (els.agentCommand) {
             const runtime = els.agentRuntime?.value || "";
             const modelName = currentModelDisplayName();
             const cmd = buildAgentCommand(runtime, modelName, pa.phase);
@@ -814,7 +815,7 @@ function renderEventsAndRankings() {
     `<li class="event-row" data-tone="${escapeHtml(eventTone(event))}"><span><small>${escapeHtml(event.at)}</small>${escapeHtml(eventSummary(event))}</span><strong>${escapeHtml(displayEventType(event.type))}</strong></li>`
   ).join("") || "<li>暂无事件</li>";
   els.rankings.innerHTML = state.rankings.map((row, i) =>
-    `<li class="rank-row" data-rank="${i+1}"><span><b>第 ${i+1} 名 · ${escapeHtml(row.team_id||"-")}</b><small>${escapeHtml(rankingMeta(row,i))}</small></span><strong>${escapeHtml(row.score??0)} 分</strong></li>`
+    `<li class="rank-row" data-rank="${i+1}"><span><b>第 ${i+1} 名 · ${escapeHtml(row.display_name||row.team_id||"-")}</b><small>${escapeHtml(rankingMeta(row,i))}</small></span><strong>${escapeHtml(row.score??0)} 分</strong></li>`
   ).join("") || "<li>暂无分数</li>";
   els.messages.innerHTML = state.messages.map(m => `<li><strong>${escapeHtml(m.type)}</strong><span>${escapeHtml(m.room_id||"")}</span></li>`).join("") || "<li>暂无消息</li>";
 }
@@ -853,10 +854,11 @@ function renderArenaMap(phase, players) {
     const popup = state.scorePopup;
     const showScorePopup = popup && popup.teamId === teamId && Date.now() - popup.timestamp < 2000;
     const scorePopupHtml = showScorePopup ? `<div class="score-popup${popup.delta > 0 ? " is-gain" : " is-loss"}">${popup.delta > 0 ? "+" : ""}${popup.delta}</div>` : "";
+    const displayName = player.display_name || teamId;
     return `<button type="button" class="arena-combatant${isSelf?" is-self":""}${isLeader?" is-leader":""}${isBreached?" is-breached":""}${isFocused?" is-focused":""}${isAttacker?" is-attacker":""}${isTarget?" is-target":""}" data-team-id="${escapeHtml(teamId)}">
       ${scorePopupHtml}
       <div class="combatant-head">
-        <div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(teamId)}</strong></div>
+        <div><span>${escapeHtml(nodeLabel)}</span><strong>${escapeHtml(displayName)}</strong></div>
       </div>
       <div class="combatant-provider">
         ${combatLogo ? `<img class="provider-logo combatant-provider-logo" src="${escapeHtml(combatLogo)}" alt="${escapeHtml(agentName || modelName)}" title="${escapeHtml(providerInfo)}">` : ""}
@@ -904,8 +906,9 @@ function defenseMetric(label, value, detail, tone = "") {
 }
 function defenseRosterItem(stat) {
   const status = stat.breaches ? `失守 ${stat.breaches} 次` : "防线完整";
-  const detail = [stat.name, stat.model, `${stat.targetReady?"靶机已好":"靶机待确认"} · ${stat.agentReady?"Agent已好":"Agent待确认"}`].filter(Boolean).join(" · ");
-  return `<div class="defense-team${stat.breaches?" is-breached":""}"><span>${status}</span><strong>${stat.teamId}</strong><em>${stat.captures} 攻陷 · ${stat.score} 分</em><small>${detail}</small></div>`;
+  const label = stat.name || stat.teamId;
+  const detail = [stat.model, `${stat.targetReady?"靶机已好":"靶机待确认"} · ${stat.agentReady?"Agent已好":"Agent待确认"}`].filter(Boolean).join(" · ");
+  return `<div class="defense-team${stat.breaches?" is-breached":""}"><span>${status}</span><strong>${escapeHtml(label)}</strong><em>${stat.captures} 攻陷 · ${stat.score} 分</em><small>${escapeHtml(detail)}</small></div>`;
 }
 
 // ====== Results Panel ======
@@ -914,10 +917,11 @@ function renderResultsPanel(phase) {
   if (!state.rankings.length) { els.resultSummary.textContent = "等待比赛结果"; els.podiumList.innerHTML = "<li>排行榜同步后生成结算</li>"; els.captureRecap.textContent = "暂无攻陷记录"; return; }
   const leader = state.rankings[0];
   const leaderTeamId = leader.team_id || "";
+  const leaderDisplay = leader.display_name || leaderTeamId || "-";
   const title = phase === "FINISHED" ? "冠军" : "当前防线完整王";
-  els.resultSummary.textContent = `${title} ${leaderTeamId || "-"} · ${leader.display_name || "-"} · ${leader.score ?? 0} 分 · 攻陷 ${captureCount(leaderTeamId)} · ${defenseText(leaderTeamId)}`;
+  els.resultSummary.textContent = `${title} ${leaderDisplay} · ${leader.score ?? 0} 分 · 攻陷 ${captureCount(leaderTeamId)} · ${defenseText(leaderTeamId)}`;
   els.podiumList.innerHTML = state.rankings.slice(0, 3).map((row, i) =>
-    `<li class="podium-row" data-rank="${i+1}"><span>${i===0?"冠军":`第 ${i+1} 名`}</span><strong>${escapeHtml(row.team_id||"-")}</strong><em>${escapeHtml(row.score??0)} 分 · 攻陷 ${escapeHtml(captureCount(row.team_id||""))} · ${escapeHtml(defenseText(row.team_id||""))}</em></li>`
+    `<li class="podium-row" data-rank="${i+1}"><span>${i===0?"冠军":`第 ${i+1} 名`}</span><strong>${escapeHtml(row.display_name||row.team_id||"-")}</strong><em>${escapeHtml(row.score??0)} 分 · 攻陷 ${escapeHtml(captureCount(row.team_id||""))} · ${escapeHtml(defenseText(row.team_id||""))}</em></li>`
   ).join("");
   els.captureRecap.textContent = captures.length ? `最近攻陷：${captureRoute(captures[0])}` : "暂无攻陷记录";
 }
@@ -1129,7 +1133,7 @@ function renderRooms(rooms) {
   }
 }
 function roomMeta(room) { const p = Array.isArray(room.players) ? room.players.length : 0; return `${room.room_id||"-"} · ${p}/${room.max_players||"-"} 玩家 · ${room.allow_spectators?"可观战":"不可观战"} · ${room.target_template_id||"未标注靶场"}`; }
-function memberItem(member) { const status = member.team_id ? ` · ${member.target_ready?"靶机已好":"靶机待确认"} · ${member.agent_ready?"Agent已好":"Agent待确认"}` : ""; const model = member.model_display_name ? ` · 模型 ${member.model_display_name}` : ""; return `<li><span>${escapeHtml(member.team_id||"-")}${status}${escapeHtml(model)}</span><strong>${escapeHtml(member.display_name)}</strong></li>`; }
+function memberItem(member) { const status = member.team_id ? ` · ${member.target_ready?"靶机已好":"靶机待确认"} · ${member.agent_ready?"Agent已好":"Agent待确认"}` : ""; const model = member.model_display_name ? ` · 模型 ${member.model_display_name}` : ""; return `<li><span>${escapeHtml(member.display_name||member.team_id||"-")}${status}${escapeHtml(model)}</span><strong>${escapeHtml(member.display_name)}</strong></li>`; }
 function inferRoleFromRoom(room) { if (!room || !state.clientId) return null; if ((room.players||[]).some(m => m.client_id === state.clientId)) return "player"; if ((room.spectators||[]).some(m => m.client_id === state.clientId)) return "spectator"; return null; }
 function myScoreSummary() { if (!state.rankings.length) return "暂无分数"; const own = state.configs[0]?.team_id; const ownRank = own ? state.rankings.find(r => r.team_id === own) : null; return ownRank ? `${ownRank.score} 分` : `${state.rankings[0].score} 分领先`; }
 function attackHeatSummary() { const c = captureEvents(); if (!c.length) return "暂无交火"; const s = capturePayload(c[0]); const route = s.submitter_team_id && s.target_team_id ? `${s.submitter_team_id}→${s.target_team_id}` : "攻陷得分"; return `${c.length} 次攻陷 · ${route}`; }
