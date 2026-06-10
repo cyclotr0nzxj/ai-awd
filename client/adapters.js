@@ -25,17 +25,58 @@ function openclawPath() {
     }
   } catch (_) { /* fall through */ }
 
-  // 2. Check bundled binary (in app resources or dev mode)
+  // 2. Check npm-installed openclaw (local to this project)
+  const npmBinName = process.platform === "win32" ? "openclaw.cmd" : "openclaw";
+  const npmLocalPaths = [
+    path.join(__dirname, "node_modules", ".bin", npmBinName),
+    path.join(__dirname, "..", "node_modules", ".bin", npmBinName),
+  ];
+  for (const p of npmLocalPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 3. Check npm global install locations
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA || "";
+    if (appData) {
+      const globalNpm = path.join(appData, "npm", "openclaw.cmd");
+      if (fs.existsSync(globalNpm)) return globalNpm;
+    }
+  } else {
+    const npmGlobalPaths = [
+      "/usr/local/lib/node_modules/.bin/openclaw",
+      "/opt/homebrew/lib/node_modules/.bin/openclaw",
+    ];
+    if (process.env.HOME) {
+      npmGlobalPaths.push(path.join(process.env.HOME, ".npm-global", "bin", "openclaw"));
+    }
+    for (const p of npmGlobalPaths) {
+      if (fs.existsSync(p)) return p;
+    }
+  }
+
+  // 4. Finder-launched macOS apps often miss Homebrew paths in PATH.
+  const commonLocalPaths = process.platform === "darwin"
+    ? ["/opt/homebrew/bin/openclaw", "/usr/local/bin/openclaw"]
+    : [];
+  for (const p of commonLocalPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  // 5. Check bundled binary (in app resources or dev mode)
+  const bundledExe = process.platform === "win32" ? "openclaw.cmd" : "openclaw";
   const bundledPaths = [];
   if (process.resourcesPath) {
+    bundledPaths.push(path.join(process.resourcesPath, "bin", bundledExe));
     bundledPaths.push(path.join(process.resourcesPath, "bin", process.platform === "win32" ? "openclaw.exe" : "openclaw"));
   }
+  bundledPaths.push(path.join(__dirname, "bin", bundledExe));
   bundledPaths.push(path.join(__dirname, "bin", process.platform === "win32" ? "openclaw.exe" : "openclaw"));
   for (const p of bundledPaths) {
     if (fs.existsSync(p)) return p;
   }
 
-  // 3. Fallback: hope openclaw is in PATH
+  // 6. Fallback: hope openclaw is in PATH
   return "openclaw";
 }
 
