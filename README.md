@@ -85,7 +85,7 @@ bash scripts/start-server.sh
 
 ```bash
 # 服务器上（两个终端）
-PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
+PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
 bore local 9000 --to bore.pub
 # 输出：listening at bore.pub:57893
 ```
@@ -110,8 +110,8 @@ bore local 9000 --to bore.pub
 
 ```bash
 bash scripts/demo.sh                                               # 全部验证
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
-cd client && node --test test-*.js                                  # 89 tests
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 22 tests
+cd client && node --test test-*.js                                  # 80 tests
 cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 ```
 
@@ -187,7 +187,7 @@ bash scripts/start-server.sh
 
 ```bash
 # On the server machine (two terminals)
-PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
+PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
 bore local 9000 --to bore.pub
 # Output: listening at bore.pub:57893
 ```
@@ -212,8 +212,8 @@ Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** �
 
 ```bash
 bash scripts/demo.sh                                                  # full suite
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
-cd client && node --test test-*.js                                     # 89 tests
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 22 tests
+cd client && node --test test-*.js                                     # 80 tests
 cd client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
 ```
 

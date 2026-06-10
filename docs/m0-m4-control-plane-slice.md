@@ -29,7 +29,10 @@ Generated per-player flags, attack-phase submit, self/duplicate/invalid rejectio
 ### M6–M7 — Agent Runtime
 - Client-side Agent Runtime in Node (`client/agentRuntime.js`).
 - `AgentContext`, `AgentManager`, `CustomCommandAdapter`, flag extraction (regex), safe command validation.
-- Electron integration: IPC handlers in main process, preload API, renderer UI controls (start/stop buttons, command input, status display).
+- Electron integration: IPC handlers in main process, preload API.
+- Battle page: agent runs continuously in ATTACK/DEFENSE phases (3s loop), no manual start/stop buttons.
+- Command auto-built per phase with appropriate prompt (attack: guided endpoint discovery, defense: health-check + exposure scan).
+- Auto-flag-submission and activity broadcast to all room members.
 
 ### M8 — Agent adapters
 - Multi-provider adapter layer: BasicHTTP, Hermes, OpenClaw, OpenCLI, Codex, Pi, CustomPython, and custom command adapters.

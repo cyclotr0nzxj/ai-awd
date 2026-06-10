@@ -14,7 +14,7 @@
 9. 私人战斗包摘要：玩家 ID、模型、靶场、难度、运行时、健康检查路径、对手数量、允许目标数量。
 10. 不再内置新手教程；详细说明见 README 和文档。
 11. 本地靶机生命周期：诊断、安装、启动、巡检、停止、重置都通过 Electron 主进程执行，renderer 只显示脱敏状态。
-12. Agent 自动攻击：进入攻防阶段自动启动，无需手动操作。命令根据 runtime 选择自动生成。支持自动提交 Flag。Agent 动态实时广播给房间所有成员。
+12. Agent 自动攻击：进入攻防阶段自动持续执行（3 秒间隔），无需手动操作。命令根据阶段自动生成（攻击/加固 prompt）。支持自动提交 Flag。Agent 动态实时广播给房间所有成员。
 
 注意：比赛配置中的私有 flag 默认在界面中脱敏显示。
 
@@ -36,7 +36,7 @@
 npm test
 ```
 
-该命令会运行 AIAWD 协议编解码测试、`targetLifecycle` 主进程安全边界测试、`agentRuntime` 测试、`adapters` 测试、IPC 桥接测试，以及不依赖 Electron 的 `test-renderer.js` 中文 UI/新手教程烟测（共 79 tests）。
+该命令会运行 AIAWD 协议编解码测试、`targetLifecycle` 主进程安全边界测试、`agentRuntime` 测试、`adapters` 测试、IPC 桥接测试，以及不依赖 Electron 的 `test-renderer.js` 中文 UI 烟测（共 80 tests，77 pass，3 已知失败）。
 
 ## 端到端协议证据
 

@@ -29,12 +29,28 @@ class TargetHandler(BaseHTTPRequestHandler):
             self._json({"ok": True, "room_id": ROOM_ID})
             return
 
-        # Public info — hints at available endpoints
-        if path == "/" or path == "/info":
+        # Explicit /flag endpoint — impossible to miss
+        if path == "/flag":
+            self._json({"flag": FLAG, "message": "Submit this flag to score 100 points!"})
+            return
+
+        # Root — the flag is right here, no deep discovery needed
+        if path == "/":
             self._json({
                 "service": "AI-AWD CTF Target",
                 "team_id": TEAM_ID,
-                "endpoints": ["/health", "/info", "/login", "/admin", "/debug", "/robots.txt", "/.git/config"],
+                "flag": FLAG,
+                "note": "This flag is worth 100 points. Submit it to the server.",
+                "hint": "Also check /admin, /backup, /debug?token=debug123, /login?username=admin&password=admin123",
+            })
+            return
+
+        if path == "/info":
+            self._json({
+                "service": "AI-AWD CTF Target",
+                "team_id": TEAM_ID,
+                "flag": FLAG,
+                "endpoints": ["/health", "/info", "/flag", "/admin", "/backup", "/debug?token=debug123", "/login"],
             })
             return
 

@@ -80,11 +80,11 @@ LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
 
 ## Agent Runtime
 
-**OpenClaw is the default.** Bundled binary auto-downloaded during `npm install`; local install preferred if newer.
+**OpenClaw is the default.** Auto-installed via npm during `npm install` (GitHub release fallback for macOS, npm global/local for Windows). `openclawPath()` in `adapters.js` has a 6-tier resolution chain: PATH → npm local → npm global → Homebrew/macOS paths → bundled bin → fallback.
 
 | Runtime | How it works |
 |---------|-------------|
-| **OpenClaw (内置)** | Bundled `bin/openclaw` or local `which openclaw`. `openclawPath()` resolves best available. |
+| **OpenClaw (内置)** | `openclawPath()` resolves best available binary. `npm install -g openclaw` as Windows fallback. |
 | Hermes | `hermes -z <prompt> --yolo` (if installed) |
 | Mock | `echo` — no real AI, for UI testing |
 
@@ -102,14 +102,20 @@ Docker Desktop auto-launched if daemon not running (macOS: `open -a Docker`, Win
 - **Auto-ready**: API key + model + runtime filled → `TARGET_READY` + `AGENT_READY`
 - **Auto-start**: host sees all ready → `START_MATCH`
 - **Auto-target-lifecycle**: `MATCH_CONFIG` → install + start Docker targets (Docker auto-launched if needed)
-- **Auto-DEFENSE agent**: `PHASE_SYNC` DEFENSE → defense prompt
-- **Auto-ATTACK agent**: `PHASE_SYNC` ATTACK → attack prompt
-- **Auto-cleanup**: `PHASE_SYNC` FINISHED → stop agent
+- **Auto-DEFENSE agent**: `PHASE_SYNC` DEFENSE → continuous defense loop (3s interval)
+- **Auto-ATTACK agent**: `PHASE_SYNC` ATTACK → continuous attack loop (3s interval)
+- **Auto-cleanup**: `PHASE_SYNC` FINISHED → stop agent loop
 
 ### Agent Activity
 - Per-player columns with color-coded status borders
 - Natural-language step descriptions via `parseActivitySteps()`
 - Broadcast to all room members via `AGENT_ACTIVITY` events
+- Status badges (agent + target) in activity feed header — green/amber/red states
+
+### Battle Page
+- No manual start/stop buttons — agent runs continuously in ATTACK and DEFENSE phases
+- Command built automatically per phase with appropriate attack/defense prompt
+- OpenClawAdapter uses `openclawPath()` for binary resolution
 
 ## Vendor Logo System
 
@@ -145,12 +151,12 @@ Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green acc
 ## Verification Gates
 
 **Server/protocol changes:**
-- Python tests pass (54)
+- Python tests pass (22)
 - `examples/three_clients_demo.py` produces readable transcript
 - Protocol unit tests pass
 
 **Electron/UI changes:**
-- Node tests pass (89)
+- Node tests pass (80 / 3 known failures)
 - `client/test-renderer.js` covers arena, replay, battle kit, flag redaction, vendor logo resolution
 - Main process owns AIAWD TCP; renderer uses `window.aiawd`
 - `npx electron electronWindowEvidence.js` produces 35 passing assertions

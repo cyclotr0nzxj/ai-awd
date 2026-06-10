@@ -17,6 +17,7 @@ const state = {
   _agentLoopActive: false,
   _agentRunning: false,
   _agentTimer: null,
+  notice: null,
 };
 
 // ====== Provider Detection (shared with main process via providerDetect.js) ======
@@ -44,8 +45,8 @@ function currentApiBaseUrl() {
 function buildAgentCommand(runtime, modelDisplayName, phase) {
   const model = modelDisplayName || DEFAULT_MODEL_DISPLAY_NAME;
   const preparePrompt = "You are an AWD CTF agent in preparation phase. Verify your environment is ready: check connectivity to {local_target}, verify Docker containers are running, test basic HTTP access. Report any issues found.";
-  const attackPrompt = "You are an AWD CTF security agent. Target: {target_url}. Find and report any FLAG{...} you discover. Use web tools to probe the target for vulnerabilities.";
-  const defensePrompt = "You are an AWD CTF defender. Your own target is at {local_target}. Scan your own service for vulnerabilities (SQL injection, XSS, RCE, path traversal, auth bypass). Patch any vulnerabilities you find. Monitor for intrusions. Report any suspicious activity or FLAG{...} you discover on your own system.";
+  const attackPrompt = "You are an AWD CTF security agent. Target: {target_url}. Your goal is to find the FLAG{...} value. Step 1: curl {target_url}/ and look for 'flag' in the JSON response. Step 2: curl {target_url}/flag. Step 3: also try {target_url}/admin, {target_url}/backup, {target_url}/debug?token=debug123. Output the FLAG when found.";
+  const defensePrompt = "You are an AWD CTF defender. Your own service is at {local_target}. Check {local_target}/health to verify it's running. Scan {local_target}/admin, {local_target}/debug, {local_target}/backup for any exposed data. Report your own FLAG{...} if found. Verify no unauthorized access has occurred.";
   const prompt = (phase === "PREPARE") ? preparePrompt : (phase === "DEFENSE") ? defensePrompt : attackPrompt;
   switch ((runtime || "").toLowerCase().trim()) {
     case "openclaw":
@@ -99,6 +100,23 @@ function formatCommandForDisplay(command) {
   return command.map(t => t.includes(" ") ? `"${t}"` : t).join(" ");
 }
 
+function eventProblemState(type) {
+  if (type === "ERROR" || type.endsWith("_FAILED")) return "bad";
+  if (type.endsWith("_SKIPPED") || type.endsWith("_UNAVAILABLE") || type.endsWith("_WARNING")) return "warn";
+  return null;
+}
+
+function showNotice(type, payload = {}) {
+  const tone = eventProblemState(type);
+  if (!tone) return;
+  const message = payload.message || payload.error || payload.code || payload.type || eventSummary({ type, payload });
+  state.notice = {
+    state: tone,
+    title: displayEventType(type),
+    message: String(message || "操作未成功，请检查当前状态后重试。"),
+  };
+}
+
 const els = {};
 
 // ====== Page Navigation ======
@@ -141,6 +159,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "generateReport","copyReport","downloadReport","reportPreview",
     "rankings","events","messages","matchConfig",
     "apiKey","apiBaseUrl",
+    "appNotice","appNoticeTitle","appNoticeBody",
     "roomSearch","roomReadyBtn","roomHint","leaveRoom","backToRoom","backToLobby",
     "lobbyPlayerName","roomTitle","roomTargetType","roomFormat","roomPhase",
     "playerCount","playerSlots","spectatorSlots","connectStatus",
@@ -330,11 +349,15 @@ async function connect() {
 }
 
 async function disconnect() {
-  await window.aiawd.disconnect();
-  state.connected = false; state.clientId = null; state.roomId = null;
-  state.role = null; state.matchId = null; state.room = null; state.match = null;
-  state.isHost = false; state.iAmReady = false;
-  addEvent("CLIENT_DISCONNECTED", {});
+  try {
+    await window.aiawd.disconnect();
+    state.connected = false; state.clientId = null; state.roomId = null;
+    state.role = null; state.matchId = null; state.room = null; state.match = null;
+    state.isHost = false; state.iAmReady = false;
+    addEvent("CLIENT_DISCONNECTED", {});
+  } catch (error) {
+    addEvent("DISCONNECT_FAILED", { message: error.message || "断开连接失败" });
+  }
   render();
 }
 
@@ -419,7 +442,7 @@ async function runTargetLifecycle(actionName) {
   try {
     const result = await window.aiawd.runTargetAction({ action: actionName, runtime: config.target_runtime, flag: config.flag });
     state.targetActionStatus = { state: result.ok ? "ok" : "warn", action: actionName, message: targetActionResultText(result) };
-    addEvent("TARGET_ACTION_DONE", { action: actionName, message: state.targetActionStatus.message });
+    addEvent(result.ok ? "TARGET_ACTION_DONE" : "TARGET_ACTION_WARNING", { action: actionName, message: state.targetActionStatus.message });
   } catch (error) {
     state.targetActionStatus = { state: "bad", action: actionName, message: error.message || `${label}失败` };
     addEvent("TARGET_ACTION_FAILED", { action: actionName, message: state.targetActionStatus.message });
@@ -444,7 +467,7 @@ async function agentStart() {
     const result = await window.aiawd.agentStart({ command, apiKey: els.apiKey?.value?.trim() || "", modelDisplayName: currentModelDisplayName(), apiBaseUrl: currentApiBaseUrl(), matchConfig: config, roomStatus: state.match?.phase || state.room?.status || "LOBBY", matchId: state.matchId, roomId: state.roomId });
     state.agentStatus = { state: result.ok ? "ok" : "warn", message: result.ok ? `Agent 完成 · ${result.flagsCaptured?.length || 0} Flag · ${result.elapsedMs}ms` : result.error || "Agent 执行失败" };
     if (result.flagsCaptured?.length) addEvent("AGENT_FLAGS_FOUND", { flags: result.flagsCaptured, elapsedMs: result.elapsedMs });
-    else addEvent("AGENT_DONE", { message: state.agentStatus.message });
+    else addEvent(result.ok ? "AGENT_DONE" : "AGENT_FAILED", { message: state.agentStatus.message });
   } catch (error) { state.agentStatus = { state: "bad", message: error.message || "Agent 失败" }; addEvent("AGENT_FAILED", { message: state.agentStatus.message }); }
   state._agentRunning = false;
   render();
@@ -456,7 +479,7 @@ function agentStop() {
   state._agentLoopActive = false;
   if (state._agentTimer) { clearTimeout(state._agentTimer); state._agentTimer = null; }
   // Best-effort stop on server side
-  window.aiawd.agentStop().catch(() => {});
+  window.aiawd.agentStop().catch((error) => addEvent("AGENT_STOP_FAILED", { message: error.message || "Agent 停止失败" }));
   state.agentStatus = { state: "idle", message: "Agent 已停止" };
   render();
 }
@@ -478,8 +501,8 @@ function scheduleNextAgentRun() {
 
 async function listRooms() { await action("LIST_ROOMS", () => window.aiawd.listRooms()); }
 async function action(type, run) {
-  if (!state.connected) { addEvent("SEND_SKIPPED", { type, message: "尚未连接裁判服务器" }); render(); return; }
-  try { await run(); } catch (error) { addEvent("SEND_FAILED", { type, message: error.message }); }
+  if (!state.connected) { addEvent("SEND_SKIPPED", { type, message: "尚未连接裁判服务器" }); render(); return false; }
+  try { await run(); return true; } catch (error) { addEvent("SEND_FAILED", { type, message: error.message || "操作发送失败" }); render(); return false; }
 }
 
 // ====== Message Handler ======
@@ -616,7 +639,11 @@ function handleMessage(message) {
   render();
 }
 
-function addEvent(type, payload) { state.events.unshift({ type, payload, at: new Date().toLocaleTimeString() }); state.events = state.events.slice(0, 40); }
+function addEvent(type, payload = {}) {
+  showNotice(type, payload);
+  state.events.unshift({ type, payload, at: new Date().toLocaleTimeString() });
+  state.events = state.events.slice(0, 40);
+}
 
 // ====== Battle Report ======
 function generateReport() { state.reportText = buildReportText(); addEvent("REPORT_GENERATED", { room_id: state.roomId || "-", match_id: state.matchId || "-" }); render(); }
@@ -633,6 +660,7 @@ function downloadReport() {
 // ====== Main Render ======
 function render() {
   updateNavigation();
+  renderNotice();
 
   els.connectionState.textContent = state.connected ? "已连接" : "未连接";
   els.connectionState.dataset.state = state.connected ? "connected" : "offline";
@@ -698,6 +726,15 @@ function render() {
       ? `房主 · ${players.length} 位玩家 · ${players.filter(p=>p.target_ready&&p.agent_ready).length} 已准备${allReady ? " — 可以开始！" : ""}`
       : `${players.length} 位玩家 · 等待房主开始...`;
   }
+}
+
+function renderNotice() {
+  if (!els.appNotice) return;
+  const notice = state.notice;
+  els.appNotice.dataset.state = notice?.state || "hidden";
+  els.appNotice.style.display = notice ? "" : "none";
+  if (els.appNoticeTitle) els.appNoticeTitle.textContent = notice?.title || "";
+  if (els.appNoticeBody) els.appNoticeBody.textContent = notice?.message || "";
 }
 
 function renderLobby() {
