@@ -187,64 +187,91 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape") closeAllOverlays();
   });
 
-  // Populate agent dropdown based on detected CLI tools
-  async function populateAgentDropdown() {
-    const select = els.agentRuntime;
-    if (!select) return;
-    let available = {};
-    try {
-      if (typeof detectAvailableAdapters !== "undefined") {
-        available = detectAvailableAdapters();
+  // ── Wire all buttons FIRST (before any code that might throw) ──
+  els.connect.addEventListener("click", connect);
+  els.disconnect.addEventListener("click", disconnect);
+  els.refreshRooms.addEventListener("click", listRooms);
+  els.createRoom.addEventListener("click", createRoom);
+  els.joinPlayer.addEventListener("click", () => joinRoom("player"));
+  els.joinSpectator.addEventListener("click", () => joinRoom("spectator"));
+  els.markTargetReady.addEventListener("click", () => markReady("TARGET_READY"));
+  els.markAgentReady.addEventListener("click", () => markReady("AGENT_READY"));
+  els.startMatch.addEventListener("click", startMatch);
+  els.submitFlag.addEventListener("click", submitFlag);
+  els.targetDoctor.addEventListener("click", () => runTargetLifecycle("doctor"));
+  els.targetInstall.addEventListener("click", () => runTargetLifecycle("install"));
+  els.targetStart.addEventListener("click", () => runTargetLifecycle("start"));
+  els.targetHealth.addEventListener("click", () => runTargetLifecycle("health"));
+  els.targetStop.addEventListener("click", () => runTargetLifecycle("stop"));
+  els.targetReset.addEventListener("click", () => runTargetLifecycle("reset"));
+  if (els.agentStart) els.agentStart.addEventListener("click", agentStart);
+  if (els.agentStop) els.agentStop.addEventListener("click", agentStop);
+  els.generateReport.addEventListener("click", generateReport);
+  els.copyReport.addEventListener("click", copyReport);
+  els.downloadReport.addEventListener("click", downloadReport);
+  if (els.roomReadyBtn) els.roomReadyBtn.addEventListener("click", toggleReady);
+  if (els.leaveRoom) els.leaveRoom.addEventListener("click", leaveCurrentRoom);
+  if (els.backToRoom) els.backToRoom.addEventListener("click", () => navigateTo("room"));
+  if (els.backToLobby) els.backToLobby.addEventListener("click", leaveCurrentRoom);
+
+  // ── Provider detection (best-effort, may fail if providerDetect.js missing) ──
+  try {
+    // Populate agent dropdown based on detected CLI tools
+    async function populateAgentDropdown() {
+      const select = els.agentRuntime;
+      if (!select) return;
+      let available = {};
+      try {
+        if (typeof detectAvailableAdapters !== "undefined") {
+          available = detectAvailableAdapters();
+        }
+      } catch (e) { /* use defaults */ }
+      const agents = [
+        { value: "openclaw", label: "OpenClaw (内置)", available: true },
+        { value: "hermes", label: "Hermes", available: available.hermes === true },
+        { value: "mock-agent", label: "Mock (演示)", available: true },
+      ];
+      select.innerHTML = agents
+        .filter(a => a.available)
+        .map(a => `<option value="${a.value}">${a.label}${a.available && a.value !== 'mock-agent' && a.value !== 'openclaw' ? ' ✓' : ''}</option>`)
+        .join("");
+      select.value = "openclaw";
+    }
+    populateAgentDropdown();
+
+    function refreshPrepareProviderBadge() {
+      const badge = document.getElementById("prepareProviderBadge");
+      const apiKey = els.apiKey?.value?.trim() || "";
+      const modelName = els.modelDisplayName?.value?.trim() || "";
+      if (typeof detectProvider !== "function") return;
+      const prov = detectProvider(apiKey, modelName);
+      const baseUrlField = document.getElementById("apiBaseUrlField");
+      const baseUrlInput = els.apiBaseUrl;
+      if (prov === "DeepSeek") {
+        if (baseUrlInput && !baseUrlInput.value) baseUrlInput.value = "https://api.deepseek.com";
+        if (baseUrlField) baseUrlField.style.display = "";
+      } else if (prov === "OpenAI") {
+        if (baseUrlInput) baseUrlInput.value = "";
+        if (baseUrlField) baseUrlField.style.display = "none";
+      } else if (prov && prov !== "Custom" && prov !== "Anthropic") {
+        if (baseUrlField) baseUrlField.style.display = "";
+      } else {
+        if (baseUrlField) baseUrlField.style.display = "none";
       }
-    } catch (e) { /* use defaults */ }
-    const agents = [
-      { value: "openclaw", label: "OpenClaw (内置)", available: true },
-      { value: "hermes", label: "Hermes", available: available.hermes === true },
-      { value: "mock-agent", label: "Mock (演示)", available: true },
-    ];
-    select.innerHTML = agents
-      .filter(a => a.available)
-      .map(a => `<option value="${a.value}">${a.label}${a.available && a.value !== 'mock-agent' && a.value !== 'openclaw' ? ' ✓' : ''}</option>`)
-      .join("");
-    select.value = "openclaw";
-  }
-  populateAgentDropdown();
-
-  // Auto-detect provider logo from API key / model name
-  function refreshPrepareProviderBadge() {
-    const badge = document.getElementById("prepareProviderBadge");
-    const apiKey = els.apiKey?.value?.trim() || "";
-    const modelName = els.modelDisplayName?.value?.trim() || "";
-    const prov = detectProvider(apiKey, modelName);
-
-    // Auto-fill Base URL based on provider
-    const baseUrlField = document.getElementById("apiBaseUrlField");
-    const baseUrlInput = els.apiBaseUrl;
-    if (prov === "DeepSeek") {
-      if (baseUrlInput && !baseUrlInput.value) baseUrlInput.value = "https://api.deepseek.com";
-      if (baseUrlField) baseUrlField.style.display = "";
-    } else if (prov === "OpenAI") {
-      if (baseUrlInput) baseUrlInput.value = "";
-      if (baseUrlField) baseUrlField.style.display = "none";
-    } else if (prov && prov !== "Custom" && prov !== "Anthropic") {
-      if (baseUrlField) baseUrlField.style.display = "";
-    } else {
-      if (baseUrlField) baseUrlField.style.display = "none";
+      if (!badge) return;
+      if (!prov) { badge.innerHTML = ""; badge.style.display = "none"; return; }
+      badge.style.display = "";
+      const logoPath = providerLogo({ api_provider: prov });
+      if (logoPath) {
+        badge.innerHTML = `<img class="provider-logo prepare-provider-logo" src="${escapeHtml(logoPath)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}"><span>${escapeHtml(prov)}</span>`;
+      } else {
+        badge.innerHTML = `<span>${escapeHtml(providerLabel(apiKey, modelName))}</span>`;
+      }
     }
-
-    if (!badge) return;
-    if (!prov) { badge.innerHTML = ""; badge.style.display = "none"; return; }
-    badge.style.display = "";
-    const logoPath = providerLogo({ api_provider: prov });
-    if (logoPath) {
-      badge.innerHTML = `<img class="provider-logo prepare-provider-logo" src="${escapeHtml(logoPath)}" alt="${escapeHtml(prov)}" title="${escapeHtml(prov)}"><span>${escapeHtml(prov)}</span>`;
-    } else {
-      badge.innerHTML = `<span>${escapeHtml(providerLabel(apiKey, modelName))}</span>`;
-    }
-  }
-  if (els.apiKey) els.apiKey.addEventListener("input", refreshPrepareProviderBadge);
-  if (els.modelDisplayName) els.modelDisplayName.addEventListener("input", refreshPrepareProviderBadge);
-  refreshPrepareProviderBadge();
+    if (els.apiKey) els.apiKey.addEventListener("input", refreshPrepareProviderBadge);
+    if (els.modelDisplayName) els.modelDisplayName.addEventListener("input", refreshPrepareProviderBadge);
+    refreshPrepareProviderBadge();
+  } catch (e) { /* provider detection is cosmetic; don't break the app */ }
 
   // Wire agentRuntime dropdown to auto-populate agentCommand
   if (els.agentRuntime) {
@@ -268,39 +295,16 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  els.connect.addEventListener("click", connect);
-  els.disconnect.addEventListener("click", disconnect);
-  els.refreshRooms.addEventListener("click", listRooms);
-  els.createRoom.addEventListener("click", createRoom);
-  els.joinPlayer.addEventListener("click", () => joinRoom("player"));
-  els.joinSpectator.addEventListener("click", () => joinRoom("spectator"));
-  els.markTargetReady.addEventListener("click", () => markReady("TARGET_READY"));
-  els.markAgentReady.addEventListener("click", () => markReady("AGENT_READY"));
-  els.startMatch.addEventListener("click", startMatch);
-  els.submitFlag.addEventListener("click", submitFlag);
-  els.targetDoctor.addEventListener("click", () => runTargetLifecycle("doctor"));
-  els.targetInstall.addEventListener("click", () => runTargetLifecycle("install"));
-  els.targetStart.addEventListener("click", () => runTargetLifecycle("start"));
-  els.targetHealth.addEventListener("click", () => runTargetLifecycle("health"));
-  els.targetStop.addEventListener("click", () => runTargetLifecycle("stop"));
-  els.targetReset.addEventListener("click", () => runTargetLifecycle("reset"));
-  if (els.agentStart) els.agentStart.addEventListener("click", agentStart);
-  if (els.agentStop) els.agentStop.addEventListener("click", agentStop);
-  els.generateReport.addEventListener("click", generateReport);
-  els.copyReport.addEventListener("click", copyReport);
-  els.downloadReport.addEventListener("click", downloadReport);
-
-  // Room page: ready / leave / back buttons
-  if (els.roomReadyBtn) els.roomReadyBtn.addEventListener("click", toggleReady);
-  if (els.leaveRoom) els.leaveRoom.addEventListener("click", leaveCurrentRoom);
-  if (els.backToRoom) els.backToRoom.addEventListener("click", () => navigateTo("room"));
-  if (els.backToLobby) els.backToLobby.addEventListener("click", leaveCurrentRoom);
-
   window.aiawd = window.aiawd || unavailableBridge();
   window.aiawd.onMessage(handleMessage);
   window.aiawd.onStatus((status) => { if (!status.connected) { state.connected = false; state.clientId = null; render(); } });
   setInterval(refreshPhaseTimer, 1000);
   navigateTo("connect");
+  // Diagnostic: verify init completed
+  if (els.connectStatus) {
+    els.connectStatus.textContent = "● JS 已加载, addEventListener 已绑定";
+    els.connectStatus.dataset.state = "connected";
+  }
   render();
 });
 
