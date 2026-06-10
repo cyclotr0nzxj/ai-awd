@@ -35,12 +35,22 @@ Server machine additionally needs / 服务器额外需要:
 
 On the **server machine** / 在服务器机器上:
 
+**macOS / Linux:**
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
 
 # Default binds 0.0.0.0:9000 — ready for LAN / 默认监听所有接口，局域网即用
 bash scripts/start-server.sh
+```
+
+**Windows（命令提示符或 PowerShell）:**
+```bat
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd
+
+REM 默认监听 0.0.0.0:9000，局域网即用
+scripts\start-server.bat
 ```
 
 Output / 输出:

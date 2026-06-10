@@ -48,12 +48,19 @@
 只要有一个人运行服务器，其他人直接填地址连接，无需执行这一步。
 
 ```bash
+# macOS / Linux
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
-cd ai-awd
-bash scripts/start-server.sh
+cd ai-awd && bash scripts/start-server.sh
 ```
 
-看到 `TCP 地址: 127.0.0.1:9000` 就说明跑起来了。
+```bat
+REM Windows（命令提示符或 PowerShell）
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd
+scripts\start-server.bat
+```
+
+看到 `TCP 地址: 0.0.0.0:9000` 就说明跑起来了。
 
 **3. 开打**
 
@@ -146,11 +153,16 @@ Only one person needs to run the server. Everyone else just enters the server ad
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
-cd ai-awd
-bash scripts/start-server.sh
+cd ai-awd && bash scripts/start-server.sh
 ```
 
-You should see `TCP 地址: 127.0.0.1:9000`.
+```bat
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd
+scripts\start-server.bat
+```
+
+You should see `TCP 地址: 0.0.0.0:9000`.
 
 **3. Play**
 
@@ -164,11 +176,11 @@ You should see `TCP 地址: 127.0.0.1:9000`.
 
 **🏠 Local** — Client connects to `127.0.0.1:9000`. No extra config.
 
-**🏢 LAN** — Start the server with `--lan`. It prints its LAN IP. Other machines use that IP.
+**🏢 LAN** — Server binds `0.0.0.0` by default and prints the LAN IP. Other machines use that IP.
 
 ```bash
-bash scripts/start-server.sh --lan
-# Output: 📡 本机局域网 IP: 192.168.1.100
+bash scripts/start-server.sh
+# Output: LAN IP: 192.168.1.100
 ```
 
 **🌐 Remote** — Use bore to expose the server publicly:
