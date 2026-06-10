@@ -338,6 +338,9 @@ async function connect() {
   render();
 }
 window.__connectAiawd = connect;
+window.__toggleReady = toggleReady;
+window.__startMatch = startMatch;
+window.__leaveCurrentRoom = leaveCurrentRoom;
 
 async function disconnect() {
   await window.aiawd.disconnect();
