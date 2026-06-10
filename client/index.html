@@ -7,6 +7,10 @@
 <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+<div id="appNotice" class="app-notice" data-state="hidden" role="status" aria-live="polite">
+  <strong id="appNoticeTitle"></strong>
+  <span id="appNoticeBody"></span>
+</div>
 
 <!-- ============================================================
      PAGE 1: CONNECT — 服务器连接
@@ -90,12 +94,17 @@
         <label>房间名称 <input id="roomName" value="AI攻防大乱斗" /></label>
 
         <label>靶机类型 <span style="color:var(--accent);font-weight:400;font-size:12px">— 选择地图</span></label>
-        <input type="hidden" id="targetTemplateId" value="real_ctf_web_awd_01" />
+        <input type="hidden" id="targetTemplateId" value="real_ctf_web_awd_02" />
         <div class="map-cards">
-          <button type="button" class="map-card active" data-map="real_ctf_web_awd_01">
+          <button type="button" class="map-card active" data-map="real_ctf_web_awd_02">
+            <span class="map-icon">🎯</span>
+            <strong>Web 新手训练</strong>
+            <small>Flag 直接可见<br>适合 Agent 入门测试</small>
+          </button>
+          <button type="button" class="map-card" data-map="real_ctf_web_awd_01">
             <span class="map-icon">🌐</span>
-            <strong>Web 攻防</strong>
-            <small>HTTP 服务漏洞<br>SQL注入 · XSS · RCE</small>
+            <strong>Web 进阶攻防</strong>
+            <small>认证绕过 · SQL注入<br>备份泄露 · Debug令牌</small>
           </button>
           <button type="button" class="map-card" data-map="pwn_awd_echo_01">
             <span class="map-icon">💣</span>

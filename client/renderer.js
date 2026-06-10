@@ -365,7 +365,7 @@ async function createRoom() {
   await action("CREATE_ROOM", () => window.aiawd.createRoom({
     roomName: els.roomName.value.trim() || "AI攻防大乱斗",
     maxPlayers: Number(els.maxPlayers.value || 2),
-    targetTemplateId: els.targetTemplateId.value.trim() || "real_ctf_web_awd_01",
+    targetTemplateId: els.targetTemplateId.value.trim() || "real_ctf_web_awd_02",
     displayName: els.displayName.value.trim() || "本地玩家",
     agentRuntime: els.agentRuntime.value.trim() || "mock-agent",
     modelDisplayName: currentModelDisplayName(),
@@ -647,14 +647,30 @@ function addEvent(type, payload = {}) {
 
 // ====== Battle Report ======
 function generateReport() { state.reportText = buildReportText(); addEvent("REPORT_GENERATED", { room_id: state.roomId || "-", match_id: state.matchId || "-" }); render(); }
-async function copyReport() { if (!state.reportText) return; if (window.navigator?.clipboard?.writeText) { await window.navigator.clipboard.writeText(state.reportText); addEvent("REPORT_COPIED", {}); } else { addEvent("REPORT_COPY_UNAVAILABLE", {}); } render(); }
+async function copyReport() {
+  if (!state.reportText) { addEvent("REPORT_COPY_SKIPPED", { message: "请先生成战报" }); render(); return; }
+  if (!window.navigator?.clipboard?.writeText) { addEvent("REPORT_COPY_UNAVAILABLE", { message: "当前环境不支持剪贴板写入" }); render(); return; }
+  try {
+    await window.navigator.clipboard.writeText(state.reportText);
+    addEvent("REPORT_COPIED", {});
+  } catch (error) {
+    addEvent("REPORT_COPY_FAILED", { message: error.message || "复制战报失败" });
+  }
+  render();
+}
 function downloadReport() {
-  if (!state.reportText || typeof Blob === "undefined" || typeof URL === "undefined") { addEvent("REPORT_DOWNLOAD_UNAVAILABLE", {}); render(); return; }
-  const blob = new Blob([state.reportText], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = `${safeFilePart(state.roomId || "aiawd")}-battle-report.md`;
-  a.click(); URL.revokeObjectURL(url);
-  addEvent("REPORT_DOWNLOADED", { file: a.download }); render();
+  if (!state.reportText) { addEvent("REPORT_DOWNLOAD_SKIPPED", { message: "请先生成战报" }); render(); return; }
+  if (typeof Blob === "undefined" || typeof URL === "undefined") { addEvent("REPORT_DOWNLOAD_UNAVAILABLE", { message: "当前环境不支持文件下载" }); render(); return; }
+  try {
+    const blob = new Blob([state.reportText], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `${safeFilePart(state.roomId || "aiawd")}-battle-report.md`;
+    a.click(); URL.revokeObjectURL(url);
+    addEvent("REPORT_DOWNLOADED", { file: a.download });
+  } catch (error) {
+    addEvent("REPORT_DOWNLOAD_FAILED", { message: error.message || "下载战报失败" });
+  }
+  render();
 }
 
 // ====== Main Render ======
@@ -747,7 +763,7 @@ function renderRoomPage(phase) {
   if (els.roomTitle) els.roomTitle.textContent = room.room_name || room.room_id || "";
   if (els.roomTargetType) {
     const tpl = room.target_template_id || "未知";
-    const names = { real_ctf_web_awd_01: "Web 攻防靶机", pwn_awd_echo_01: "PWN 二进制靶机", crypto_awd_oracle_01: "Crypto 密码学靶机" };
+    const names = { real_ctf_web_awd_02: "Web 新手训练", real_ctf_web_awd_01: "Web 进阶攻防", pwn_awd_echo_01: "PWN 二进制靶机", crypto_awd_oracle_01: "Crypto 密码学靶机" };
     els.roomTargetType.textContent = names[tpl] || tpl;
   }
   if (els.roomFormat) {
@@ -1220,6 +1236,8 @@ function unavailableBridge() {
     createRoom: async () => {}, joinRoom: async () => {}, startMatch: async () => {},
     markTargetReady: async () => {}, markAgentReady: async () => {}, submitFlag: async () => {},
     runTargetAction: async () => ({ ok: false, message: "Electron 主进程不可用" }),
+    agentStart: async () => ({ ok: false, error: "Electron 主进程不可用", flagsCaptured: [], actions: [], elapsedMs: 0 }),
+    agentStop: async () => ({ ok: false, message: "Electron 主进程不可用" }),
     snapshot: async () => ({ connected: false }), onMessage: () => () => {}, onStatus: () => () => {},
   };
 }
@@ -1228,6 +1246,6 @@ function displayRole(role) { return { player:"参赛玩家", spectator:"观战�
 function displayDifficulty(d) { return { beginner:"入门", easy:"入门", medium:"中等", hard:"进阶", professional:"进阶" }[d] || d || "未标注"; }
 function displayRuntime(r) { return { "docker-compose":"本地 Docker Compose", docker:"本地 Docker" }[r] || r || "未标注"; }
 function eventSummary(event) { const p = event.payload || {}; const s = p.submission || p; if (s.submitter_team_id||s.target_team_id||s.score_delta) return `${s.submitter_team_id||"未知"}${s.target_team_id?` 攻陷 ${s.target_team_id}`:""}${s.score_delta?` ${s.score_delta>0?"+":""}${s.score_delta} 分`:""}`; return p.message||p.team_id||p.room_id||p.match_id||""; }
-function eventTone(event) { if (event.type==="FLAG_CAPTURED") return "good"; if (event.type==="FLAG_REJECTED"||event.type==="ERROR"||event.type==="SEND_FAILED"||event.type==="TARGET_ACTION_FAILED") return "bad"; if (event.type==="TARGET_ACTION_DONE") return "good"; if (event.type==="SUBMIT_SKIPPED"||event.type==="JOIN_SKIPPED"||event.type==="SEND_SKIPPED"||event.type==="TARGET_ACTION_SKIPPED") return "warn"; return "neutral"; }
-function displayEventType(type) { return { CLIENT_CONNECTED:"已连接", CLIENT_DISCONNECTED:"已断开", CONNECT_FAILED:"连接失败", JOIN_SKIPPED:"未加入", SUBMIT_SKIPPED:"未提交", SEND_SKIPPED:"未发送", SEND_FAILED:"发送失败", ROOM_SELECTED:"已选房间", REPORT_GENERATED:"战报已生成", REPORT_COPIED:"战报已复制", REPORT_DOWNLOADED:"战报已下载", TARGET_ACTION_DONE:"本地靶机", TARGET_ACTION_FAILED:"靶机失败", FLAG_CAPTURED:"攻陷得分", FLAG_REJECTED:"Flag拒绝", ERROR:"错误", EVENT:"事件" }[type] || type; }
+function eventTone(event) { if (event.type==="FLAG_CAPTURED") return "good"; if (eventProblemState(event.type)==="bad") return "bad"; if (event.type==="TARGET_ACTION_DONE"||event.type==="REPORT_COPIED"||event.type==="REPORT_DOWNLOADED") return "good"; if (eventProblemState(event.type)==="warn") return "warn"; return "neutral"; }
+function displayEventType(type) { return { CLIENT_CONNECTED:"已连接", CLIENT_DISCONNECTED:"已断开", DISCONNECT_FAILED:"断开失败", CONNECT_FAILED:"连接失败", JOIN_SKIPPED:"未加入", SUBMIT_SKIPPED:"未提交", SEND_SKIPPED:"未发送", SEND_FAILED:"发送失败", ROOM_SELECTED:"已选房间", REPORT_GENERATED:"战报已生成", REPORT_COPIED:"战报已复制", REPORT_COPY_SKIPPED:"未复制", REPORT_COPY_UNAVAILABLE:"无法复制", REPORT_COPY_FAILED:"复制失败", REPORT_DOWNLOADED:"战报已下载", REPORT_DOWNLOAD_SKIPPED:"未下载", REPORT_DOWNLOAD_UNAVAILABLE:"无法下载", REPORT_DOWNLOAD_FAILED:"下载失败", TARGET_ACTION_DONE:"本地靶机", TARGET_ACTION_WARNING:"靶机警告", TARGET_ACTION_FAILED:"靶机失败", TARGET_ACTION_SKIPPED:"靶机未执行", AGENT_FAILED:"Agent失败", AGENT_SKIPPED:"Agent未启动", AGENT_STOP_FAILED:"Agent停止失败", FLAG_CAPTURED:"攻陷得分", FLAG_REJECTED:"Flag拒绝", ERROR:"错误", EVENT:"事件" }[type] || type; }
 function refreshPhaseTimer() { if (els.phaseTimer) els.phaseTimer.textContent = phaseTimerSummary(); if (state.scorePopup && Date.now() - state.scorePopup.timestamp > 2000) { state.scorePopup = null; render(); } }
