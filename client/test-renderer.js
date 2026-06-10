@@ -159,6 +159,7 @@ function loadRenderer() {
   const protocolHandlers = {};
   const calls = [];
   const intervals = [];
+  const timeouts = [];
   const createdElements = [];
   const localStorageStore = {};
   const bridge = {
@@ -187,6 +188,14 @@ function loadRenderer() {
       }
       return { ok: true, action: request.action, message: `${request.action} done` };
     },
+    agentStart: async (request) => {
+      calls.push(["agentStart", request]);
+      return { ok: true, flagsCaptured: [], actions: [], elapsedMs: 1 };
+    },
+    agentStop: async () => {
+      calls.push(["agentStop"]);
+      return { ok: true, message: "Agent 已停止" };
+    },
     snapshot: async () => ({ connected: false }),
     onMessage: (callback) => {
       protocolHandlers.message = callback;
@@ -200,9 +209,8 @@ function loadRenderer() {
   const context = {
     console,
     setTimeout: (callback, delay) => {
-      // fire immediately in tests
-      callback();
-      return 1;
+      timeouts.push({ callback, delay });
+      return timeouts.length;
     },
     requestAnimationFrame: (callback) => {
       callback();
@@ -265,8 +273,26 @@ function loadRenderer() {
   const rendererPath = path.join(__dirname, "renderer.js");
   vm.runInContext(fs.readFileSync(rendererPath, "utf8"), context, { filename: rendererPath });
   windowListeners.DOMContentLoaded();
-  return { elements, protocolHandlers, calls, intervals, createdElements, context, localStorageStore };
+  return { elements, protocolHandlers, calls, intervals, timeouts, createdElements, context, localStorageStore };
 }
+
+test("renderer loads after shared provider script without global collisions", () => {
+  const context = {
+    console,
+    window: {
+      addEventListener: () => {},
+    },
+  };
+  context.globalThis = context;
+  vm.createContext(context);
+  const providerPath = path.join(__dirname, "providerDetect.js");
+  const rendererPath = path.join(__dirname, "renderer.js");
+
+  vm.runInContext(fs.readFileSync(providerPath, "utf8"), context, { filename: providerPath });
+  vm.runInContext(fs.readFileSync(rendererPath, "utf8"), context, { filename: rendererPath });
+
+  assert.equal(typeof context.window.AIAWD_PROVIDER.detectProvider, "function");
+});
 
 test("renderer initializes offline Chinese dashboard state", () => {
   const { elements, intervals } = loadRenderer();
@@ -317,6 +343,8 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /id="displayName" value="玩家"/);
   assert.match(html, /id="agentRuntime"/);
   assert.match(html, /id="modelDisplayName"/);
+  assert.match(html, /id="modelDisplayName" value="deepseek-chat"/);
+  assert.match(html, /id="apiBaseUrl" value="https:\/\/api\.deepseek\.com"/);
   assert.match(html, /id="roomName" value="AI攻防大乱斗"/);
   assert.match(html, /id="maxPlayers" type="number"/);
   assert.match(html, /id="attackHeat"/);
@@ -355,6 +383,7 @@ test("renderer sends Agent runtime and model metadata when joining", async () =>
         agentRuntime: "hermes-local",
         modelDisplayName: "model-alpha",
         apiKey: "",
+        apiBaseUrl: "",
         roomId: "room_001",
         role: "player",
       },
@@ -389,6 +418,7 @@ test("renderer sends Agent runtime and model metadata when creating a room", asy
         agentRuntime: "hermes-local",
         modelDisplayName: "model-alpha",
         apiKey: "",
+        apiBaseUrl: "",
         allowSpectators: true,
         phaseSeconds: {
           prepare: 1,
@@ -525,7 +555,7 @@ test("renderer displays protocol updates in Chinese and redacts private flags", 
   assert.match(elements.arenaMap.innerHTML, /AI攻防大乱斗/);
   assert.match(elements.arenaMap.innerHTML, /我方领先|我方防线完整/);
   assert.match(elements.arenaMap.innerHTML, /Agent/);
-  assert.match(elements.arenaMap.innerHTML, /combatant-avatar/);
+  assert.match(elements.arenaMap.innerHTML, /combatant-provider/);
   assert.match(elements.arenaMap.innerHTML, /readiness-track/);
   assert.match(elements.arenaMap.innerHTML, /1\/2 防线完整 · 1 次攻陷/);
   assert.match(elements.arenaMap.innerHTML, /is-leader/);

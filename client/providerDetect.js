@@ -2,6 +2,7 @@
 
 // ====== Shared Provider Detection ======
 // Used by both main process (via require) and renderer (via <script> tag).
+// Attaches to `window` when in a browser context, exports via module when in Node.
 
 function detectProvider(apiKey, modelDisplayName) {
   if (!apiKey || !apiKey.trim()) {
@@ -153,34 +154,41 @@ function runtimeDisplayName(runtime) {
 }
 
 function providerLogo(player) {
+  // 1. Check model_display_name for known keywords (longest match first)
   const model = (player.model_display_name || "").toLowerCase();
   for (const [keyword, logo] of VENDOR_LOGOS_ENTRIES) {
     if (model.includes(keyword)) return logo;
   }
+  // 2. Check api_provider field
   const provider = (player.api_provider || "").toLowerCase();
   for (const [keyword, logo] of VENDOR_LOGOS_ENTRIES) {
     if (provider.includes(keyword)) return logo;
   }
+  // 3. Check agent_runtime mapping (fallback)
   const runtime = (player.agent_runtime || "").toLowerCase();
   if (RUNTIME_LOGO[runtime]) return RUNTIME_LOGO[runtime];
   return null;
 }
 
-// Dual-environment export: Node.js require() or browser <script> tag
-(function () {
-  var exports = {
-    detectProvider: detectProvider,
-    providerLabel: providerLabel,
-    VENDOR_LOGOS: VENDOR_LOGOS,
-    VENDOR_LOGOS_ENTRIES: VENDOR_LOGOS_ENTRIES,
-    RUNTIME_LOGO: RUNTIME_LOGO,
-    providerLogo: providerLogo,
-    runtimeDisplayName: runtimeDisplayName,
+// Dual-environment export
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    detectProvider,
+    providerLabel,
+    VENDOR_LOGOS,
+    VENDOR_LOGOS_ENTRIES,
+    RUNTIME_LOGO,
+    providerLogo,
+    runtimeDisplayName,
   };
-  if (typeof module !== "undefined" && module.exports) {
-    module.exports = exports;
-  }
-  if (typeof window !== "undefined") {
-    window.AIAWD_PROVIDER = exports;
-  }
-})();
+} else if (typeof window !== "undefined") {
+  window.AIAWD_PROVIDER = {
+    detectProvider,
+    providerLabel,
+    VENDOR_LOGOS,
+    VENDOR_LOGOS_ENTRIES,
+    RUNTIME_LOGO,
+    providerLogo,
+    runtimeDisplayName,
+  };
+}

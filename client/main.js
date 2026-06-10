@@ -3,6 +3,7 @@ const path = require("path");
 const { AiawdClient } = require("./aiawdProtocol");
 const { runTargetAction } = require("./targetLifecycle");
 const { CustomCommandAdapter, AgentManager, sanitizeCommand, parseActivitySteps } = require("./agentRuntime");
+const { openclawPath } = require("./adapters");
 const { detectProvider } = require("./providerDetect");
 
 let mainWindow = null;
@@ -10,6 +11,27 @@ const client = new AiawdClient();
 /** @type {AgentManager|null} */
 let agentManager = null;
 let openclawProviderConfigured = false;
+const DEFAULT_MODEL_DISPLAY_NAME = "deepseek-chat";
+const DEFAULT_API_BASE_URL = "https://api.deepseek.com";
+
+function normalizeModelDisplayName(modelName) {
+  return (modelName || "").trim() || DEFAULT_MODEL_DISPLAY_NAME;
+}
+
+function normalizeApiBaseUrl(baseUrl, modelName) {
+  const explicit = (baseUrl || "").trim();
+  if (explicit) return explicit;
+  return normalizeModelDisplayName(modelName).toLowerCase().includes("deepseek") ? DEFAULT_API_BASE_URL : "";
+}
+
+function resolveAgentCommand(command) {
+  const argv = Array.isArray(command) ? [...command] : [];
+  const executable = path.basename(String(argv[0] || "")).toLowerCase();
+  if (executable === "openclaw" || executable === "openclaw.exe") {
+    argv[0] = openclawPath();
+  }
+  return argv;
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -47,7 +69,7 @@ ipcMain.handle("aiawd:listTargets", () => client.send("LIST_TARGETS_REQ"));
 ipcMain.handle("aiawd:listRooms", () => client.send("LIST_ROOMS_REQ"));
 ipcMain.handle("aiawd:createRoom", (_event, room) => {
   const apiKey = (room.apiKey || "").trim();
-  const modelName = (room.modelDisplayName || "").trim();
+  const modelName = normalizeModelDisplayName(room.modelDisplayName);
   const provider = detectProvider(apiKey, modelName);
   return client.send("CREATE_ROOM_REQ", {
     room_name: room.roomName,
@@ -57,14 +79,14 @@ ipcMain.handle("aiawd:createRoom", (_event, room) => {
     agent_runtime: room.agentRuntime || "mock-agent",
     model_display_name: modelName || "mock-model",
     api_provider: provider,
-    api_base_url: room.apiBaseUrl || "",
+    api_base_url: normalizeApiBaseUrl(room.apiBaseUrl, modelName),
     allow_spectators: room.allowSpectators,
     phase_seconds: room.phaseSeconds,
   });
 });
 ipcMain.handle("aiawd:joinRoom", (_event, request) => {
   const apiKey = (request.apiKey || "").trim();
-  const modelName = (request.modelDisplayName || "").trim();
+  const modelName = normalizeModelDisplayName(request.modelDisplayName);
   const provider = detectProvider(apiKey, modelName);
   return client.send(
     "JOIN_ROOM_REQ",
@@ -74,7 +96,7 @@ ipcMain.handle("aiawd:joinRoom", (_event, request) => {
       agent_runtime: request.agentRuntime || "mock-agent",
       model_display_name: modelName || "mock-model",
       api_provider: provider,
-      api_base_url: request.apiBaseUrl || "",
+      api_base_url: normalizeApiBaseUrl(request.apiBaseUrl, modelName),
     },
     { roomId: request.roomId, role: request.role },
   );
@@ -134,12 +156,20 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
 });
 
 ipcMain.handle("aiawd:agentStart", async (_event, request) => {
-  if (!sanitizeCommand(request.command)) {
+  const requestedCommand = Array.isArray(request.command) ? request.command : [];
+  if (!sanitizeCommand(requestedCommand)) {
     return { ok: false, error: "Agent 命令包含不安全的 shell 控制符", flagsCaptured: [], actions: [], elapsedMs: 0 };
   }
+  const command = resolveAgentCommand(requestedCommand);
+  if (!command.length) {
+    return { ok: false, error: "Agent 命令为空", flagsCaptured: [], actions: [], elapsedMs: 0 };
+  }
+  if (!sanitizeCommand(command)) {
+    return { ok: false, error: "Agent 命令解析后包含不安全字符", flagsCaptured: [], actions: [], elapsedMs: 0 };
+  }
   const apiKey = request.apiKey || "";
-  const modelName = (request.modelDisplayName || "").trim();
-  const userBaseUrl = request.apiBaseUrl || "";
+  const modelName = normalizeModelDisplayName(request.modelDisplayName);
+  const userBaseUrl = normalizeApiBaseUrl(request.apiBaseUrl, modelName);
   const env = { ...process.env };
   if (apiKey) {
     env.ANTHROPIC_API_KEY = apiKey;
@@ -162,7 +192,7 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   // Ensure OpenClaw has a provider configured (once per session)
   if (apiKey && !openclawProviderConfigured) {
     try {
-      const { execSync } = require("child_process");
+      const { execFileSync } = require("child_process");
       const baseUrl = userBaseUrl || "https://api.deepseek.com";
       const providerKey = baseUrl.includes("deepseek") ? "deepseek" : "openai";
       const patch = {
@@ -178,7 +208,7 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
           }
         }
       };
-      execSync("openclaw config patch --stdin", {
+      execFileSync(openclawPath(), ["config", "patch", "--stdin"], {
         input: JSON.stringify(patch),
         timeout: 10000,
         stdio: "pipe",
@@ -187,7 +217,7 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
     } catch (_) { /* best-effort provider config */ }
   }
 
-  const adapter = new CustomCommandAdapter(request.command, { env });
+  const adapter = new CustomCommandAdapter(command, { env });
 
   // Manual attack loop with per-action activity reporting
   const { makeContext } = require("./agentRuntime");
