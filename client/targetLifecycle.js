@@ -221,7 +221,9 @@ function validateEnv(env) {
 
 function commandEnv(env, flag) {
   const merged = { ...process.env, ...env };
-  if (typeof flag === "string" && flag.trim()) {
+  // Use the real flag from the MATCH_CONFIG if available.
+  // (command.env has the redacted placeholder "FLAG{已隐藏}" from the server.)
+  if (typeof flag === "string" && flag.trim() && flag !== "FLAG{已隐藏}") {
     merged.AIAWD_FLAG = flag;
   }
   return merged;

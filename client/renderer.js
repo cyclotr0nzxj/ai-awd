@@ -17,6 +17,7 @@ const state = {
   _agentLoopActive: false,
   _agentRunning: false,
   _agentTimer: null,
+  _targetFlag: null,
   notice: null,
 };
 
@@ -537,18 +538,22 @@ function handleMessage(message) {
       state.configs.unshift(message.payload); state.configs = state.configs.slice(0, 3);
       state.matchId = message.payload?.match_id || state.matchId;
       state.targetActionStatus = { state: "idle", message: targetRuntimePlanText(message.payload) || "等待本地靶机计划" };
+      // Store flag in state so it survives the setTimeout closure
+      if (message.payload?.flag) { state._targetFlag = message.payload.flag; }
       // Auto-target-lifecycle: install and start target on config receipt
       if (message.payload?.target_runtime?.project_name) {
         addEvent("TARGET_AUTO_SETUP", { message: "自动安装并启动本地靶机" });
         // Chain: install → start
+        const runtime = message.payload.target_runtime;
+        const flag = state._targetFlag || message.payload.flag;
         setTimeout(async () => {
           try {
             state.targetActionStatus = { state: "running", action: "install", message: "自动安装靶机中..." };
             render();
-            await window.aiawd.runTargetAction({ action: "install", runtime: message.payload.target_runtime, flag: message.payload.flag });
+            await window.aiawd.runTargetAction({ action: "install", runtime, flag });
             state.targetActionStatus = { state: "running", action: "start", message: "自动启动靶机中..." };
             render();
-            await window.aiawd.runTargetAction({ action: "start", runtime: message.payload.target_runtime, flag: message.payload.flag });
+            await window.aiawd.runTargetAction({ action: "start", runtime, flag });
             state.targetActionStatus = { state: "ok", message: "靶机已自动安装并启动" };
             addEvent("TARGET_AUTO_SETUP_DONE", { message: "靶机自动安装启动完成" });
           } catch (err) {
