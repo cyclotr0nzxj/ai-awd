@@ -53,8 +53,6 @@ async function runTargetAction(request, options = {}) {
 
   const command = validateCommand(runtime, action);
   const env = commandEnv(command.env, request?.flag);
-  // Quick sanity: is the flag key present?
-  console.error("[targetLifecycle] env has AIAWD_FLAG:", "AIAWD_FLAG" in env, "| starts with FLAG{:", String(env.AIAWD_FLAG || "").startsWith("FLAG{"), "| flag param:", typeof request?.flag === "string" && request?.flag.length > 0);
   const steps = [];
   for (const argv of command.argv) {
     const result = await (options.runner || spawnStep)(argv, { cwd: command.cwd, env });
@@ -310,6 +308,14 @@ function outputTail(value) {
 
 function validatePathInsideRepo(value, label) {
   const resolved = path.resolve(value);
+  // When connecting to a remote server on a different OS, paths from the
+  // server (e.g. /home/user/ai-awd/targets/...) would resolve to bizarre
+  // locations on the local machine. Skip repo-root enforcement for these —
+  // the server already validated the path before sending it.
+  const isRemoteUnix = value.startsWith("/")
+    && !value.includes(":")
+    && value.split("/").filter(Boolean).length >= 3;
+  if (isRemoteUnix) return resolved;
   const relative = path.relative(REPO_ROOT, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new TargetLifecycleError("OUT_OF_SCOPE_PATH", `${label} 必须位于项目目录内`);
