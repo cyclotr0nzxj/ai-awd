@@ -123,32 +123,54 @@ ipcMain.handle("aiawd:submitFlag", (_event, request) =>
   ),
 );
 ipcMain.handle("aiawd:targetAction", async (_event, request) => {
-  // Auto-start Docker Desktop if daemon isn't running
-  const { execSync } = require("child_process"); // eslint-disable-line
-  try {
-    execSync("docker info", { stdio: "pipe", timeout: 5000 });
-  } catch (dockerCheckErr) {
-    console.error("Docker check failed:", dockerCheckErr.message);
+  // Auto-detect and start Docker daemon if needed.
+  // Use spawnSync with explicit docker path — no shell — to avoid
+  // shell rc file stalls that cause ETIMEDOUT on macOS.
+  const { spawnSync } = require("child_process"); // eslint-disable-line
+
+  function dockerPath() {
+    const candidates = [
+      "/usr/local/bin/docker",
+      "/opt/homebrew/bin/docker",
+      "/opt/local/bin/docker",
+      "/Applications/Docker.app/Contents/Resources/bin/docker",
+    ];
+    const fs = require("fs");
+    for (const p of candidates) { if (fs.existsSync(p)) return p; }
+    return "docker"; // fallback to PATH
+  }
+
+  function dockerAvailable() {
+    try {
+      const result = spawnSync(dockerPath(), ["info"], {
+        stdio: "pipe", timeout: 8000, shell: false, env: { ...process.env },
+      });
+      return result.status === 0;
+    } catch (_) { return false; }
+  }
+
+  if (!dockerAvailable()) {
+    console.error("Docker check failed — daemon may not be running");
     sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_STARTING", event: { message: "Docker 未运行，正在自动启动..." } } });
+
     if (process.platform === "darwin") {
-      try { execSync("open -a Docker", { stdio: "pipe", timeout: 10000 }); } catch (_) {}
+      try { spawnSync("open", ["-a", "Docker"], { stdio: "pipe", timeout: 10000, shell: false }); } catch (_) {}
       for (let i = 0; i < 30; i++) {
-        try { execSync("docker info", { stdio: "pipe", timeout: 3000 }); break; }
-        catch (_) { await new Promise(r => setTimeout(r, 1000)); }
+        if (i > 0) await new Promise(r => setTimeout(r, 1000));
+        if (dockerAvailable()) break;
       }
     } else if (process.platform === "win32") {
-      try { execSync('start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"', { stdio: "pipe", timeout: 10000, shell: true }); } catch (_) {}
+      try { spawnSync("cmd", ["/c", "start", "", "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"], { stdio: "pipe", timeout: 10000, shell: false }); } catch (_) {}
       for (let i = 0; i < 30; i++) {
-        try { execSync("docker info", { stdio: "pipe", timeout: 3000 }); break; }
-        catch (_) { await new Promise(r => setTimeout(r, 1000)); }
+        if (i > 0) await new Promise(r => setTimeout(r, 1000));
+        if (dockerAvailable()) break;
       }
     }
-    // Check if Docker came up
-    try { execSync("docker info", { stdio: "pipe", timeout: 5000 }); }
-    catch (dockerStartErr) {
-      console.error("Docker daemon still not available:", dockerStartErr.message);
-      sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_FAILED", event: { message: `Docker 启动失败: ${dockerStartErr.message}` } } });
-      return { ok: false, message: `Docker 未运行: ${dockerStartErr.message}` };
+
+    if (!dockerAvailable()) {
+      console.error("Docker daemon still not available after auto-start attempt");
+      sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_FAILED", event: { message: "Docker 启动失败 — 请确认 Docker Desktop 已运行并登录" } } });
+      return { ok: false, message: "Docker 未运行 — 请确认 Docker Desktop 已启动并登录" };
     }
     sendToRenderer("aiawd:message", { type: "EVENT", payload: { event_type: "DOCKER_READY", event: { message: "Docker 已就绪" } } });
   }
