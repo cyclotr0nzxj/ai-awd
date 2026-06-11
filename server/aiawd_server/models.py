@@ -36,6 +36,7 @@ class Session:
     team_id: str | None = None
     last_seen_at: float = field(default_factory=time)
     writer: Any | None = field(default=None, repr=False)
+    peer_addr: str = "127.0.0.1"
 
     def public_snapshot(self) -> dict[str, Any]:
         return {

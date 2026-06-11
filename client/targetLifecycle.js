@@ -307,11 +307,12 @@ function outputTail(value) {
 }
 
 function validatePathInsideRepo(value, label) {
-  const resolved = path.resolve(value);
-  // When connecting to a remote server on a different OS, paths from the
-  // server (e.g. /home/user/ai-awd/targets/...) would resolve to bizarre
-  // locations on the local machine. Skip repo-root enforcement for these —
-  // the server already validated the path before sending it.
+  // Relative paths (e.g. targets/real_ctf_web_awd_02/docker-compose.yml)
+  // are resolved against the local repo root — each client has its own copy.
+  const resolved = path.isAbsolute(value) ? path.resolve(value) : path.resolve(REPO_ROOT, value);
+  // When connecting to a remote server on a different OS, absolute Unix paths
+  // (e.g. /home/user/ai-awd/targets/...) won't be in the local repo.
+  // Trust the server-side validation for these.
   const isRemoteUnix = value.startsWith("/")
     && !value.includes(":")
     && value.split("/").filter(Boolean).length >= 3;

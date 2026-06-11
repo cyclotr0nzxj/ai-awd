@@ -89,13 +89,17 @@ class TargetRuntime:
 
         manifest = template.manifest_snapshot()
         compose = manifest["compose"]
-        compose_file = (self.root / compose["file"]).resolve()
+        # Validate the compose file exists on the server (absolute path for fs check)
+        compose_abs = (self.root / compose["file"]).resolve()
         try:
-            compose_file.relative_to(self.root)
+            compose_abs.relative_to(self.root)
         except ValueError as exc:
             raise TargetRuntimeError("BAD_COMPOSE", "compose 文件必须位于项目目录内") from exc
-        if not compose_file.exists():
+        if not compose_abs.exists():
             raise TargetRuntimeError("MISSING_COMPOSE", "compose 文件不存在")
+        # Use RELATIVE paths — each client resolves against its own repo root
+        compose_rel = Path(compose["file"])
+        compose_cwd_rel = compose_rel.parent
         project_name = f"{compose.get('project_prefix', 'aiawd')}_{room_id}_{team_id}"
         base_url = f"http://{host}:{port}"
         healthcheck = manifest.get("healthcheck") or {}
@@ -117,8 +121,9 @@ class TargetRuntime:
         commands = {
             name: TargetCommand(
                 name=name,
-                argv=self._compose_argv(project_name, compose_file, steps),
-                cwd=compose_file.parent,
+                # _compose_argv uses the absolute path for server-side validation
+                argv=self._compose_argv(project_name, compose_abs, steps),
+                cwd=compose_cwd_rel,
                 env=env,
             )
             for name, steps in command_specs.items()
@@ -128,7 +133,7 @@ class TargetRuntime:
             room_id=room_id,
             team_id=team_id,
             project_name=project_name,
-            compose_file=compose_file,
+            compose_file=compose_rel,
             base_url=base_url,
             health_url=health_url,
             healthcheck=healthcheck,

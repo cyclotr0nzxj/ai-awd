@@ -176,7 +176,8 @@ class TCPGateway:
                 member = room.members.get(session.client_id)
                 if not member or member.role != Role.PLAYER:
                     raise RoomError("INVALID_ROLE", "只有参赛成员可以开始比赛")
-                match, configs = self.match_engine.start_match(room, session.client_id)
+                peer_addrs = {cid: s.peer_addr for cid, s in self.session_manager.sessions.items() if s.peer_addr}
+                match, configs = self.match_engine.start_match(room, session.client_id, peer_addrs)
                 target_template = self.target_registry.get(room.target_template_id)
                 for config in configs.values():
                     config["target_manifest"] = target_template.manifest_snapshot()

@@ -14,12 +14,18 @@ class SessionManager:
 
     def create_session(self, payload: dict[str, Any], writer: Any | None = None) -> Session:
         client_id = f"client_{next(self._counter):04d}"
+        peer_addr = "127.0.0.1"
+        if writer is not None:
+            peername = writer.get_extra_info("peername")
+            if peername and isinstance(peername, tuple) and len(peername) >= 1:
+                peer_addr = str(peername[0])
         session = Session(
             client_id=client_id,
             display_name=str(payload.get("display_name") or client_id),
             platform=str(payload.get("platform") or ""),
             capabilities=list(payload.get("capabilities") or []),
             writer=writer,
+            peer_addr=peer_addr,
         )
         self.sessions[client_id] = session
         return session

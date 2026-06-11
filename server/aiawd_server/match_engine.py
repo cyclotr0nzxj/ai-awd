@@ -23,7 +23,7 @@ class MatchEngine:
         self.flags_by_room: dict[str, dict[str, FlagRecord]] = {}
         self.submitted_hashes_by_room: dict[str, set[str]] = {}
 
-    def start_match(self, room: Room, owner_client_id: str) -> tuple[Match, dict[str, dict[str, Any]]]:
+    def start_match(self, room: Room, owner_client_id: str, peer_addrs: dict[str, str] | None = None) -> tuple[Match, dict[str, dict[str, Any]]]:
         if owner_client_id != room.owner_client_id:
             raise MatchError("BAD_REQUEST", "只有房主可以开始比赛")
         if room.status != Phase.LOBBY:
@@ -38,6 +38,7 @@ class MatchEngine:
         self.flags_by_room[room.room_id] = {}
         self.submitted_hashes_by_room[room.room_id] = set()
         configs: dict[str, dict[str, Any]] = {}
+        peer_addrs = peer_addrs or {}
         for index, player in enumerate(players):
             flag = f"FLAG{{{room.room_id}_{player.team_id}_{secrets.token_hex(8)}}}"
             flag_hash = _hash_flag(flag)
@@ -49,6 +50,7 @@ class MatchEngine:
                 flag_plaintext=flag,
             )
             port = 18081 + index
+            local_addr = peer_addrs.get(player.client_id, "127.0.0.1")
             configs[player.client_id] = {
                 "match_id": match_id,
                 "team_id": player.team_id,
@@ -61,12 +63,13 @@ class MatchEngine:
                 },
                 "opponents": [],
                 "allowed_targets": [f"http://127.0.0.1:{port}"],
+                "_peer_addr": local_addr,
             }
         for client_id, config in configs.items():
             config["opponents"] = [
                 {
                     "team_id": other["team_id"],
-                    "base_url": other["local_target"]["base_url"],
+                    "base_url": f"http://{other['_peer_addr']}:{other['local_target']['port']}",
                 }
                 for other_client_id, other in configs.items()
                 if other_client_id != client_id
