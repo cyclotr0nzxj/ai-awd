@@ -176,6 +176,7 @@ class CustomCommandAdapter {
     const argv = expandTemplate(this._commandTemplate, targetUrl, this._ctx);
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
+    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
     try {
       const proc = spawnSync(argv[0], argv.slice(1), {
         cwd: this._cwd,
@@ -183,7 +184,7 @@ class CustomCommandAdapter {
         timeout: this._timeout * 1000,
         encoding: "utf-8",
         stdio: "pipe",
-        shell: false,
+        shell: needsShell,
       });
       if (proc.error) {
         return {
@@ -211,13 +212,14 @@ class CustomCommandAdapter {
     const argv = expandTemplate(this._commandTemplate, targetUrl, this._ctx);
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
+    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
     return new Promise((resolve) => {
       const child = spawn(argv[0], argv.slice(1), {
         cwd: this._cwd,
         env,
         timeout: this._timeout * 1000,
         stdio: "pipe",
-        shell: false,
+        shell: needsShell,
       });
       let stdout = "";
       let stderr = "";

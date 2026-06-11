@@ -20,6 +20,13 @@ function openclawPath() {
     if (result.status === 0 && result.stdout) {
       const localPath = result.stdout.toString().trim().split("\n")[0].trim();
       if (localPath && fs.existsSync(localPath)) {
+        // On Windows, "where" may return a Unix shell script without extension
+        // (e.g., npm global installs create both "openclaw" and "openclaw.cmd").
+        // spawn() can only execute .exe/.cmd/.bat on Windows.
+        if (process.platform === "win32" && !/\.(exe|cmd|bat|com)$/i.test(localPath)) {
+          const cmdVariant = localPath + ".cmd";
+          if (fs.existsSync(cmdVariant)) return cmdVariant;
+        }
         return localPath;
       }
     }
