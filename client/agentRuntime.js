@@ -174,11 +174,15 @@ class CustomCommandAdapter {
 
   _runAgainst(targetUrl, submit) {
     const argv = expandTemplate(this._commandTemplate, targetUrl, this._ctx);
+    // On Windows, .cmd/.bat files need shell:true AND quoted args
+    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
+    const shellArgv = needsShell
+      ? argv.map(a => (a.includes(" ") && !(a.startsWith('"') && a.endsWith('"'))) ? `"${a}"` : a)
+      : argv;
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
-    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
     try {
-      const proc = spawnSync(argv[0], argv.slice(1), {
+      const proc = spawnSync(shellArgv[0], shellArgv.slice(1), {
         cwd: this._cwd,
         env,
         timeout: this._timeout * 1000,
@@ -210,11 +214,15 @@ class CustomCommandAdapter {
 
   _runAgainstAsync(targetUrl, submit) {
     const argv = expandTemplate(this._commandTemplate, targetUrl, this._ctx);
+    // On Windows, .cmd/.bat files need shell:true AND quoted args
+    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
+    const shellArgv = needsShell
+      ? argv.map(a => (a.includes(" ") && !(a.startsWith('"') && a.endsWith('"'))) ? `"${a}"` : a)
+      : argv;
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
-    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
     return new Promise((resolve) => {
-      const child = spawn(argv[0], argv.slice(1), {
+      const child = spawn(shellArgv[0], shellArgv.slice(1), {
         cwd: this._cwd,
         env,
         timeout: this._timeout * 1000,

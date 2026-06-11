@@ -193,6 +193,10 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   const modelName = normalizeModelDisplayName(request.modelDisplayName);
   const userBaseUrl = normalizeApiBaseUrl(request.apiBaseUrl, modelName);
   const env = { ...process.env };
+  // Point OpenClaw state to a sandbox-writable directory
+  // (default ~/.openclaw may be read-only in Electron sandbox on Windows)
+  env.OPENCLAW_HOME = path.join(__dirname, "..", ".openclaw");
+  try { require("fs").mkdirSync(env.OPENCLAW_HOME, { recursive: true }); } catch (_) {}
   if (apiKey) {
     env.ANTHROPIC_API_KEY = apiKey;
     env.OPENAI_API_KEY = apiKey;
