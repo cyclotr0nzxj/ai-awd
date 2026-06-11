@@ -53,6 +53,8 @@ async function runTargetAction(request, options = {}) {
 
   const command = validateCommand(runtime, action);
   const env = commandEnv(command.env, request?.flag);
+  // Quick sanity: is the flag key present?
+  console.error("[targetLifecycle] env has AIAWD_FLAG:", "AIAWD_FLAG" in env, "| starts with FLAG{:", String(env.AIAWD_FLAG || "").startsWith("FLAG{"), "| flag param:", typeof request?.flag === "string" && request?.flag.length > 0);
   const steps = [];
   for (const argv of command.argv) {
     const result = await (options.runner || spawnStep)(argv, { cwd: command.cwd, env });
