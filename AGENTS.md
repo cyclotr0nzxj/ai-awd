@@ -88,15 +88,19 @@ LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED
 | Hermes | `hermes -z <prompt> --yolo` (if installed) |
 | Mock | `echo` — no real AI, for UI testing |
 
+### Windows Spawning
+Node.js `spawn` cannot directly execute `.cmd`/`.bat` files on Windows (`shell: false` → EINVAL). `agentRuntime.js` detects `.cmd`/`.bat` extensions and enables `shell: true`, quoting args containing spaces to prevent word-splitting. `openclawPath()` Tier 1 auto-tries `.cmd` variant when `where openclaw` returns an extensionless Unix shell script (npm global install creates both `openclaw` and `openclaw.cmd`).
+
 ### API Configuration
 OpenClaw provider auto-configured on first agent start:
-- Writes provider to `~/.openclaw/openclaw.json` matching OpenClaw's native format
+- Provider config written via `openclaw config patch --stdin` (best-effort)
+- `OPENCLAW_HOME` set to project `.openclaw/` to avoid Electron sandbox EPERM on `~/.openclaw`
 - `baseUrl` from user's Base URL field (default `https://api.deepseek.com`)
 - `apiKey` from user's API Key field
 - Command: `openclaw infer model run --local --json --prompt "..." --model deepseek/deepseek-chat`
 
 ### Docker Auto-Start
-Docker Desktop auto-launched if daemon not running (macOS: `open -a Docker`, Windows: `start Docker Desktop.exe`), waits up to 30s.
+Docker Desktop auto-launched if daemon not running (macOS: `open -a Docker`, Windows: `start Docker Desktop.exe`), waits up to 30s. Docker check uses `spawnSync` with explicit binary path (`/usr/local/bin/docker` etc.) and `shell: false` — avoids `execSync` shell overhead that can cause `ETIMEDOUT` when launched from Finder/Electron.
 
 ### Auto-Match Flow
 - **Auto-ready**: API key + model + runtime filled → `TARGET_READY` + `AGENT_READY`
