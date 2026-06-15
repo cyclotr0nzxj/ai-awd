@@ -17,8 +17,9 @@
 │   ├── server/events.jsonl     服务端事件日志
 │   └── screenshots/            你的截图放这里（新建）
 ├── captures/               抓包文件
-│   ├── capture.sh              一键抓包脚本
-│   └── aiawd_match_*.pcap      tcpdump 输出的 pcap 文件
+│   ├── aiawd_capture_*.pcap    标准 PCAP（Wireshark 可打开）
+│   ├── aiawd_capture_*.jsonl   帧日志
+│   └── capture.sh              一键 tcpdump 抓包（备用）
 ├── demo/                   演示素材 ← 你的截图和录屏放这里
 │   ├── demo_script.md          现场演示操作脚本
 │   ├── screenshots/            人工对战截图（新建）
@@ -144,13 +145,9 @@ head -5 captures/aiawd_capture_*.jsonl            # 看前几条帧
 ### 4.2 完整操作流程（约 15 分钟）
 
 ```bash
-# ===== 服务端那台电脑 - 终端 1：启动服务端 =====
-PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
+# ===== 服务端那台电脑 — 启动服务端 =====
+bash extras/scripts/start-server.sh --lan
 # 记下显示的局域网 IP: 192.168.x.x
-
-# ===== 服务端那台电脑 - 终端 2：启动抓包 =====
-bash captures/capture.sh
-# 脚本等待中...
 
 # ===== 你和队友各自启动客户端 =====
 cd ai-awd/client
@@ -169,15 +166,13 @@ npx electron .
 | 6 | 观察阶段自动推进：准备 → 加固 → 攻防 | 🎥 录屏中 |
 | 7 | 攻击阶段：观察攻击动画、得分弹出、排行榜刷新 | 🎥 录屏中 + 📸 大乱斗页截图 |
 | 8 | 等比赛自然结束（或等 2-3 分钟后手动结束） | 📸 结算页截图 |
-| 9 | 回到终端 2 按回车停止抓包 | 📸 抓包完成输出 |
-| 10 | 展示日志 | 📸 `tail -20 logs/server/events.jsonl` |
+| 9 | 展示日志 | 📸 `tail -20 logs/server/events.jsonl` |
 
 ### 4.3 人工实战产出的文件
 
 | 产出 | 位置 | 如何获取 |
 |------|------|---------|
 | 服务端日志 | `logs/server/events.jsonl` | 自动生成，比赛结束后就有了 |
-| 抓包文件 | `captures/aiawd_match_*.pcap` | capture.sh 自动生成 |
 | 截图 | `demo/screenshots/` | 系统截图工具（macOS: Cmd+Shift+4） |
 | 录屏 | `demo/video/` | QuickTime Player → File → New Screen Recording |
 
@@ -222,7 +217,7 @@ npx electron .
 
 ```bash
 # 1. 打开 pcap 文件
-open -a Wireshark captures/aiawd_match_*.pcap
+open -a Wireshark captures/aiawd_capture_*.pcap
 
 # 2. 截图 ⑧ — Follow TCP Stream
 #    Filter 栏输入: tcp.port == 9000
@@ -392,24 +387,20 @@ demo/
 ## 九、操作速查卡
 
 ```bash
-# ── 自动 Demo（5min）──
-# 终端 1:  PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
-# 终端 2:  bash captures/capture.sh
-# 终端 3:  PYTHONPATH=server python3 extras/examples/three_clients_demo.py
-# 终端 2:  按回车停止 → 检查 ls -lh captures/
+# ── 自动 Demo（1 条命令，日志+pcap 同时生成）──
+PYTHONPATH=server python3 extras/capture_demo.py
 
 # ── 人工实战（15min）──
-# 终端 1:  PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
-# 终端 2:  bash captures/capture.sh
-# 你+队友: cd client && npx electron . → 连接→创建→加入→准备→开始→战斗→结束
-# 终端 2:  按回车停止
+bash extras/scripts/start-server.sh --lan          # 服务端
+cd client && npx electron .                        # 你+队友各开一个
+# → 连接→创建→加入→准备→开始→战斗→结束
 
 # ── Wireshark 分析 ──
-# open -a Wireshark captures/aiawd_match_*.pcap
+open -a Wireshark captures/aiawd_capture_*.pcap
 # Filter: tcp.port == 9000 → 右键 Follow TCP Stream
 
 # ── 自动化测试（验证代码完整性）──
-# bash extras/scripts/demo.sh --tcp-only
+bash extras/scripts/demo.sh --tcp-only
 ```
 
 ---
@@ -421,8 +412,8 @@ demo/
 | 1 | 源代码 | `src/` | ✅ |
 | 2 | README | `README.md` | ✅ |
 | 3 | 协议文档 | `protocol.md` | ✅ |
-| 4 | 服务端日志 | `logs/server/events.jsonl` | 运行 demo 或人工对战后生成 |
-| 5 | 抓包文件 | `captures/aiawd_match_*.pcap` | 运行 capture.sh 后生成 |
+| 4 | 服务端日志 | `logs/server/events.jsonl` | 运行 capture_demo.py 或人工对战后生成 |
+| 5 | 抓包文件 | `captures/aiawd_capture_*.pcap` | 运行 capture_demo.py 自动生成 |
 | 6 | 截图（10 张） | `demo/screenshots/` | 人工对战 + Wireshark 截取 |
 | 7 | 录屏（1 段） | `demo/video/battle_demo.mov` | QuickTime 录制 |
 | 8 | 实验报告 | `report.pdf` | 按第八章框架撰写 |
