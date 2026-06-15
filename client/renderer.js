@@ -186,7 +186,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "selectedRoom","myRole","phase","phaseTimer","scoreSummary","attackHeat",
     "nextStepBody","roomSummary","matchSummary","attackKit",
     "targetLifecycleStatus","targetDoctor","targetInstall","targetStart","targetHealth","targetStop","targetReset",
-    "arenaMap","defenseBoard","resultSummary","podiumList","captureRecap","battleTargetStatus",
+    "arenaMap","defenseBoard","resultSummary","podiumList","captureRecap","battleTargetStatus","battleHistory",
     "generateReport","copyReport","downloadReport","reportPreview",
     "rankings","events","messages","matchConfig",
     "apiKey","apiBaseUrl",
@@ -1020,6 +1020,45 @@ function renderResultsPanel(phase) {
     `<li class="podium-row" data-rank="${i+1}"><span>${i===0?"冠军":`第 ${i+1} 名`}</span><strong>${escapeHtml(row.display_name||row.team_id||"-")}</strong><em>${escapeHtml(row.score??0)} 分 · 攻陷 ${escapeHtml(captureCount(row.team_id||""))} · ${escapeHtml(defenseText(row.team_id||""))}</em></li>`
   ).join("");
   els.captureRecap.textContent = captures.length ? `最近攻陷：${captureRoute(captures[0])}` : "暂无攻陷记录";
+  renderBattleHistory();
+}
+
+function renderBattleHistory() {
+  if (!els.battleHistory) return;
+  const all = [...state.events]
+    .filter(e => e.type === "FLAG_CAPTURED" || e.type === "FLAG_REJECTED" || e.type === "AGENT_ACTIVITY")
+    .reverse();
+  if (!all.length) {
+    els.battleHistory.innerHTML = "<p style='color:var(--muted);padding:16px;font-size:12px'>暂无战斗记录</p>";
+    return;
+  }
+  els.battleHistory.innerHTML = all.map(e => {
+    const time = (e.at || "").slice(0, 8);
+    const p = e.payload || {};
+    if (e.type === "FLAG_CAPTURED") {
+      const s = p.submission || p;
+      return `<div class="history-entry cap">
+        <span class="h-time">${time}</span>
+        <span class="h-player">${escapeHtml(s.submitter_team_id||"")}</span>
+        <span class="h-action">⚔️ 攻陷 ${escapeHtml(s.target_team_id||"")} ！ +${s.score_delta||100} 分</span>
+      </div>`;
+    }
+    if (e.type === "FLAG_REJECTED") {
+      const s = p.submission || p;
+      return `<div class="history-entry rej">
+        <span class="h-time">${time}</span>
+        <span class="h-player">${escapeHtml(s.submitter_team_id||"")}</span>
+        <span class="h-action">✗ Flag 被拒绝 (${escapeHtml(s.code||"")})</span>
+      </div>`;
+    }
+    // AGENT_ACTIVITY
+    const desc = p.output_snippet || p.message || JSON.stringify(p).slice(0, 120);
+    return `<div class="history-entry act">
+      <span class="h-time">${time}</span>
+      <span class="h-player">${escapeHtml(p.display_name||p.client_id||"Agent")}</span>
+      <span class="h-action">${escapeHtml(desc)}</span>
+    </div>`;
+  }).join("");
 }
 
 // ====== Guidance / Summaries / Kit / Target / Agent ======

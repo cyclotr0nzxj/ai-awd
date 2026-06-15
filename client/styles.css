@@ -638,6 +638,21 @@ label {
 
 .recap-text { font-size: 11px; color: var(--muted); padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-family: var(--font-mono); }
 
+/* ── Battle History ── */
+.results-history { margin-top: 24px; }
+.results-history h3 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.battle-history { max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.history-entry { display: flex; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: flex-start; }
+.history-entry:last-child { border-bottom: none; }
+.history-entry .h-time { color: var(--muted); font-family: var(--font-mono); font-size: 11px; min-width: 72px; flex-shrink: 0; }
+.history-entry .h-player { color: var(--text2); font-weight: 600; min-width: 64px; flex-shrink: 0; }
+.history-entry .h-action { flex: 1; color: var(--text); word-break: break-all; }
+.history-entry.cap { border-left: 3px solid var(--green); background: var(--green-dim); }
+.history-entry.cap .h-player { color: var(--green); }
+.history-entry.rej { border-left: 3px solid var(--amber); background: var(--amber-dim); }
+.history-entry.act { border-left: 3px solid var(--border2); }
+.history-entry.pre { border-left: 3px solid var(--border2); color: var(--text2); }
+
 /* ====== Shared ====== */
 pre {
   overflow: auto; margin: 0; padding: 12px; border-radius: var(--radius);
