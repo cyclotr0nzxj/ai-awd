@@ -23,4 +23,4 @@ tcpdump -r captures/aiawd_match_*.pcap -A | grep '"type"' | head -20
 
 ## 分析指南
 
-详见 `docs/抓包分析指南.md`。
+详见 `extras/docs/抓包分析指南.md`。

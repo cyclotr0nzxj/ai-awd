@@ -4,7 +4,7 @@
 >
 > 符合课程要求中关于"自定义协议格式"的全部说明项：消息格式、消息类型、字段含义、状态变化规则、错误处理方式。
 >
-> 完整规格详见 `docs/AIAWD协议规格说明.md`，抓包分析指南详见 `docs/抓包分析指南.md`。
+> 完整规格详见 `extras/docs/AIAWD协议规格说明.md`，抓包分析指南详见 `extras/docs/抓包分析指南.md`。
 
 ---
 
@@ -255,7 +255,7 @@ sudo tcpdump -i lo0 -w captures/aiawd_match.pcap -s 0 'tcp port 9000'
 
 ### 详细指南
 
-见 `docs/抓包分析指南.md` — 包含完整的 Wireshark 操作流程、帧格式逐字节分析、交互时序标注、及实验报告素材清单。
+见 `extras/docs/抓包分析指南.md` — 包含完整的 Wireshark 操作流程、帧格式逐字节分析、交互时序标注、及实验报告素材清单。
 
 ---
 

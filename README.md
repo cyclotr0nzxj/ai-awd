@@ -50,7 +50,7 @@
 ```bash
 # macOS / Linux
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
-cd ai-awd && bash scripts/start-server.sh
+cd ai-awd && bash extras/scripts/start-server.sh
 ```
 
 ```bat
@@ -77,7 +77,7 @@ scripts\start-server.bat
 **🏢 局域网** — 服务器默认监听 `0.0.0.0`，启动后自动显示本机 IP。其他电脑填这个 IP 即可。
 
 ```bash
-bash scripts/start-server.sh
+bash extras/scripts/start-server.sh
 # 输出：📡 本机局域网 IP: 192.168.1.100
 ```
 
@@ -109,13 +109,13 @@ bore local 9000 --to bore.pub
 ### 开发者
 
 ```bash
-bash scripts/demo.sh                                               # 全部验证
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
+bash extras/scripts/demo.sh                                      # 全部验证
+PYTHONPATH=server python3 -m unittest discover -s extras/tests -t . -v   # 54 tests
 cd client && node --test test-*.js                                  # 80 tests
 cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 ```
 
-详见 [AGENTS.md](AGENTS.md) · MIT License
+详见 [extras/AGENTS.md](extras/AGENTS.md) · MIT License
 
 ---
 
@@ -153,13 +153,13 @@ Only one person needs to run the server. Everyone else just enters the server ad
 
 ```bash
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
-cd ai-awd && bash scripts/start-server.sh
+cd ai-awd && bash extras/scripts/start-server.sh
 ```
 
 ```bat
 git clone https://github.com/cyclotr0nzxj/ai-awd.git
 cd ai-awd
-scripts\start-server.bat
+extras\scripts\start-server.bat
 ```
 
 You should see `TCP 地址: 0.0.0.0:9000`.
@@ -179,7 +179,7 @@ You should see `TCP 地址: 0.0.0.0:9000`.
 **🏢 LAN** — Server binds `0.0.0.0` by default and prints the LAN IP. Other machines use that IP.
 
 ```bash
-bash scripts/start-server.sh
+bash extras/scripts/start-server.sh
 # Output: LAN IP: 192.168.1.100
 ```
 
@@ -211,13 +211,13 @@ Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** �
 ### For Developers
 
 ```bash
-bash scripts/demo.sh                                                  # full suite
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
+bash extras/scripts/demo.sh                                             # full suite
+PYTHONPATH=server python3 -m unittest discover -s extras/tests -t . -v      # 54 tests
 cd client && node --test test-*.js                                     # 80 tests
 cd client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
 ```
 
-See [AGENTS.md](AGENTS.md) · MIT License
+See [extras/AGENTS.md](extras/AGENTS.md) · MIT License
 
 ---
 
@@ -229,14 +229,14 @@ See [AGENTS.md](AGENTS.md) · MIT License
 
 | 模块 | 要求 | 实现位置 |
 |------|------|---------|
-| C/S 架构 | 独立服务端 + ≥2 客户端 | `src/server/` · `src/client/` · `examples/` |
+| C/S 架构 | 独立服务端 + ≥2 客户端 | `src/server/` · `src/client/` · `extras/examples/` |
 | 自定义协议 | 客户端和服务端通过自定义协议通信 | `protocol.md` — AIAWD/1.0（4B 长度头 + JSON body，28 种消息） |
 | 实时交互 | 客户端间实时操作同步 | 广播：ROOM_UPDATE / PHASE_SYNC / RANKING_UPDATE / EVENT |
 | 服务端权威 | 服务端最终状态，客户端不能自行决定 | 服务端生成 Flag、驱动阶段机、校验计分、ScopeGuard 约束 |
 | 并发处理 | 服务端同时处理多客户端 | asyncio 每连接协程 + 多房间并行 + 独立阶段调度 |
 | 异常处理 | 非法消息/操作/断开等情况 | 9 种 ERROR 码 + 断线广播 + 心跳超时 + 幂等去重 |
 | 日志记录 | 服务端和客户端记录关键网络事件 | JSONL 事件日志 + HTTP API + Flag 脱敏 |
-| 抓包分析 | Wireshark/tcpdump 分析交互过程 | `captures/capture.sh` + `docs/抓包分析指南.md` |
+| 抓包分析 | Wireshark/tcpdump 分析交互过程 | `captures/capture.sh` + `extras/docs/抓包分析指南.md` |
 | 现场演示 | 展示运行、协议交互、异常处理 | `demo/demo_script.md`（5 环节逐步操作） |
 
 ### 提交文件结构
@@ -256,9 +256,9 @@ See [AGENTS.md](AGENTS.md) · MIT License
 | 文档 | 路径 |
 |------|------|
 | 协议设计文档 | [`protocol.md`](protocol.md) |
-| 完整协议规格 | [`docs/AIAWD协议规格说明.md`](docs/AIAWD协议规格说明.md) |
-| 抓包分析指南 | [`docs/抓包分析指南.md`](docs/抓包分析指南.md) |
+| 完整协议规格 | [`extras/docs/AIAWD协议规格说明.md`](extras/docs/AIAWD协议规格说明.md) |
+| 抓包分析指南 | [`extras/docs/抓包分析指南.md`](extras/docs/抓包分析指南.md) |
 | 现场演示脚本 | [`demo/demo_script.md`](demo/demo_script.md) |
-| 方法总览 | [`METHODS.md`](METHODS.md) / [`METHODS.html`](METHODS.html) |
+| 方法总览 | [`extras/METHODS.md`](extras/METHODS.md) / [`extras/METHODS.html`](extras/METHODS.html) |
 | 一键抓包 | [`captures/capture.sh`](captures/capture.sh) |
-| 开发者参考 | [`AGENTS.md`](AGENTS.md) |
+| 开发者参考 | [`extras/AGENTS.md`](extras/AGENTS.md) |
