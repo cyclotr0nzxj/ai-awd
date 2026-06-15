@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-AWD Arena — 方法总览</title>
+<style>
+  :root {
+    --void: #020617; --surface: #0f172a; --elevated: #1a2740;
+    --border: #1e293b; --text: #f1f5f9; --text2: #94a3b8; --muted: #64748b;
+    --green: #22c55e; --green-dim: rgba(34,197,94,0.08);
+    --amber: #f59e0b; --amber-dim: rgba(245,158,11,0.08);
+    --red: #ef4444; --red-dim: rgba(239,68,68,0.08);
+    --radius: 10px; --radius-lg: 14px;
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--void);color:var(--text);font-family:var(--font);line-height:1.7;padding:0}
+  .container{max-width:900px;margin:0 auto;padding:40px 24px 80px}
+
+  h1{font-size:2rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:8px;
+     background:linear-gradient(135deg,var(--green),#4ade80);-webkit-background-clip:text;
+     -webkit-text-fill-color:transparent;background-clip:text}
+  .subtitle{color:var(--text2);font-size:1rem;margin-bottom:40px}
+
+  h2{font-size:1.25rem;font-weight:600;margin:48px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border);
+     display:flex;align-items:center;gap:10px}
+  h2 .num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
+          background:var(--green-dim);color:var(--green);border-radius:6px;font-size:.85rem;font-weight:700}
+  h3{font-size:1rem;font-weight:600;margin:24px 0 10px;color:var(--text)}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px}
+  .card.green{border-left:3px solid var(--green)}
+  .card.amber{border-left:3px solid var(--amber)}
+  .card.red{border-left:3px solid var(--red)}
+
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin:12px 0}
+  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--text2);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+  td code{background:var(--elevated);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:.85rem;color:var(--green)}
+
+  pre{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;
+      overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.6;margin:12px 0}
+  code{font-family:var(--mono);font-size:.88rem}
+  .cmd{color:var(--green)}
+  .cmt{color:var(--muted)}
+
+  ul,ol{padding-left:22px;margin:8px 0}
+  li{margin:4px 0}
+  li::marker{color:var(--muted)}
+
+  .check{display:grid;grid-template-columns:40px 1fr auto;gap:10px 16px;align-items:center;font-size:.9rem}
+  .check .icon{font-size:1.2rem;text-align:center}
+  .check .file{color:var(--text2);font-family:var(--mono);font-size:.8rem}
+
+  .steps{display:flex;flex-direction:column;gap:20px}
+  .step{display:flex;gap:14px}
+  .step-num{flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+            background:var(--green-dim);color:var(--green);border-radius:50%;font-weight:700;font-size:.9rem}
+  .step-body{flex:1}
+  .step-body p{margin:2px 0}
+
+  .phase-bar{display:flex;gap:4px;margin:12px 0}
+  .phase{flex:1;text-align:center;padding:8px 4px;border-radius:6px;font-size:.8rem;font-weight:600;background:var(--elevated);color:var(--text2)}
+  .phase.active{background:var(--green-dim);color:var(--green)}
+
+  hr{border:none;border-top:1px solid var(--border);margin:32px 0}
+
+  .footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:60px}
+  a{color:var(--green);text-decoration:none}
+  a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>⚔️ AI-AWD Arena — 方法总览</h1>
+<p class="subtitle">网络编程实验 · 自定义应用层协议联网交互系统 · 完整操作指南</p>
+
+<!-- ==================== 一、项目结构 ==================== -->
+<h2><span class="num">一</span> 项目结构</h2>
+
+<pre><span class="cmt">项目根目录/</span>
+├── <span class="cmd">src/</span>                   <span class="cmt">源代码（符号链）</span>
+│   ├── server/            <span class="cmt">→ Python 服务端（9 模块）</span>
+│   └── client/            <span class="cmt">→ Electron 桌面客户端</span>
+├── <span class="cmd">README.md</span>              <span class="cmt">编译与运行说明</span>
+├── <span class="cmd">protocol.md</span>            <span class="cmt">协议设计文档 ← 提交</span>
+├── <span class="cmd">logs/</span>                  <span class="cmt">服务端与客户端日志</span>
+├── <span class="cmd">captures/</span>              <span class="cmt">抓包文件（pcap）</span>
+│   ├── capture.sh         <span class="cmt">一键抓包脚本</span>
+│   └── aiawd_match_*.pcap <span class="cmt">tcpdump 输出（你打完后放这里）</span>
+├── <span class="cmd">demo/</span>                  <span class="cmt">演示辅助</span>
+│   └── demo_script.md     <span class="cmt">现场演示逐步操作指南</span>
+├── <span class="cmd">docs/</span>                  <span class="cmt">详细文档</span>
+│   ├── AIAWD协议规格说明.md
+│   └── 抓包分析指南.md
+├── report.pdf             <span class="cmt">实验报告 ← 你写</span>
+├── server/ client/        <span class="cmt">原始源码位置</span>
+├── targets/               <span class="cmt">Docker 靶机（4 模板）</span>
+├── tests/                 <span class="cmt">测试套件</span>
+└── examples/              <span class="cmt">Python 演示客户端</span></pre>
+
+<!-- ==================== 二、课程要求逐项对照 ==================== -->
+<h2><span class="num">二</span> 课程要求逐项对照</h2>
+
+<div class="check">
+  <div class="icon">✅</div><div>C/S 架构 — 独立服务端 + ≥2 客户端</div>
+  <div class="file">tcp_gateway.py, main.js, three_clients_demo.py</div>
+
+  <div class="icon">✅</div><div>自定义协议 — AIAWD/1.0（4B 长度头 + JSON body）</div>
+  <div class="file">protocol.py, aiawdProtocol.js, protocol.md</div>
+
+  <div class="icon">✅</div><div>实时交互 — 广播机制（ROOM_UPDATE / PHASE_SYNC / RANKING_UPDATE）</div>
+  <div class="file">tcp_gateway.py:_broadcast()</div>
+
+  <div class="icon">✅</div><div>服务端权威 — 服务端生成 Flag、计分、驱动阶段机</div>
+  <div class="file">match_engine.py</div>
+
+  <div class="icon">✅</div><div>并发处理 — asyncio 每连接协程 + 多房间并行 + 独立调度</div>
+  <div class="file">tcp_gateway.py:_handle_client()</div>
+
+  <div class="icon">✅</div><div>异常处理 — 9 种 ERROR 码 + 断线广播 + 幂等去重</div>
+  <div class="file">tcp_gateway.py:_dispatch()</div>
+
+  <div class="icon">✅</div><div>日志记录 — LogStore JSONL，8+ 事件类型</div>
+  <div class="file">log_store.py, logs/server/events.jsonl</div>
+
+  <div class="icon">✅</div><div>抓包分析 — tcpdump + Wireshark + 完整分析指南</div>
+  <div class="file">captures/capture.sh, docs/抓包分析指南.md</div>
+
+  <div class="icon">✅</div><div>现场演示 — 5 环节逐步操作脚本</div>
+  <div class="file">demo/demo_script.md</div>
+</div>
+
+<!-- ==================== 三、测试方法 ==================== -->
+<h2><span class="num">三</span> 测试方法</h2>
+
+<h3>3.1 自动化测试</h3>
+
+<div class="card green">
+<pre><span class="cmt"># Python 测试套件（54 个）</span>
+<span class="cmd">PYTHONPATH=server python3 -m unittest discover -s tests -t . -v</span>
+
+<span class="cmt"># Node.js 测试套件（80 个）</span>
+<span class="cmd">cd client && node --test test-*.js</span>
+
+<span class="cmt"># 一键全部验证</span>
+<span class="cmd">bash scripts/demo.sh --tcp-only</span></pre>
+</div>
+
+<h3>3.2 人工测试（你和队友实战）</h3>
+
+<div class="steps">
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <strong>启动服务端</strong>
+    <pre><span class="cmd">PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000</span></pre>
+    <p>输出：<code>AI-AWD Arena TCP server listening on 0.0.0.0:9000</code></p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <strong>两人各自启动客户端</strong>
+    <pre><span class="cmd">cd client && npx electron .</span></pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <strong>连接 — 大厅 — 房间 — 大乱斗 — 结算</strong>
+    <p>房主创建房间 → 队友加入 → 双方准备 → 开始比赛 → 自动阶段推进 → 结算</p>
+    <p style="color:var(--muted);font-size:.85rem">用 mock-agent 即可，不需要 API Key</p>
+  </div>
+</div>
+</div>
+
+<h3>3.3 截图清单</h3>
+
+<table>
+<tr><th>#</th><th>内容</th><th>时机</th></tr>
+<tr><td>①</td><td>服务端启动 + 两客户端连接页</td><td>步骤 2 完成后</td></tr>
+<tr><td>②</td><td>房间页（双方已准备）</td><td>步骤 3 准备后</td></tr>
+<tr><td>③</td><td>大乱斗页（攻击动画 + 排名）</td><td>攻击阶段</td></tr>
+<tr><td>④</td><td>结算页（排行榜）</td><td>比赛结束</td></tr>
+<tr><td>⑤</td><td>终端日志</td><td><code>tail -20 logs/server/events.jsonl</code></td></tr>
+<tr><td>⑥</td><td>Wireshark Follow TCP Stream</td><td>打开 pcap 后</td></tr>
+<tr><td>⑦</td><td>Wireshark 单帧 HEX+JSON</td><td>选中 HELLO 包</td></tr>
+</table>
+
+<!-- ==================== 四、抓包方法 ==================== -->
+<h2><span class="num">四</span> 抓包方法</h2>
+
+<h3>方式 A：一键脚本</h3>
+<div class="card green">
+<pre><span class="cmt"># 终端 1：服务端</span>
+<span class="cmd">PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000</span>
+
+<span class="cmt"># 终端 2：抓包（自动检测网卡 + 后台抓 + 按回车停止）</span>
+<span class="cmd">bash captures/capture.sh</span>
+
+<span class="cmt"># 终端 3：跑演示 / Electron 人工打</span>
+<span class="cmd">PYTHONPATH=server python3 examples/three_clients_demo.py</span>
+
+<span class="cmt"># 回到终端 2 → 按回车停止抓包</span></pre>
+</div>
+
+<h3>方式 B：手动 tcpdump</h3>
+<div class="card">
+<pre><span class="cmt"># macOS</span>
+<span class="cmd">sudo tcpdump -i lo0 -w captures/aiawd_match.pcap -s 0 'tcp port 9000'</span>
+
+<span class="cmt"># Linux</span>
+<span class="cmd">sudo tcpdump -i lo -w captures/aiawd_match.pcap -s 0 'tcp port 9000'</span>
+
+<span class="cmt"># Ctrl+C 停止</span></pre>
+</div>
+
+<h3>Wireshark 分析三步走</h3>
+<ol>
+  <li>Filter: <code>tcp.port == 9000</code></li>
+  <li>右键任意包 → <strong>Follow → TCP Stream</strong>（看到完整对话）</li>
+  <li>观察前 4 字节 = 长度头，后面是 UTF-8 JSON body</li>
+</ol>
+<p style="font-size:.85rem;color:var(--muted)">详细步骤见 docs/抓包分析指南.md</p>
+
+<!-- ==================== 五、现场演示 ==================== -->
+<h2><span class="num">五</span> 现场演示流程（5 环节 × 2 分钟）</h2>
+
+<div class="steps">
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <strong>启动服务端和两个客户端</strong>
+    <p>服务端终端 + 两个 Electron 窗口</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <strong>两个客户端完成实时交互</strong>
+    <p>创建房间 → 加入 → 准备 → 开始 → 攻击阶段 → 排名刷新</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <strong>展示服务端日志</strong>
+    <pre><span class="cmd">tail -20 logs/server/events.jsonl | python3 -m json.tool</span></pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <strong>展示协议文档中的一条消息</strong>
+    <p>打开 <code>protocol.md</code>，逐字段解释 HELLO 消息</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <strong>使用抓包文件解释通信过程</strong>
+    <p>打开 Wireshark → Follow TCP Stream → 对着一帧解释 4B 长度头 + JSON body</p>
+  </div>
+</div>
+</div>
+
+<!-- ==================== 六、异常演示（加分） ==================== -->
+<h2><span class="num">六</span> 异常演示（加分项）</h2>
+
+<div class="card red">
+<pre><span class="cmt"># 演示：连上后不发 HELLO 直接发 PING → 服务端拒绝</span>
+<span class="cmd">echo '{"v":1,"type":"PING","seq":1,"payload":{}}' | nc 127.0.0.1 9000</span>
+
+<span class="cmt"># 预期响应：</span>
+<span class="cmt"># {"type":"ERROR","code":"BAD_REQUEST","message":"HELLO is required before other messages"}</span></pre>
+</div>
+
+<!-- ==================== 七、阶段状态机 ==================== -->
+<h2><span class="num">七</span> 阶段状态机</h2>
+
+<div class="phase-bar">
+  <div class="phase">LOBBY<br>大厅</div>
+  <div style="display:flex;align-items:center;color:var(--green);font-weight:700">→</div>
+  <div class="phase">PREPARE<br>准备</div>
+  <div style="display:flex;align-items:center;color:var(--green);font-weight:700">→</div>
+  <div class="phase">DEFENSE<br>加固</div>
+  <div style="display:flex;align-items:center;color:var(--green);font-weight:700">→</div>
+  <div class="phase active">ATTACK<br>攻防</div>
+  <div style="display:flex;align-items:center;color:var(--green);font-weight:700">→</div>
+  <div class="phase">FINISHED<br>结束</div>
+</div>
+<p style="font-size:.85rem;color:var(--muted);margin-top:8px">
+  服务端自动驱动阶段切换，客户端被动接收 PHASE_SYNC 广播。SUBMIT_FLAG_REQ 仅在 ATTACK 阶段有效。</p>
+
+<!-- ==================== 八、消息类型 ==================== -->
+<h2><span class="num">八</span> 消息类型速查（28 种）</h2>
+
+<table>
+<tr><th>类别</th><th>消息</th><th>方向</th></tr>
+<tr><td>握手</td><td>HELLO · WELCOME</td><td>C→S · S→C</td></tr>
+<tr><td>心跳</td><td>PING · PONG</td><td>C→S · S→C</td></tr>
+<tr><td>浏览</td><td>LIST_ROOMS_REQ/RES · LIST_TARGETS_REQ/RES</td><td>双向</td></tr>
+<tr><td>房间</td><td>CREATE_ROOM_REQ/RES · JOIN_ROOM_REQ/RES · ROOM_UPDATE</td><td>双向 + 广播</td></tr>
+<tr><td>比赛</td><td>START_MATCH_REQ/RES · MATCH_CONFIG · PHASE_SYNC · RANKING_UPDATE</td><td>双向 + 单播 + 广播</td></tr>
+<tr><td>计分</td><td>SUBMIT_FLAG_REQ/RES</td><td>C→S · S→C</td></tr>
+<tr><td>准备</td><td>TARGET_READY · AGENT_READY</td><td>C→S</td></tr>
+<tr><td>活动</td><td>AGENT_ACTIVITY</td><td>C→S → 广播 EVENT</td></tr>
+<tr><td>事件</td><td>EVENT · ERROR</td><td>S→所有 · S→C</td></tr>
+<tr><td>断开</td><td>BYE</td><td>双向</td></tr>
+</table>
+
+<!-- ==================== 九、report.pdf 框架 ==================== -->
+<h2><span class="num">九</span> report.pdf 报告框架建议</h2>
+
+<ol>
+  <li><strong>系统总体架构</strong> — 架构图 + 技术栈 + 引用 src/ 目录</li>
+  <li><strong>客户端/服务端分工</strong> — 服务端权威原则，双方职责边界</li>
+  <li><strong>自定义协议设计</strong> — 引用 protocol.md 原文（消息格式、类型、字段、状态机、错误处理）</li>
+  <li><strong>服务端状态维护方式</strong> — 内存数据结构 + 阶段调度器 + 广播机制</li>
+  <li><strong>并发处理方式</strong> — asyncio 每连接协程 + 多房间独立</li>
+  <li><strong>异常情况处理</strong> — 9 种 ERROR 码 + 连接异常 + 幂等去重</li>
+  <li><strong>抓包分析结果</strong> — Wireshark 截图（TCP Stream + 单帧对照 + 广播扇出）</li>
+  <li><strong>测试过程与运行截图</strong> — 自动化测试通过 + 人工测试 7 张截图</li>
+  <li><strong>项目不足与改进方向</strong> — 明文传输、依赖 Docker、缺少 Agent SDK 等</li>
+</ol>
+
+<hr>
+<div class="footer">
+  AI-AWD Arena v1.0 · MIT License · <a href="https://github.com/cyclotr0nzxj/ai-awd">GitHub</a>
+</div>
+
+</div>
+</body>
+</html>
