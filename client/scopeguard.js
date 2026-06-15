@@ -60,11 +60,14 @@ class ScopeGuard {
     } catch {
       return result.reject("NETWORK_SCOPE", "无效的 URL", url);
     }
-    if (!LOCAL_HOSTS.has(parsed.hostname)) {
-      result.reject("NETWORK_SCOPE", "靶机只能位于本机地址", url);
-    }
-    if (allowedTargets && !allowedTargets.includes(url)) {
-      result.reject("NETWORK_SCOPE", "目标不在允许列表内", url);
+    // Allow localhost for self-target; allow any host that's in the room-scoped allowedTargets list.
+    // Reject only when allowedTargets is provided and the URL is not in it.
+    if (allowedTargets) {
+      if (!allowedTargets.includes(url)) {
+        result.reject("NETWORK_SCOPE", "目标不在允许列表内", url);
+      }
+    } else if (!LOCAL_HOSTS.has(parsed.hostname)) {
+      result.reject("NETWORK_SCOPE", "靶机只能位于本机地址（或在比赛允许列表内）", url);
     }
     this._audit.push(result);
     return result;

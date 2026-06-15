@@ -167,7 +167,9 @@ function installViaNpm() {
       try {
         const gResult = execSync("where openclaw", { encoding: "utf-8", timeout: 5000 }).trim();
         if (gResult) {
-          console.log(`openclaw installed globally: ${gResult.split("\n")[0].trim()}`);
+          const globalPath = gResult.split("\n")[0].trim();
+          console.log(`openclaw installed globally: ${globalPath}`);
+          createBinWrapper(globalPath);
           return true;
         }
       } catch (_) { /* check npm prefix */ }
@@ -180,6 +182,7 @@ function installViaNpm() {
       for (const gp of globalPaths) {
         if (fs.existsSync(gp)) {
           console.log(`openclaw found at: ${gp}`);
+          createBinWrapper(gp);
           return true;
         }
       }

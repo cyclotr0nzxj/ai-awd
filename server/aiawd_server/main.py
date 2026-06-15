@@ -12,12 +12,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", default=9000, type=int, help="TCP (AIAWD/1.0) port")
     parser.add_argument("--http-port", default=9001, type=int, help="HTTP API port (0 to disable)")
+    parser.add_argument("--advertise-host", default="", help="LAN host/IP published for local players when clients connect via loopback")
     return parser.parse_args()
 
 
 async def async_main() -> None:
     args = parse_args()
-    gateway = TCPGateway(host=args.host, port=args.port)
+    gateway = TCPGateway(host=args.host, port=args.port, advertise_host=args.advertise_host or None)
     await gateway.start()
     print(f"AI-AWD Arena TCP server listening on {gateway.host}:{gateway.port}")
 

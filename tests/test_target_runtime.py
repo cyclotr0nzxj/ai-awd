@@ -28,10 +28,13 @@ class TargetRuntimeTest(unittest.TestCase):
         self.assertEqual(instance.base_url, "http://127.0.0.1:18123")
         self.assertEqual(instance.health_url, "http://127.0.0.1:18123/health")
         self.assertTrue(str(instance.compose_file).endswith("targets/real_ctf_web_awd_01/docker-compose.yml"))
+        self.assertFalse(instance.compose_file.is_absolute())
+        self.assertFalse(instance.commands["start"].cwd.is_absolute())
         self.assertEqual(
             instance.commands["start"].argv,
             [["docker", "compose", "-p", "aiawd_room_001_team_a", "-f", str(instance.compose_file), "up", "-d"]],
         )
+        self.assertFalse(Path(instance.commands["start"].argv[0][5]).is_absolute())
         self.assertEqual(instance.commands["install"].argv[0][-1], "build")
 
         public = instance.public_snapshot()

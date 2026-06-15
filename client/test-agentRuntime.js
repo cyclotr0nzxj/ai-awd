@@ -9,6 +9,8 @@ const {
   extractFlags,
   expandTemplate,
   sanitizeCommand,
+  commandNeedsShell,
+  prepareSpawnArgv,
   CustomCommandAdapter,
   AgentManager,
 } = require("./agentRuntime.js");
@@ -100,6 +102,29 @@ describe("sanitizeCommand", () => {
 
   it("rejects ampersand as standalone token", () => {
     assert.strictEqual(sanitizeCommand(["cmd1", "&", "cmd2"]), false);
+  });
+});
+
+describe("Windows command spawning", () => {
+  it("uses shell for cmd and bat entrypoints only on Windows", () => {
+    assert.strictEqual(commandNeedsShell("openclaw.cmd", "win32"), true);
+    assert.strictEqual(commandNeedsShell("openclaw.bat", "win32"), true);
+    assert.strictEqual(commandNeedsShell("openclaw.exe", "win32"), false);
+    assert.strictEqual(commandNeedsShell("openclaw.cmd", "darwin"), false);
+  });
+
+  it("quotes arguments with spaces before shell spawning", () => {
+    const argv = prepareSpawnArgv(
+      ["C:\\Users\\mac\\AppData\\Roaming\\npm\\openclaw.cmd", "infer", "--prompt", "You are an AWD agent"],
+      "win32",
+    );
+
+    assert.deepStrictEqual(argv, [
+      "C:\\Users\\mac\\AppData\\Roaming\\npm\\openclaw.cmd",
+      "infer",
+      "--prompt",
+      "\"You are an AWD agent\"",
+    ]);
   });
 });
 

@@ -55,6 +55,24 @@ class MatchEngineTest(unittest.TestCase):
         )
         self.assertEqual(len(configs[member_c.client_id]["allowed_targets"]), 3)
 
+    def test_start_match_uses_peer_addresses_for_opponents_only(self) -> None:
+        room, member_a, member_b = _room_with_two_players()
+        engine = MatchEngine()
+
+        _, configs = engine.start_match(
+            room,
+            member_a.client_id,
+            {
+                member_a.client_id: "192.168.1.10",
+                member_b.client_id: "192.168.1.44",
+            },
+        )
+
+        self.assertEqual(configs[member_a.client_id]["local_target"]["base_url"], "http://127.0.0.1:18081")
+        self.assertEqual(configs[member_b.client_id]["local_target"]["base_url"], "http://127.0.0.1:18082")
+        self.assertEqual(configs[member_a.client_id]["opponents"][0]["base_url"], "http://192.168.1.44:18082")
+        self.assertEqual(configs[member_b.client_id]["opponents"][0]["base_url"], "http://192.168.1.10:18081")
+
     def test_submit_flag_scores_once_and_rejects_self_or_duplicate(self) -> None:
         room, member_a, member_b = _room_with_two_players()
         engine = MatchEngine()

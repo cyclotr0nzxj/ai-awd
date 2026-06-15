@@ -20,6 +20,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOST="0.0.0.0"
 PORT="9000"
 HTTP_PORT="9001"
+ADVERTISE_HOST=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,9 +36,13 @@ while [[ $# -gt 0 ]]; do
       HTTP_PORT="$2"
       shift 2
       ;;
+    --advertise-host)
+      ADVERTISE_HOST="$2"
+      shift 2
+      ;;
     *)
       echo "未知参数: $1"
-      echo "Usage: $0 [--lan] [-p PORT] [--http-port PORT]"
+      echo "Usage: $0 [--lan] [-p PORT] [--http-port PORT] [--advertise-host IP]"
       exit 1
       ;;
   esac
@@ -58,10 +63,14 @@ echo "=========================================="
 echo " TCP 地址:  ${HOST}:${PORT}"
 echo " HTTP API:  http://${HOST}:${HTTP_PORT}"
 echo " 靶机数量:  3 (web / pwn / crypto)"
-if [ -n "$LAN_IP" ]; then
+DISPLAY_IP="${ADVERTISE_HOST:-$LAN_IP}"
+if [ -n "$DISPLAY_IP" ]; then
   echo ""
-  echo " 📡 本机局域网 IP: ${LAN_IP}"
-  echo "    客户端连接填:  ${LAN_IP}:${PORT}"
+  echo " 📡 本机局域网 IP: ${DISPLAY_IP}"
+  echo "    客户端连接填:  ${DISPLAY_IP}:${PORT}"
+fi
+if [ -n "$ADVERTISE_HOST" ]; then
+  echo "    (--advertise-host 已指定: ${ADVERTISE_HOST})"
 fi
 echo ""
 echo " 快速检查:"
@@ -74,7 +83,12 @@ echo "   源码启动: cd client && npx electron ."
 echo ""
 
 cd "$PROJECT_ROOT"
+EXTRA_ARGS=()
+if [ -n "$ADVERTISE_HOST" ]; then
+  EXTRA_ARGS+=("--advertise-host" "$ADVERTISE_HOST")
+fi
 PYTHONPATH=server python3 -m aiawd_server.main \
   --host "$HOST" \
   --port "$PORT" \
-  --http-port "$HTTP_PORT"
+  --http-port "$HTTP_PORT" \
+  "${EXTRA_ARGS[@]}"

@@ -49,6 +49,9 @@ function openclawPath() {
       const globalNpm = path.join(appData, "npm", "openclaw.cmd");
       if (fs.existsSync(globalNpm)) return globalNpm;
     }
+    // Also check the bundled wrapper created by postinstall (reliable fallback)
+    const bundledWin = path.join(__dirname, "bin", "openclaw.cmd");
+    if (fs.existsSync(bundledWin)) return bundledWin;
   } else {
     const npmGlobalPaths = [
       "/usr/local/lib/node_modules/.bin/openclaw",

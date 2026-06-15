@@ -109,6 +109,24 @@ describe("electron-builder package files", () => {
   });
 });
 
+describe("Docker auto-start wiring (parsed from source)", () => {
+  const mainSource = fs.readFileSync(path.join(CLIENT_DIR, "main.js"), "utf-8");
+
+  it("checks Docker with spawnSync, explicit binary candidates, and shell disabled", () => {
+    assert.match(mainSource, /spawnSync\(dockerPath\(\), \["info"\]/);
+    assert.match(mainSource, /"\/Applications\/Docker\.app\/Contents\/Resources\/bin\/docker"/);
+    assert.match(mainSource, /shell:\s*false/);
+    assert.match(mainSource, /timeout:\s*8000/);
+  });
+
+  it("attempts platform Docker Desktop startup on macOS and Windows", () => {
+    assert.match(mainSource, /spawnSync\("open", \["-a", "Docker"\]/);
+    assert.match(mainSource, /spawnSync\("cmd", \["\/c", "start", "", "C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop\.exe"\]/);
+    assert.match(mainSource, /DOCKER_READY/);
+    assert.match(mainSource, /DOCKER_FAILED/);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 2. sanitizeCommand — dangerous input is rejected
 // ---------------------------------------------------------------------------
@@ -187,6 +205,47 @@ describe("detectAvailableAdapters keys", () => {
     assert.strictEqual(keys.length, 6);
     for (const key of keys) {
       assert.strictEqual(typeof available[key], "boolean");
+    }
+  });
+});
+
+describe("provider profiles", () => {
+  const { detectProvider, providerProfile, openClawModelRef } = require("./providerDetect.js");
+
+  it("maps DeepSeek key plus manual model name to base URL and OpenClaw model ref", () => {
+    assert.strictEqual(detectProvider("sk-test", "deepseek-chat"), "DeepSeek");
+    assert.strictEqual(providerProfile("DeepSeek").apiBaseUrl, "https://api.deepseek.com");
+    assert.strictEqual(openClawModelRef("sk-test", "deepseek-chat"), "deepseek/deepseek-chat");
+  });
+
+  it("keeps OpenRouter models under the OpenRouter OpenClaw provider", () => {
+    assert.strictEqual(detectProvider("sk-or-test", "openai/gpt-4o-mini"), "OpenRouter");
+    assert.strictEqual(providerProfile("OpenRouter").apiBaseUrl, "https://openrouter.ai/api/v1");
+    assert.strictEqual(openClawModelRef("sk-or-test", "openai/gpt-4o-mini"), "openrouter/openai/gpt-4o-mini");
+  });
+
+  it("Anthropic profile has correct apiBaseUrl and openclawApi", () => {
+    const profile = providerProfile("Anthropic");
+    assert.ok(profile !== null, "Anthropic profile must not be null");
+    assert.strictEqual(profile.apiBaseUrl, "https://api.anthropic.com");
+    assert.strictEqual(profile.openclawApi, "anthropic-messages");
+  });
+
+  it("Google profile has correct openclawApi", () => {
+    const profile = providerProfile("Google");
+    assert.ok(profile !== null, "Google profile must not be null");
+    assert.strictEqual(profile.openclawApi, "google-generative-ai");
+  });
+
+  it("openClawModelRef with sk-ant key returns anthropic-prefixed ref", () => {
+    assert.strictEqual(openClawModelRef("sk-ant-xxx", "claude-sonnet-4-6"), "anthropic/claude-sonnet-4-6");
+  });
+
+  it("ByteDance, Baidu, iFlytek, Tencent profiles are non-null and use openai-completions", () => {
+    for (const name of ["ByteDance", "Baidu", "iFlytek", "Tencent"]) {
+      const profile = providerProfile(name);
+      assert.ok(profile !== null, `${name} profile must not be null`);
+      assert.strictEqual(profile.openclawApi, "openai-completions", `${name} openclawApi mismatch`);
     }
   });
 });

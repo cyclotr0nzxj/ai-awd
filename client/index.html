@@ -75,6 +75,11 @@
         <button class="btn-ghost btn-sm overlay-close-btn" data-close="joinOverlay">✕</button>
       </div>
       <div class="overlay-body">
+        <label>房间 ID <input id="roomId" placeholder="room_001" /></label>
+        <div class="join-direct-actions">
+          <button id="joinPlayer" class="btn-primary">参赛</button>
+          <button id="joinSpectator" class="btn-ghost">观战</button>
+        </div>
         <input id="roomSearch" placeholder="搜索房间..." />
         <div id="roomList" class="room-list room-list-overlay"></div>
         <button id="refreshRooms" class="btn-ghost btn-sm">刷新列表</button>
@@ -189,7 +194,8 @@
           </label>
           <label class="prepare-field">
             <span>模型名</span>
-            <input id="modelDisplayName" value="deepseek-chat" placeholder="如 deepseek-chat" class="prepare-input" />
+            <input id="modelDisplayName" value="deepseek-chat" list="modelOptions" placeholder="如 deepseek-chat" class="prepare-input" />
+            <datalist id="modelOptions"></datalist>
           </label>
           <label class="prepare-field" id="apiBaseUrlField" style="display:none">
             <span>API Base URL</span>

@@ -5,11 +5,47 @@ from pathlib import Path
 from typing import Any
 
 from aiawd_server.log_store import LogStore
+from aiawd_server.models import Session
 from aiawd_server.protocol import Message, read_message, write_message
 from aiawd_server.tcp_gateway import TCPGateway
 
 
 class TCPGatewayTest(unittest.TestCase):
+    def test_loopback_players_use_advertised_host_for_opponents(self) -> None:
+        gateway = TCPGateway(host="0.0.0.0", port=0, advertise_host="192.168.1.10")
+        alice = Session(client_id="client_a", display_name="Alice", peer_addr="127.0.0.1")
+        bob = Session(client_id="client_b", display_name="Bob", peer_addr="192.168.1.44")
+        gateway.session_manager.sessions[alice.client_id] = alice
+        gateway.session_manager.sessions[bob.client_id] = bob
+        room = gateway.room_manager.create_room(
+            alice,
+            {
+                "room_name": "LAN room",
+                "max_players": 2,
+                "target_template_id": "real_ctf_web_awd_01",
+            },
+        )
+        gateway.room_manager.join_room(bob, room.room_id, "player", {"display_name": "Bob"})
+
+        peer_addrs = gateway._peer_addrs_for_room(room)
+
+        self.assertEqual(peer_addrs["client_a"], "192.168.1.10")
+        self.assertEqual(peer_addrs["client_b"], "192.168.1.44")
+
+    def test_localhost_server_keeps_loopback_peer_addresses(self) -> None:
+        gateway = TCPGateway(host="127.0.0.1", port=0)
+        alice = Session(client_id="client_a", display_name="Alice", peer_addr="127.0.0.1")
+        bob = Session(client_id="client_b", display_name="Bob", peer_addr="127.0.0.1")
+        gateway.session_manager.sessions[alice.client_id] = alice
+        gateway.session_manager.sessions[bob.client_id] = bob
+        room = gateway.room_manager.create_room(alice, {"max_players": 2})
+        gateway.room_manager.join_room(bob, room.room_id, "player", {"display_name": "Bob"})
+
+        peer_addrs = gateway._peer_addrs_for_room(room)
+
+        self.assertEqual(peer_addrs["client_a"], "127.0.0.1")
+        self.assertEqual(peer_addrs["client_b"], "127.0.0.1")
+
     def test_three_clients_room_and_match_flow(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             asyncio.run(_three_clients_room_and_match_flow(Path(temp_dir)))
@@ -147,6 +183,9 @@ async def _three_clients_room_and_match_flow(tmp_path: Path) -> None:
         assert config_a.payload["target_runtime"]["project_name"] == f"aiawd_{room_id}_team_a"
         assert config_a.payload["target_runtime"]["base_url"] == "http://127.0.0.1:18081"
         assert config_a.payload["target_runtime"]["health_url"] == "http://127.0.0.1:18081/health"
+        assert not Path(config_a.payload["target_runtime"]["compose_file"]).is_absolute()
+        assert not Path(config_a.payload["target_runtime"]["commands"]["start"]["cwd"]).is_absolute()
+        assert not Path(config_a.payload["target_runtime"]["commands"]["start"]["argv"][0][5]).is_absolute()
         assert config_a.payload["target_runtime"]["commands"]["start"]["argv"][0][-2:] == ["up", "-d"]
         assert config_a.payload["target_runtime"]["commands"]["start"]["env"]["AIAWD_FLAG"] == "FLAG{已隐藏}"
         assert config_a.payload["flag"] not in str(config_a.payload["target_runtime"])

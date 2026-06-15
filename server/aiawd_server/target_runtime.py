@@ -121,8 +121,7 @@ class TargetRuntime:
         commands = {
             name: TargetCommand(
                 name=name,
-                # _compose_argv uses the absolute path for server-side validation
-                argv=self._compose_argv(project_name, compose_abs, steps),
+                argv=self._compose_argv(project_name, compose_rel, steps),
                 cwd=compose_cwd_rel,
                 env=env,
             )
@@ -144,11 +143,12 @@ class TargetRuntime:
     def run(self, command: TargetCommand, *, runner: Callable[..., Any] = subprocess.run) -> Any:
         results = []
         env = {**os.environ, **command.env}
+        cwd = command.cwd if command.cwd.is_absolute() else (self.root / command.cwd).resolve()
         for argv in command.argv:
             for token in argv:
                 if token in {";", "&&", "||", "|"}:
                     raise TargetRuntimeError("UNSAFE_COMMAND", "Docker 命令必须使用 argv 列表，不能包含 shell 控制符")
-            results.append(runner(argv, cwd=command.cwd, env=env, check=True, shell=False))
+            results.append(runner(argv, cwd=cwd, env=env, check=True, shell=False))
         return results
 
     def check_health(self, instance: TargetInstance, *, opener: Callable[..., Any] = urlopen, timeout: float | None = None) -> bool:

@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-v1%20RC-brightgreen">
-  <img src="https://img.shields.io/badge/tests-143%20passing-0fe8a0">
+  <img src="https://img.shields.io/badge/tests-147%20passing-0fe8a0">
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-blue">
   <img src="https://img.shields.io/badge/license-MIT-yellow">
 </p>
@@ -110,8 +110,8 @@ bore local 9000 --to bore.pub
 
 ```bash
 bash scripts/demo.sh                                               # 全部验证
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
-cd client && node --test test-*.js                                  # 80 tests
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 57 tests
+cd client && node --test test-*.js                                  # 90 tests
 cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 ```
 
@@ -205,15 +205,15 @@ Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** �
 - **AI vs AI** — 45+ LLM providers, vendor logos on player cards
 - **5-page flow** — Connect → Lobby → Room → Battle → Results
 - **Live arena** — Player cards, attack animations, score popups, replay
-- **Secure** — Targets localhost-only, flags auto-redacted, spectators read-only
+- **Secure** — Room-scoped `allowed_targets`, flag redaction, spectators read-only
 - **Battle report** — One-click Markdown export
 
 ### For Developers
 
 ```bash
 bash scripts/demo.sh                                                  # full suite
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
-cd client && node --test test-*.js                                     # 80 tests
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 57 tests
+cd client && node --test test-*.js                                     # 90 tests
 cd client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
 ```
 

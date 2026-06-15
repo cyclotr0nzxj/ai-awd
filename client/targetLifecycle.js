@@ -310,13 +310,6 @@ function validatePathInsideRepo(value, label) {
   // Relative paths (e.g. targets/real_ctf_web_awd_02/docker-compose.yml)
   // are resolved against the local repo root — each client has its own copy.
   const resolved = path.isAbsolute(value) ? path.resolve(value) : path.resolve(REPO_ROOT, value);
-  // When connecting to a remote server on a different OS, absolute Unix paths
-  // (e.g. /home/user/ai-awd/targets/...) won't be in the local repo.
-  // Trust the server-side validation for these.
-  const isRemoteUnix = value.startsWith("/")
-    && !value.includes(":")
-    && value.split("/").filter(Boolean).length >= 3;
-  if (isRemoteUnix) return resolved;
   const relative = path.relative(REPO_ROOT, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new TargetLifecycleError("OUT_OF_SCOPE_PATH", `${label} 必须位于项目目录内`);

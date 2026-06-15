@@ -3,8 +3,9 @@ REM ==========================================================================
 REM AI-AWD Arena — Server Start Script (Windows)
 REM ==========================================================================
 REM Usage:
-REM   scripts\start-server.bat                 (default 0.0.0.0:9000)
-REM   scripts\start-server.bat --port 9999     (custom port)
+REM   scripts\start-server.bat                          (default 0.0.0.0:9000)
+REM   scripts\start-server.bat --port 9999              (custom port)
+REM   scripts\start-server.bat --advertise-host 1.2.3.4 (force LAN IP for clients)
 REM ==========================================================================
 
 setlocal enabledelayedexpansion
@@ -12,6 +13,7 @@ setlocal enabledelayedexpansion
 set HOST=0.0.0.0
 set PORT=9000
 set HTTP_PORT=9001
+set ADVERTISE_HOST=
 
 :parse_args
 if "%~1"=="" goto :run
@@ -39,8 +41,14 @@ if "%~1"=="--host" (
     shift
     goto :parse_args
 )
+if "%~1"=="--advertise-host" (
+    set ADVERTISE_HOST=%~2
+    shift
+    shift
+    goto :parse_args
+)
 echo Unknown option: %~1
-echo Usage: scripts\start-server.bat [--port PORT] [--http-port PORT] [--host HOST]
+echo Usage: scripts\start-server.bat [--port PORT] [--http-port PORT] [--host HOST] [--advertise-host IP]
 exit /b 1
 
 :run
@@ -63,6 +71,10 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
 echo.
 
 set PYTHONPATH=server
-python -m aiawd_server.main --host %HOST% --port %PORT% --http-port %HTTP_PORT%
+if not "%ADVERTISE_HOST%"=="" (
+    python -m aiawd_server.main --host %HOST% --port %PORT% --http-port %HTTP_PORT% --advertise-host %ADVERTISE_HOST%
+) else (
+    python -m aiawd_server.main --host %HOST% --port %PORT% --http-port %HTTP_PORT%
+)
 
 endlocal

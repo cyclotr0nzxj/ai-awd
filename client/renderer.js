@@ -18,6 +18,7 @@ const state = {
   _agentRunning: false,
   _agentTimer: null,
   _targetFlag: null,
+  lastAutoBaseUrl: "https://api.deepseek.com",
   notice: null,
 };
 
@@ -26,6 +27,8 @@ const providerTools = window.AIAWD_PROVIDER || {};
 const detectModelProvider = providerTools.detectProvider || (() => null);
 const providerLabelText = providerTools.providerLabel || (() => "");
 const providerLogoPath = providerTools.providerLogo || (() => null);
+const providerProfileFor = providerTools.providerProfile || (() => null);
+const openClawModelRefFor = providerTools.openClawModelRef || ((_apiKey, model) => `openai/${model || DEFAULT_MODEL_DISPLAY_NAME}`);
 const displayRuntimeName = providerTools.runtimeDisplayName || ((runtime) => runtime || "");
 
 const DEFAULT_MODEL_DISPLAY_NAME = "deepseek-chat";
@@ -39,11 +42,35 @@ function currentApiBaseUrl() {
   const explicit = els.apiBaseUrl?.value?.trim();
   if (explicit) return explicit;
   const provider = detectModelProvider(els.apiKey?.value?.trim() || "", currentModelDisplayName());
-  return provider === "DeepSeek" ? DEFAULT_API_BASE_URL : "";
+  const profile = providerProfileFor(provider);
+  return profile?.apiBaseUrl || (provider === "DeepSeek" ? DEFAULT_API_BASE_URL : "");
+}
+
+function refreshModelOptions(provider) {
+  const list = els.modelOptions || document.getElementById("modelOptions");
+  if (!list) return;
+  const profile = providerProfileFor(provider);
+  list.innerHTML = (profile?.models || [])
+    .map(model => `<option value="${escapeHtml(model)}"></option>`)
+    .join("");
+}
+
+function syncBaseUrlForProvider(provider) {
+  const baseUrlInput = els.apiBaseUrl;
+  const baseUrlField = document.getElementById("apiBaseUrlField");
+  if (!baseUrlInput) return;
+  const profile = providerProfileFor(provider);
+  const nextBaseUrl = profile?.apiBaseUrl || (provider === "DeepSeek" ? DEFAULT_API_BASE_URL : "");
+  const current = baseUrlInput.value?.trim() || "";
+  if (!current || current === state.lastAutoBaseUrl) {
+    baseUrlInput.value = nextBaseUrl;
+    state.lastAutoBaseUrl = nextBaseUrl;
+  }
+  if (baseUrlField) baseUrlField.style.display = nextBaseUrl ? "" : "none";
 }
 
 // ====== Agent Command Builder ======
-function buildAgentCommand(runtime, modelDisplayName, phase) {
+function buildAgentCommand(runtime, modelDisplayName, phase, apiKey = "") {
   const model = modelDisplayName || DEFAULT_MODEL_DISPLAY_NAME;
   const preparePrompt = "You are an AWD CTF agent in preparation phase. Verify your environment is ready: check connectivity to {local_target}, verify Docker containers are running, test basic HTTP access. Report any issues found.";
   const attackPrompt = "You are an AWD CTF security agent. Target: {target_url}. Your goal is to find the FLAG{...} value. Step 1: curl {target_url}/ and look for 'flag' in the JSON response. Step 2: curl {target_url}/flag. Step 3: also try {target_url}/admin, {target_url}/backup, {target_url}/debug?token=debug123. Output the FLAG when found.";
@@ -53,11 +80,7 @@ function buildAgentCommand(runtime, modelDisplayName, phase) {
     case "openclaw":
     case "openclaw-local": {
       const cmd = ["openclaw", "infer", "model", "run", "--local", "--json", "--prompt", prompt];
-      // OpenClaw uses --model provider/modelname format
-      if (model) {
-        const provider = model.includes("deepseek") ? "deepseek" : "openai";
-        cmd.push("--model", `${provider}/${model}`);
-      }
+      if (model) cmd.push("--model", openClawModelRefFor(apiKey, model));
       return cmd;
     }
     case "hermes":
@@ -150,7 +173,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const ids = [
     "host","port","displayName","connect","disconnect","connectionState","clientId",
     "roomName","maxPlayers","targetTemplateId","prepareSeconds","defenseSeconds","attackSeconds",
-    "createRoom","refreshRooms","roomId","agentRuntime","modelDisplayName",
+    "createRoom","refreshRooms","roomId","agentRuntime","modelDisplayName","modelOptions",
     "joinPlayer","joinSpectator","markTargetReady","markAgentReady","startMatch",
     "flagInput","submitFlag","roomList","targetList","players","spectators",
     "selectedRoom","myRole","phase","phaseTimer","scoreSummary","attackHeat",
@@ -256,21 +279,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const apiKey = els.apiKey?.value?.trim() || "";
     const modelName = currentModelDisplayName();
     const prov = detectModelProvider(apiKey, modelName);
-
-    // Auto-fill Base URL based on provider
-    const baseUrlField = document.getElementById("apiBaseUrlField");
-    const baseUrlInput = els.apiBaseUrl;
-    if (prov === "DeepSeek") {
-      if (baseUrlInput && !baseUrlInput.value) baseUrlInput.value = DEFAULT_API_BASE_URL;
-      if (baseUrlField) baseUrlField.style.display = "";
-    } else if (prov === "OpenAI") {
-      if (baseUrlInput) baseUrlInput.value = "";
-      if (baseUrlField) baseUrlField.style.display = "none";
-    } else if (prov && prov !== "Custom" && prov !== "Anthropic") {
-      if (baseUrlField) baseUrlField.style.display = "";
-    } else {
-      if (baseUrlField) baseUrlField.style.display = "none";
-    }
+    refreshModelOptions(prov);
+    syncBaseUrlForProvider(prov);
 
     if (!badge) return;
     if (!prov) { badge.innerHTML = ""; badge.style.display = "none"; return; }
@@ -458,7 +468,7 @@ async function agentStart() {
   const runtime = els.agentRuntime?.value || "openclaw";
   const phase = state.match?.phase || state.room?.status || "ATTACK";
   // Always build the command from scratch for the current phase
-  const command = buildAgentCommand(runtime, currentModelDisplayName(), phase);
+  const command = buildAgentCommand(runtime, currentModelDisplayName(), phase, els.apiKey?.value?.trim() || "");
   state._agentCommandArray = command;
   if (!command.length) { addEvent("AGENT_SKIPPED", { message: "无法构建 Agent 命令" }); render(); return; }
   const phaseLabel = phase === "DEFENSE" ? "防御中" : "攻击中";

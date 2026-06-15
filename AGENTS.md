@@ -22,10 +22,10 @@ Electron App (client/)          Python Server (server/aiawd_server/)
 ## Quick Commands
 
 ```bash
-# Python tests (54)
+# Python tests (57)
 PYTHONPATH=server python3 -m unittest discover -s tests -t . -v
 
-# Node tests (89) — run from client/
+# Node tests (90) — run from client/
 cd client
 node --test test-aiawdProtocol.js test-targetLifecycle.js test-renderer.js \
           test-agentRuntime.js test-adapters.js test-main.js
@@ -35,6 +35,9 @@ bash scripts/demo.sh --quick
 
 # Start server (default binds 0.0.0.0 for LAN multiplayer)
 PYTHONPATH=server python3 -m aiawd_server.main --port 9000
+
+# Start server and explicitly publish the Mac host LAN IP for local host-player mode
+PYTHONPATH=server python3 -m aiawd_server.main --port 9000 --advertise-host 192.168.1.10
 
 # Start server (localhost only — single-machine testing)
 PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
@@ -135,7 +138,7 @@ Supported vendors include Anthropic, OpenAI, Google, Meta, Mistral, Nvidia, Cohe
 
 ## Safety Boundary (ScopeGuard)
 
-- Network targets → `allowed_targets` only, localhost-only
+- Network targets → room-scoped `allowed_targets` only; local self target stays localhost, opponent targets may be LAN peer URLs from the referee
 - File paths → must resolve within project root
 - Process safety → `sanitize_command()` blocks shell metacharacters (`;`, `|`, `&`, `` ` ``)
 - Environment → allowlisted vars only
@@ -156,12 +159,12 @@ Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green acc
 ## Verification Gates
 
 **Server/protocol changes:**
-- Python tests pass (54)
+- Python tests pass (57)
 - `examples/three_clients_demo.py` produces readable transcript
 - Protocol unit tests pass
 
 **Electron/UI changes:**
-- Node tests pass (80 / 3 known failures)
+- Node tests pass (90)
 - `client/test-renderer.js` covers arena, replay, battle kit, flag redaction, vendor logo resolution
 - Main process owns AIAWD TCP; renderer uses `window.aiawd`
 - `npx electron electronWindowEvidence.js` produces 35 passing assertions

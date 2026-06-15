@@ -26,6 +26,7 @@ const ELEMENT_IDS = [
   "resultSummary", "podiumList", "captureRecap",
   "generateReport", "copyReport", "downloadReport", "reportPreview",
   "rankings", "events", "messages", "matchConfig",
+  "apiBaseUrl", "modelOptions", "prepareProviderBadge",
   "agentCommand", "agentStart", "agentStop", "agentStatus",
 ];
 
@@ -271,7 +272,9 @@ function loadRenderer() {
   };
   context.globalThis = context;
   vm.createContext(context);
+  const providerPath = path.join(__dirname, "providerDetect.js");
   const rendererPath = path.join(__dirname, "renderer.js");
+  vm.runInContext(fs.readFileSync(providerPath, "utf8"), context, { filename: providerPath });
   vm.runInContext(fs.readFileSync(rendererPath, "utf8"), context, { filename: rendererPath });
   windowListeners.DOMContentLoaded();
   return { elements, protocolHandlers, calls, intervals, timeouts, createdElements, context, localStorageStore };
@@ -347,6 +350,10 @@ test("index.html keeps Chinese shell text and defaults", () => {
   assert.match(html, /id="agentRuntime"/);
   assert.match(html, /id="modelDisplayName"/);
   assert.match(html, /id="modelDisplayName" value="deepseek-chat"/);
+  assert.match(html, /list="modelOptions"/);
+  assert.match(html, /id="modelOptions"/);
+  assert.match(html, /id="roomId"/);
+  assert.match(html, /id="joinPlayer"/);
   assert.match(html, /id="apiBaseUrl" value="https:\/\/api\.deepseek\.com"/);
   assert.match(html, /id="roomName" value="AI攻防大乱斗"/);
   assert.match(html, /id="maxPlayers" type="number"/);
@@ -375,6 +382,7 @@ test("renderer sends Agent runtime and model metadata when joining", async () =>
   elements.displayName.value = "Alice";
   elements.agentRuntime.value = "hermes-local";
   elements.modelDisplayName.value = "model-alpha";
+  elements.modelDisplayName.listeners.input?.();
 
   await elements.joinPlayer.listeners.click();
 
@@ -407,6 +415,7 @@ test("renderer sends Agent runtime and model metadata when creating a room", asy
   elements.displayName.value = "Alice";
   elements.agentRuntime.value = "hermes-local";
   elements.modelDisplayName.value = "model-alpha";
+  elements.modelDisplayName.listeners.input?.();
 
   await elements.createRoom.listeners.click();
 
@@ -431,6 +440,34 @@ test("renderer sends Agent runtime and model metadata when creating a room", asy
       },
     ],
   ]));
+});
+
+test("renderer infers DeepSeek base URL from API key and manual model name", async () => {
+  const { elements, calls } = loadRenderer();
+
+  await elements.connect.listeners.click();
+  elements.roomName.value = "DeepSeek API房";
+  elements.maxPlayers.value = "2";
+  elements.targetTemplateId.value = "real_ctf_web_awd_02";
+  elements.displayName.value = "Alice";
+  elements.agentRuntime.value = "openclaw";
+  elements.apiKey.value = "sk-live";
+  elements.modelDisplayName.value = "deepseek-chat";
+  elements.apiBaseUrl.value = "";
+
+  await elements.createRoom.listeners.click();
+
+  assert.equal(calls[0][0], "createRoom");
+  assert.equal(calls[0][1].apiBaseUrl, "https://api.deepseek.com");
+  assert.equal(calls[0][1].modelDisplayName, "deepseek-chat");
+});
+
+test("renderer builds OpenClaw command with detected provider model prefix", () => {
+  const { context } = loadRenderer();
+
+  const command = context.buildAgentCommand("openclaw", "deepseek-chat", "ATTACK", "sk-live");
+
+  assert.equal(JSON.stringify(command.slice(-2)), JSON.stringify(["--model", "deepseek/deepseek-chat"]));
 });
 
 test("renderer displays protocol updates in Chinese and redacts private flags", async () => {

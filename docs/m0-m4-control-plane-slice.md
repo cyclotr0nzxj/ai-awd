@@ -23,7 +23,7 @@ Generated per-player flags, attack-phase submit, self/duplicate/invalid rejectio
 - 4 target templates: `real_ctf_web_awd_02` (web beginner, HTTP — flag visible on `/`), `real_ctf_web_awd_01` (web professional, HTTP — hidden behind auth bypass/SQLi/debug/backup), `pwn_awd_echo_01` (binary, TCP healthcheck), `crypto_awd_oracle_01` (crypto, TCP healthcheck). Default: `DEFAULT_TARGET_TEMPLATE_ID = "real_ctf_web_awd_02"` in `target_registry.py`.
 - `TargetRuntime` builds safe Docker Compose install/start/stop/reset argv, injects room/player/flag env vars, redacts private flag snapshots.
 - TCP and HTTP healthcheck support.
-- Electron local lifecycle runner with Docker readiness diagnostics, localhost-only binding, argv allowlists, project-local path checks.
+- Electron local lifecycle runner with Docker readiness diagnostics, LAN-capable target binding, argv allowlists, project-local path checks.
 - Target lifecycle evidence collector (`examples/target_lifecycle_evidence.py`) with single-template and all-target dry-run/live modes.
 
 ### M6–M7 — Agent Runtime
@@ -44,7 +44,7 @@ Generated per-player flags, attack-phase submit, self/duplicate/invalid rejectio
 Comprehensive 3-agent parallel audit. Fixed: FrameDecoder buffer order, execSync→spawnSync, async agent execution (Electron), PING/PONG heartbeat (30s/60s), sanitizeCommand `&`/`\t`/`#`/`~` gaps, HTTP blanket-except→typed handling + writer cleanup, zombie room on join failure, attack count drift→server-authoritative, phase scheduler recovery (FINISHED broadcast), session TTL cleanup, TUI reader_loop crash on non-IncompleteReadError.
 
 ### M9 — ScopeGuard safety boundary
-- Network scope: localhost-only + allowed_targets allowlist.
+- Network scope: room-scoped `allowed_targets`; local self target remains localhost while opponent URLs may be LAN peer addresses assigned by the referee.
 - File scope: project root enforcement.
 - Process safety: shell injection prevention, env allowlist, timeout limits.
 - Audit trail with `security_summary()`.

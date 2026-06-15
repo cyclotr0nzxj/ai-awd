@@ -116,6 +116,21 @@ function sanitizeCommand(command) {
   return true;
 }
 
+function commandNeedsShell(command, platform = process.platform) {
+  return platform === "win32" && /\.(cmd|bat)$/i.test(String(command || ""));
+}
+
+function quoteShellArg(arg) {
+  const text = String(arg);
+  if (!/[ \t"]/.test(text)) return text;
+  return `"${text.replace(/"/g, '\\"')}"`;
+}
+
+function prepareSpawnArgv(argv, platform = process.platform) {
+  if (!commandNeedsShell(argv[0], platform)) return argv;
+  return argv.map(quoteShellArg);
+}
+
 class CustomCommandAdapter {
   /**
    * @param {string[]} command
@@ -174,11 +189,8 @@ class CustomCommandAdapter {
 
   _runAgainst(targetUrl, submit) {
     const argv = expandTemplate(this._commandTemplate, targetUrl, this._ctx);
-    // On Windows, .cmd/.bat files need shell:true AND quoted args
-    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
-    const shellArgv = needsShell
-      ? argv.map(a => (a.includes(" ") && !(a.startsWith('"') && a.endsWith('"'))) ? `"${a}"` : a)
-      : argv;
+    const needsShell = commandNeedsShell(argv[0]);
+    const shellArgv = prepareSpawnArgv(argv);
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
     try {
@@ -214,11 +226,8 @@ class CustomCommandAdapter {
 
   _runAgainstAsync(targetUrl, submit) {
     const argv = expandTemplate(this._commandTemplate, targetUrl, this._ctx);
-    // On Windows, .cmd/.bat files need shell:true AND quoted args
-    const needsShell = process.platform === "win32" && /\.(cmd|bat)$/i.test(argv[0] || "");
-    const shellArgv = needsShell
-      ? argv.map(a => (a.includes(" ") && !(a.startsWith('"') && a.endsWith('"'))) ? `"${a}"` : a)
-      : argv;
+    const needsShell = commandNeedsShell(argv[0]);
+    const shellArgv = prepareSpawnArgv(argv);
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
     return new Promise((resolve) => {
@@ -397,6 +406,9 @@ module.exports = {
   extractFlags,
   expandTemplate,
   sanitizeCommand,
+  commandNeedsShell,
+  quoteShellArg,
+  prepareSpawnArgv,
   parseActivitySteps,
   CustomCommandAdapter,
   AgentManager,

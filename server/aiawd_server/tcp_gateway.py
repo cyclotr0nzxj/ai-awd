@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import socket
 from contextlib import suppress
 from time import time
 from typing import Any
@@ -27,9 +29,11 @@ class TCPGateway:
         target_registry: TargetRegistry | None = None,
         target_runtime: TargetRuntime | None = None,
         log_store: LogStore | None = None,
+        advertise_host: str | None = None,
     ) -> None:
         self.host = host
         self.port = port
+        self.advertise_host = advertise_host
         self.session_manager = session_manager or SessionManager()
         self.room_manager = room_manager or RoomManager()
         self.match_engine = match_engine or MatchEngine()
@@ -176,7 +180,7 @@ class TCPGateway:
                 member = room.members.get(session.client_id)
                 if not member or member.role != Role.PLAYER:
                     raise RoomError("INVALID_ROLE", "只有参赛成员可以开始比赛")
-                peer_addrs = {cid: s.peer_addr for cid, s in self.session_manager.sessions.items() if s.peer_addr}
+                peer_addrs = self._peer_addrs_for_room(room)
                 match, configs = self.match_engine.start_match(room, session.client_id, peer_addrs)
                 target_template = self.target_registry.get(room.target_template_id)
                 for config in configs.values():
@@ -242,6 +246,25 @@ class TCPGateway:
             port=int(local_target.get("port") or 0),
         )
         return instance.public_snapshot()
+
+    def _peer_addrs_for_room(self, room: Room) -> dict[str, str]:
+        advertised_host = self._advertised_host()
+        peer_addrs: dict[str, str] = {}
+        for member in room.players():
+            session = self.session_manager.get(member.client_id)
+            if not session or not session.peer_addr:
+                continue
+            peer_addrs[member.client_id] = advertised_host if _is_loopback(session.peer_addr) else session.peer_addr
+        return peer_addrs
+
+    def _advertised_host(self) -> str:
+        if self.advertise_host:
+            return self.advertise_host
+        if self.host and _is_loopback(self.host):
+            return self.host
+        if self.host and not _is_loopback(self.host) and not _is_unspecified(self.host):
+            return self.host
+        return _detect_lan_ip() or "127.0.0.1"
 
     async def _handle_agent_activity(self, session: Session, message: Message) -> Message | None:
         room = self.room_manager.get_room(message.room_id or session.room_id)
@@ -410,3 +433,33 @@ class TCPGateway:
                 self.log_store.append("PHASE_SCHEDULER_CLEANUP_ERROR", {"room_id": room_id, "error": str(inner_exc)})
             finally:
                 self._phase_tasks.pop(room_id, None)
+
+
+def _is_loopback(host: str) -> bool:
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return host.lower() == "localhost"
+
+
+def _is_unspecified(host: str) -> bool:
+    try:
+        return ipaddress.ip_address(host).is_unspecified
+    except ValueError:
+        return False
+
+
+def _detect_lan_ip() -> str | None:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(("8.8.8.8", 80))
+        host = sock.getsockname()[0]
+        return host if host and not _is_loopback(host) else None
+    except OSError:
+        try:
+            host = socket.gethostbyname(socket.gethostname())
+            return host if host and not _is_loopback(host) else None
+        except OSError:
+            return None
+    finally:
+        sock.close()

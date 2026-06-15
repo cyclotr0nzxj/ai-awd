@@ -65,6 +65,34 @@ test("runs an allowed docker compose action and injects the private flag locally
   assert.doesNotMatch(JSON.stringify(result), /FLAG\{secret\}/);
 });
 
+test("accepts relative compose paths from remote server plans", async () => {
+  const relativeCompose = path.join("targets", "real_ctf_web_awd_01", "docker-compose.yml");
+  const relativeCwd = path.join("targets", "real_ctf_web_awd_01");
+  const seen = [];
+  const result = await runTargetAction(
+    {
+      action: "start",
+      runtime: runtimeFixture({
+        commands: {
+          start: commandFixture(relativeCwd, relativeCompose, [["up", "-d"]]),
+        },
+      }),
+      flag: "FLAG{secret}",
+    },
+    {
+      runner: async (argv, options) => {
+        seen.push({ argv, cwd: options.cwd });
+        return { status: 0, stdout: "started", stderr: "" };
+      },
+    },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].cwd, path.resolve(__dirname, "..", relativeCwd));
+  assert.equal(seen[0].argv[5], path.resolve(__dirname, "..", relativeCompose));
+});
+
 test("doctor checks Docker readiness without running target commands or leaking flags", async () => {
   const seen = [];
   const result = await runTargetAction(
@@ -142,6 +170,17 @@ test("rejects compose paths outside the project", async () => {
   const runtime = runtimeFixture();
   runtime.commands.start.cwd = "/tmp";
   runtime.commands.start.argv[0][5] = "/tmp/docker-compose.yml";
+
+  await assert.rejects(
+    () => runTargetAction({ action: "start", runtime }),
+    (error) => error instanceof TargetLifecycleError && error.code === "OUT_OF_SCOPE_PATH",
+  );
+});
+
+test("rejects remote absolute compose paths", async () => {
+  const runtime = runtimeFixture();
+  runtime.commands.start.cwd = "/Users/server/ai-awd/targets/real_ctf_web_awd_01";
+  runtime.commands.start.argv[0][5] = "/Users/server/ai-awd/targets/real_ctf_web_awd_01/docker-compose.yml";
 
   await assert.rejects(
     () => runTargetAction({ action: "start", runtime }),

@@ -2,15 +2,15 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { AiawdClient } = require("./aiawdProtocol");
 const { runTargetAction } = require("./targetLifecycle");
-const { CustomCommandAdapter, AgentManager, sanitizeCommand, parseActivitySteps } = require("./agentRuntime");
+const { CustomCommandAdapter, AgentManager, sanitizeCommand, parseActivitySteps, commandNeedsShell } = require("./agentRuntime");
 const { openclawPath } = require("./adapters");
-const { detectProvider } = require("./providerDetect");
+const { detectProvider, providerProfile } = require("./providerDetect");
 
 let mainWindow = null;
 const client = new AiawdClient();
 /** @type {AgentManager|null} */
 let agentManager = null;
-let openclawProviderConfigured = false;
+let openclawProviderConfigFingerprint = "";
 const DEFAULT_MODEL_DISPLAY_NAME = "deepseek-chat";
 const DEFAULT_API_BASE_URL = "https://api.deepseek.com";
 
@@ -18,16 +18,18 @@ function normalizeModelDisplayName(modelName) {
   return (modelName || "").trim() || DEFAULT_MODEL_DISPLAY_NAME;
 }
 
-function normalizeApiBaseUrl(baseUrl, modelName) {
+function normalizeApiBaseUrl(baseUrl, modelName, apiKey = "") {
   const explicit = (baseUrl || "").trim();
   if (explicit) return explicit;
-  return normalizeModelDisplayName(modelName).toLowerCase().includes("deepseek") ? DEFAULT_API_BASE_URL : "";
+  const provider = detectProvider(apiKey, normalizeModelDisplayName(modelName));
+  const profile = providerProfile(provider);
+  return profile?.apiBaseUrl || (provider === "DeepSeek" ? DEFAULT_API_BASE_URL : "");
 }
 
 function resolveAgentCommand(command) {
   const argv = Array.isArray(command) ? [...command] : [];
   const executable = path.basename(String(argv[0] || "")).toLowerCase();
-  if (executable === "openclaw" || executable === "openclaw.exe") {
+  if (executable === "openclaw" || executable === "openclaw.exe" || executable === "openclaw.cmd") {
     argv[0] = openclawPath();
   }
   return argv;
@@ -79,7 +81,7 @@ ipcMain.handle("aiawd:createRoom", (_event, room) => {
     agent_runtime: room.agentRuntime || "mock-agent",
     model_display_name: modelName || "mock-model",
     api_provider: provider,
-    api_base_url: normalizeApiBaseUrl(room.apiBaseUrl, modelName),
+    api_base_url: normalizeApiBaseUrl(room.apiBaseUrl, modelName, apiKey),
     allow_spectators: room.allowSpectators,
     phase_seconds: room.phaseSeconds,
   });
@@ -96,7 +98,7 @@ ipcMain.handle("aiawd:joinRoom", (_event, request) => {
       agent_runtime: request.agentRuntime || "mock-agent",
       model_display_name: modelName || "mock-model",
       api_provider: provider,
-      api_base_url: normalizeApiBaseUrl(request.apiBaseUrl, modelName),
+      api_base_url: normalizeApiBaseUrl(request.apiBaseUrl, modelName, apiKey),
     },
     { roomId: request.roomId, role: request.role },
   );
@@ -191,7 +193,9 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   }
   const apiKey = request.apiKey || "";
   const modelName = normalizeModelDisplayName(request.modelDisplayName);
-  const userBaseUrl = normalizeApiBaseUrl(request.apiBaseUrl, modelName);
+  const provider = detectProvider(apiKey, modelName);
+  const profile = providerProfile(provider);
+  const userBaseUrl = normalizeApiBaseUrl(request.apiBaseUrl, modelName, apiKey);
   const env = { ...process.env };
   // Point OpenClaw state to a sandbox-writable directory
   // (default ~/.openclaw may be read-only in Electron sandbox on Windows)
@@ -209,37 +213,42 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
     } else if (!process.env.DEEPSEEK_BASE_URL) {
       env.DEEPSEEK_BASE_URL = "https://api.deepseek.com";
     }
-    // Auto-detect provider for env var hints
-    const provider = detectProvider(apiKey, modelName);
     if (provider === "DeepSeek" && !userBaseUrl) {
       env.OPENAI_BASE_URL = env.OPENAI_BASE_URL || "https://api.deepseek.com";
     }
   }
-  // Ensure OpenClaw has a provider configured (once per session)
-  if (apiKey && !openclawProviderConfigured) {
+  // Ensure OpenClaw has a provider configured for the current API/model tuple.
+  if (apiKey) {
     try {
       const { execFileSync } = require("child_process");
-      const baseUrl = userBaseUrl || "https://api.deepseek.com";
-      const providerKey = baseUrl.includes("deepseek") ? "deepseek" : "openai";
-      const patch = {
-        models: {
-          mode: "merge",
-          providers: {
-            [providerKey]: {
-              baseUrl: baseUrl,
-              api: "openai-completions",
-              apiKey: apiKey,
-              models: [{ id: modelName || "deepseek-chat", name: modelName || "DeepSeek Chat", input: ["text"], contextWindow: 128000, maxTokens: 8192 }],
+      const baseUrl = userBaseUrl || profile?.apiBaseUrl || DEFAULT_API_BASE_URL;
+      const providerKey = profile?.openclawProvider || (baseUrl.includes("deepseek") ? "deepseek" : "openai");
+      const apiAdapter = profile?.openclawApi || "openai-completions";
+      const configuredModel = modelName || profile?.models?.[0] || DEFAULT_MODEL_DISPLAY_NAME;
+      const configFingerprint = JSON.stringify({ providerKey, baseUrl, configuredModel, apiKey });
+      if (openclawProviderConfigFingerprint !== configFingerprint) {
+        const patch = {
+          models: {
+            mode: "merge",
+            providers: {
+              [providerKey]: {
+                baseUrl: baseUrl,
+                api: apiAdapter,
+                apiKey: apiKey,
+                models: [{ id: configuredModel, name: configuredModel, input: ["text"], contextWindow: 128000, maxTokens: 8192 }],
+              }
             }
           }
-        }
-      };
-      execFileSync(openclawPath(), ["config", "patch", "--stdin"], {
-        input: JSON.stringify(patch),
-        timeout: 10000,
-        stdio: "pipe",
-      });
-      openclawProviderConfigured = true;
+        };
+        const openclawBin = openclawPath();
+        execFileSync(openclawBin, ["config", "patch", "--stdin"], {
+          input: JSON.stringify(patch),
+          timeout: 10000,
+          stdio: "pipe",
+          shell: commandNeedsShell(openclawBin),
+        });
+        openclawProviderConfigFingerprint = configFingerprint;
+      }
     } catch (_) { /* best-effort provider config */ }
   }
 
