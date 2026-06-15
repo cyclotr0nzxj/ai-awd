@@ -107,8 +107,15 @@ function buildAgentCommand(runtime, modelDisplayName, phase, apiKey = "") {
       return cmd;
     }
     case "mock-agent": {
-      const action = (phase === "DEFENSE") ? "Defense phase — would scan and patch {local_target}" : "Attack phase — would probe {target_url} for FLAG{...}";
-      return ["echo", `[mock-agent] ${action}`];
+      // Mock agent that actually curls the beginner target and extracts flags.
+      // Uses curl (macOS) or powershell (Windows) to fetch / and grep for FLAG{}.
+      if (phase === "DEFENSE") {
+        return ["echo", "[mock-agent] Defense — target is healthy, no intrusion detected"];
+      }
+      const curlCmd = process.platform === "win32"
+        ? ["powershell", "-Command", `(Invoke-WebRequest -Uri {target_url}).Content | Select-String -Pattern 'FLAG\\{[^}]+\\}' -AllMatches | ForEach-Object { $_.Matches.Value }`]
+        : ["bash", "-c", `curl -s {target_url} {target_url}/flag {target_url}/admin {target_url}/backup '{target_url}/debug?token=debug123' 2>/dev/null | grep -oE 'FLAG\\{[A-Za-z0-9_/-]+\\}'`];
+      return curlCmd;
     }
     default: {
       // Try to parse as a custom CLI command
