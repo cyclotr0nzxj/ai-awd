@@ -136,10 +136,12 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
       "/opt/homebrew/bin/docker",
       "/opt/local/bin/docker",
       "/Applications/Docker.app/Contents/Resources/bin/docker",
+      "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "C:\\Program Files\\Docker\\Docker\\resources\\docker.exe",
     ];
     const fs = require("fs");
     for (const p of candidates) { if (fs.existsSync(p)) return p; }
-    return "docker"; // fallback to PATH
+    return process.platform === "win32" ? "docker.exe" : "docker"; // fallback to PATH
   }
 
   function dockerAvailable() {

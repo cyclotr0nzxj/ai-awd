@@ -265,7 +265,8 @@ function defaultHealthCheck(url) {
 
 function spawnStep(argv, options) {
   return new Promise((resolve, reject) => {
-    const child = spawn(argv[0], argv.slice(1), {
+    const cmd = _dockerExe(argv[0]);
+    const child = spawn(cmd, argv.slice(1), {
       cwd: options.cwd,
       env: options.env,
       shell: false,
@@ -285,7 +286,8 @@ function spawnStep(argv, options) {
 
 function spawnCheck(argv) {
   return new Promise((resolve, reject) => {
-    const child = spawn(argv[0], argv.slice(1), {
+    const cmd = _dockerExe(argv[0]);
+    const child = spawn(cmd, argv.slice(1), {
       shell: false,
     });
     let stdout = "";
@@ -299,6 +301,12 @@ function spawnCheck(argv) {
     child.on("error", reject);
     child.on("close", (code) => resolve({ status: code, stdout, stderr }));
   });
+}
+
+function _dockerExe(cmd) {
+  if (process.platform !== "win32") return cmd;
+  if (cmd === "docker") return "docker.exe";
+  return cmd;
 }
 
 function outputTail(value) {
