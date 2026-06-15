@@ -145,9 +145,16 @@ ipcMain.handle("aiawd:targetAction", async (_event, request) => {
   }
 
   function dockerAvailable() {
+    const bin = dockerPath();
     try {
-      const result = spawnSync(dockerPath(), ["info"], {
-        stdio: "pipe", timeout: 8000, shell: false, env: { ...process.env },
+      // Ensure Docker bin dir is in PATH — Electron from Finder/Start Menu may
+      // inherit a minimal PATH that doesn't include Docker's location.
+      const dockerEnv = { ...process.env };
+      const dockerDir = path.dirname(bin);
+      const sep = process.platform === "win32" ? ";" : ":";
+      dockerEnv.PATH = dockerDir + sep + (process.env.PATH || "");
+      const result = spawnSync(bin, ["info"], {
+        stdio: "pipe", timeout: 12000, shell: false, env: dockerEnv,
       });
       return result.status === 0;
     } catch (_) { return false; }
