@@ -6,230 +6,259 @@
 </p>
 
 <h1 align="center">⚔️ AI-AWD Arena</h1>
-<h3 align="center">自定义应用层协议联网交互系统 — AI 攻防大乱斗</h3>
+<h3 align="center">AI 攻防大乱斗 — Let AI Agents Battle Each Other</h3>
+
+<p align="center">
+  <a href="#中文"><b>中文</b></a> &nbsp;·&nbsp;
+  <a href="#english"><b>English</b></a>
+</p>
 
 ---
 
-## 项目简介
+<a name="中文"></a>
+## 中文
 
-本项目是一个基于 **C/S 架构** 的联网交互系统，客户端和服务端通过 **自定义应用层协议 AIAWD/1.0** 进行通信。系统模拟网络安全攻防对抗（AWD）场景：服务端作为裁判管理房间、调度比赛阶段、校验 Flag 并计分；客户端通过 Electron 桌面应用连接服务端，由 AI Agent 自动执行攻击和防守操作。
+**AI-AWD Arena**（AI 攻防大乱斗）是一个让 AI Agent 互相进行网络安全攻防竞技的桌面平台。每台电脑运行本地靶机，AI Agent 自动攻击对手获取 Flag，同时防守自己的靶机。服务器仅做裁判。
 
-本仓库同时作为 **网络编程实验课程** 的提交项目，满足以下全部要求：
+### 你需要准备
 
-| 模块 | 要求 | 实现 |
-|------|------|------|
-| C/S 架构 | 独立服务端 + ≥2 客户端 | Python asyncio 服务端 + Electron 客户端 + Python Demo 客户端 |
-| 自定义协议 | 客户端/服务端通过自定义协议通信 | AIAWD/1.0 — 4B 大端长度前缀 + UTF-8 JSON body，28 种消息类型 |
-| 实时交互 | 客户端间实时操作同步 | ROOM_UPDATE / PHASE_SYNC(每5s) / RANKING_UPDATE / EVENT 广播 |
-| 服务端权威状态 | 服务端最终状态，客户端不能自行决定 | 服务端生成 Flag、驱动阶段机、校验计分；ScopeGuard 约束客户端 |
-| 并发处理 | 服务端同时处理多客户端连接 | asyncio 每连接协程 + 多房间并行 + 独立阶段调度 |
-| 异常处理 | 非法消息/非法操作/断开等 | 9 种 ERROR 码 + 断线广播 + 心跳超时 + 阶段崩溃恢复 + 幂等去重 |
-| 日志记录 | 服务端和客户端记录关键网络事件 | JSONL 事件日志（8+ 类型）+ HTTP API 查询 + Flag 自动脱敏 |
-| 抓包分析 | Wireshark/tcpdump 分析完整交互 | 一键抓包脚本 + 完整抓包分析指南 |
-| 现场演示 | 展示运行、协议交互、异常处理 | 5 环节逐步演示脚本 |
-
----
-
-## 项目结构
-
-```
-├── src/                    源代码（→ server/aiawd_server/ + client/）
-│   ├── server/             Python 服务端（asyncio TCP）
-│   └── client/             Electron 桌面客户端（Node.js）
-├── protocol.md             协议设计文档（提交用）
-├── report.pdf              实验报告（需自行撰写）
-├── logs/                   服务端与客户端日志
-│   └── server/events.jsonl   服务端事件日志（JSONL 格式）
-├── captures/               抓包文件（pcap）
-│   └── capture.sh             一键抓包脚本
-├── demo/                   演示辅助
-│   └── demo_script.md         现场演示逐步操作指南
-├── docs/                   详细技术文档
-│   ├── AIAWD协议规格说明.md    完整协议规格（11 章）
-│   └── 抓包分析指南.md         抓包实操指南
-├── METHODS.md              方法总览（测试/抓包/演示操作）
-├── METHODS.html            方法总览（浏览器可直接打开）
-├── server/                 服务端源代码（原始位置）
-├── client/                 客户端源代码（原始位置）
-├── targets/                Docker 靶机模板（Web/PWN/Crypto，4 个）
-├── tests/                  测试套件（Python 54 + Node 80）
-└── examples/               Python 演示客户端
-```
-
----
-
-## 快速开始
-
-### 环境要求
-
-| 角色 | 需要 |
-|------|------|
-| **服务器**（一台电脑） | Python 3.11+ · Git |
+| 角色 | 需要什么 |
+|------|---------|
 | **每个人** | [Docker Desktop](https://docs.docker.com/desktop/) |
-| **每个人** | LLM API Key（任意厂商，可选——用 mock-agent 不需要） |
+| **每个人** | 一个 LLM API Key（任意厂商） |
+| **服务器**（一台电脑） | Python 3.11+ · Git |
 
-> 服务器和客户端可以在同一台电脑上。用 mock-agent 模式下不需要任何 API Key。
+> AI-AWD 自带 OpenClaw Agent，填 API Key 即用。服务器和客户端可以在同一台电脑上。不想填 Key？选 mock-agent 也能跑完整流程。
 
-### 1. 克隆仓库
+### 快速开始
 
-```bash
-git clone https://github.com/cyclotr0nzxj/ai-awd.git
-cd ai-awd
-```
+**1. 获取客户端（每人必做）**
 
-### 2. 安装客户端依赖
+- **下载 App（推荐）**：从 [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases) 下载 `.dmg`（Mac）或 `.exe`（Win）
+- **或命令行启动**：
+  ```bash
+  git clone https://github.com/cyclotr0nzxj/ai-awd.git
+  cd ai-awd/client
+  npm install
+  npm start
+  ```
 
-```bash
-cd client
-npm install
-cd ..
-```
+**2. 启动服务器（一人运行即可）**
 
-### 3. 启动服务端（一人运行即可）
+只要有一个人运行服务器，其他人直接填地址连接，无需执行这一步。
 
 ```bash
 # macOS / Linux
-PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000 --http-port 9001
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd && bash scripts/start-server.sh
 ```
 
 ```bat
-REM Windows
-PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000 --http-port 9001
+REM Windows（命令提示符或 PowerShell）
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd
+scripts\start-server.bat
 ```
 
-看到输出即就绪：
+看到 `TCP 地址: 0.0.0.0:9000` 就说明跑起来了。
 
-```
-AI-AWD Arena TCP server listening on 0.0.0.0:9000
-AI-AWD Arena HTTP API listening on 0.0.0.0:9001
-```
+**3. 开打**
 
-### 4. 启动客户端
+1. **连接页** — 填服务器地址和端口，连接
+2. **大厅页** — 加入已有房间，或创建新房间（选地图和赛制）
+3. **房间页** — 配置 Agent、填 API Key、点准备。房主等所有人准备后开始
+4. **大乱斗页** — Agent 自动攻击，实时计分
+5. **结算页** — 排行榜、防线态势、导出 Markdown 战报
+
+### 三种联机方式
+
+**🏠 本地** — 客户端填 `127.0.0.1:9000`，无需额外配置。
+
+**🏢 局域网** — 服务器默认监听 `0.0.0.0`，启动后自动显示本机 IP。其他电脑填这个 IP 即可。
 
 ```bash
-cd client
-npx electron .
+bash scripts/start-server.sh
+# 输出：📡 本机局域网 IP: 192.168.1.100
 ```
 
-**连接页** — 填服务端地址（本机 `127.0.0.1`，局域网填服务端 IP），端口 `9000`，输入名字，点击连接。
-
-### 5. 打一局
-
-1. **房主** 在大厅页点「创建房间」— 选地图和赛制 — 创建
-2. **队友** 点「加入房间」— 找到房间 — 参赛
-3. **双方** 在房间页选 Agent（用 mock-agent 即可）、点准备
-4. **房主** 点「开始大乱斗」— 系统自动推进阶段
-5. 比赛结束自动跳转结算页
-
----
-
-## 联机方式
-
-| 方式 | 客户端填 | 说明 |
-|------|---------|------|
-| 🏠 本地 | `127.0.0.1:9000` | 同一台电脑测试 |
-| 🏢 局域网 | `192.168.x.x:9000` | 服务端自动显示 LAN IP |
-| 🌐 远程 | `bore.pub:<port>` | 用 [bore](https://github.com/ekzhang/bore) 打公网隧道 |
-
----
-
-## 得分规则
-
-- 攻陷对手 Flag → **+100 分**
-- 你的 Flag 被对手提交 → **-50 分**
-- 每个 Flag 全局只能被提交一次（幂等）
-
----
-
-## 自动化测试
+**🌐 远程联机** — 用 bore 打通公网隧道：
 
 ```bash
-# 一键全部验证（推荐）
-bash scripts/demo.sh --tcp-only
-
-# Python 测试套件（54 个）
-PYTHONPATH=server python3 -m unittest discover -s tests -t . -v
-
-# Node.js 测试套件（80 个）
-cd client && node --test test-*.js
+# 服务器上（两个终端）
+PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
+bore local 9000 --to bore.pub
+# 输出：listening at bore.pub:57893
 ```
 
----
+客户端填 `bore.pub` 和端口号即可。不需要注册、不需要路由器配置。
 
-## 抓包分析
+> bore 不行的备用方案：[Tailscale](https://tailscale.com/download)（免费，GitHub 账号登录，组虚拟局域网）。
 
-### 一键抓包
+### 怎么得分
+
+攻陷对手 Flag **+100 分** · 你的 Flag 被拿 **-50 分** · 每个 Flag 只能被提交一次
+
+### 特性
+
+- **AI vs AI** — 45+ 大模型厂商，玩家卡片自动显示厂商 Logo
+- **五页面流程** — 连接→大厅→房间→大乱斗→结算
+- **实时竞技场** — 玩家卡片、攻击动画、分数弹出、攻陷回放
+- **安全** — 靶机仅 localhost、Flag 自动脱敏、观战只读
+- **一键战报** — Markdown 导出
+
+### 开发者
 
 ```bash
-# 终端 1：服务端
-PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
-
-# 终端 2：启动抓包
-bash captures/capture.sh
-
-# 终端 3：运行演示 / Electron 人工对战
-PYTHONPATH=server python3 examples/three_clients_demo.py
-
-# 终端 2 按回车停止 → 生成 captures/aiawd_match_*.pcap
+bash scripts/demo.sh                                               # 全部验证
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v   # 54 tests
+cd client && node --test test-*.js                                  # 80 tests
+cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 ```
 
-### 用 Wireshark 分析
+详见 [AGENTS.md](AGENTS.md) · MIT License
+
+---
+
+<a name="english"></a>
+## English
+
+**AI-AWD Arena** is a desktop platform where AI agents compete in cyber attack-and-defense matches. Each player runs a local target; your AI agent attacks opponents to capture flags while defending your own. The server is referee-only.
+
+### Prerequisites
+
+| Role | Needs |
+|------|-------|
+| **Everyone** | [Docker Desktop](https://docs.docker.com/desktop/) |
+| **Everyone** | One LLM API key (any provider) |
+| **Server** (1 machine) | Python 3.11+ · Git |
+
+> AI-AWD ships with the OpenClaw agent built in. Just fill in your API key. Server and client can run on the same machine. Don't have an API key? Use mock-agent for the full flow.
+
+### Quick Start
+
+**1. Get the client (everyone)**
+
+- **Download the app (recommended)**: Get `.dmg` (Mac) or `.exe` (Win) from [Releases](https://github.com/cyclotr0nzxj/ai-awd/releases)
+- **Or run from source**:
+  ```bash
+  git clone https://github.com/cyclotr0nzxj/ai-awd.git
+  cd ai-awd/client
+  npm install
+  npm start
+  ```
+
+**2. Start the server (one person only)**
+
+Only one person needs to run the server. Everyone else just enters the server address in their client.
 
 ```bash
-open -a Wireshark captures/aiawd_match_*.pcap
-# Filter → tcp.port == 9000
-# 右键任意包 → Follow → TCP Stream
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd && bash scripts/start-server.sh
 ```
 
-详细分析步骤见 **[docs/抓包分析指南.md](docs/抓包分析指南.md)**。
+```bat
+git clone https://github.com/cyclotr0nzxj/ai-awd.git
+cd ai-awd
+scripts\start-server.bat
+```
+
+You should see `TCP 地址: 0.0.0.0:9000`.
+
+**3. Play**
+
+1. **Connect** — Server address + port, your name, connect
+2. **Lobby** — Join an existing room or create one (pick a map + format)
+3. **Room** — Configure Agent + API key, click Ready. Host starts when all ready.
+4. **Battle** — Agents auto-attack. Real-time arena with scoring.
+5. **Results** — Podium, defense stats, Markdown battle report.
+
+### Three Ways to Connect
+
+**🏠 Local** — Client connects to `127.0.0.1:9000`. No extra config.
+
+**🏢 LAN** — Server binds `0.0.0.0` by default and prints the LAN IP. Other machines use that IP.
+
+```bash
+bash scripts/start-server.sh
+# Output: LAN IP: 192.168.1.100
+```
+
+**🌐 Remote** — Use bore to expose the server publicly:
+
+```bash
+# On the server machine (two terminals)
+PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
+bore local 9000 --to bore.pub
+# Output: listening at bore.pub:57893
+```
+
+Clients enter `bore.pub` and the port number. No account, no router config needed.
+
+> If bore doesn't work: [Tailscale](https://tailscale.com/download) (free, login with GitHub, creates a virtual LAN).
+
+### Scoring
+
+Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** · Each flag scores once
+
+### Features
+
+- **AI vs AI** — 45+ LLM providers, vendor logos on player cards
+- **5-page flow** — Connect → Lobby → Room → Battle → Results
+- **Live arena** — Player cards, attack animations, score popups, replay
+- **Secure** — Room-scoped `allowed_targets`, flag redaction, spectators read-only
+- **Battle report** — One-click Markdown export
+
+### For Developers
+
+```bash
+bash scripts/demo.sh                                                  # full suite
+PYTHONPATH=server python3 -m unittest discover -s tests -t . -v      # 54 tests
+cd client && node --test test-*.js                                     # 80 tests
+cd client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
+```
+
+See [AGENTS.md](AGENTS.md) · MIT License
 
 ---
 
-## 现场演示
+## 📋 课程作业附录
 
-参见 **[demo/demo_script.md](demo/demo_script.md)**，5 个环节逐步操作：
+> 本仓库同时作为 **网络编程实验** 课程提交项目。以下为课程相关文档索引。
 
-1. 启动服务端和两个客户端
-2. 两个客户端完成实时交互
-3. 展示服务端日志
-4. 展示协议文档消息结构
-5. 使用抓包文件解释通信过程
+### 课程要求逐项对照
 
----
+| 模块 | 要求 | 实现位置 |
+|------|------|---------|
+| C/S 架构 | 独立服务端 + ≥2 客户端 | `src/server/` · `src/client/` · `examples/` |
+| 自定义协议 | 客户端和服务端通过自定义协议通信 | `protocol.md` — AIAWD/1.0（4B 长度头 + JSON body，28 种消息） |
+| 实时交互 | 客户端间实时操作同步 | 广播：ROOM_UPDATE / PHASE_SYNC / RANKING_UPDATE / EVENT |
+| 服务端权威 | 服务端最终状态，客户端不能自行决定 | 服务端生成 Flag、驱动阶段机、校验计分、ScopeGuard 约束 |
+| 并发处理 | 服务端同时处理多客户端 | asyncio 每连接协程 + 多房间并行 + 独立阶段调度 |
+| 异常处理 | 非法消息/操作/断开等情况 | 9 种 ERROR 码 + 断线广播 + 心跳超时 + 幂等去重 |
+| 日志记录 | 服务端和客户端记录关键网络事件 | JSONL 事件日志 + HTTP API + Flag 脱敏 |
+| 抓包分析 | Wireshark/tcpdump 分析交互过程 | `captures/capture.sh` + `docs/抓包分析指南.md` |
+| 现场演示 | 展示运行、协议交互、异常处理 | `demo/demo_script.md`（5 环节逐步操作） |
 
-## 协议文档
+### 提交文件结构
 
-完整协议规格见 **[protocol.md](protocol.md)**，包含：
+```
+├── src/                    源代码
+├── README.md               编译与运行说明（本文件）
+├── protocol.md             协议设计文档
+├── report.pdf              实验报告（需自行撰写）
+├── logs/                   客户端与服务端日志
+├── captures/               抓包文件
+└── demo/                   演示脚本与素材
+```
 
-- 帧格式（4B 长度头 + JSON body）
-- 28 种消息类型定义
-- 字段含义逐项说明
-- 阶段状态机（LOBBY → PREPARE → DEFENSE → ATTACK → FINISHED）
-- 9 种错误码及处理方式
-- 心跳与广播机制
-- 抓包分析指引
+### 关键文档速查
 
----
-
-## 实验报告
-
-参见 **[METHODS.md](METHODS.md)** 第九章的报告框架建议。报告需包括：系统架构、C/S 分工、协议设计、状态维护、并发处理、异常处理、抓包分析、测试截图、改进方向。
-
----
-
-## 技术栈
-
-| 层 | 技术 | 说明 |
-|----|------|------|
-| 服务端 | Python 3.11+ · asyncio | TCP 长连接，每连接一个协程 |
-| 客户端 | Electron · Node.js | 桌面 GUI，通过 IPC 桥接主进程 |
-| 协议 | AIAWD/1.0（自定义） | 4B 大端长度 + UTF-8 JSON，最大 1MB/帧 |
-| 靶机 | Docker Compose | 4 个模板：Web（2）、PWN（1）、Crypto（1） |
-| 测试 | unittest · node:test | Python 54 + Node 80，全部通过 |
-| 打包 | electron-builder | macOS DMG/ZIP + Windows NSIS/Portable |
-
----
-
-## License
-
-MIT · [AGENTS.md](AGENTS.md) 含开发者详细参考
+| 文档 | 路径 |
+|------|------|
+| 协议设计文档 | [`protocol.md`](protocol.md) |
+| 完整协议规格 | [`docs/AIAWD协议规格说明.md`](docs/AIAWD协议规格说明.md) |
+| 抓包分析指南 | [`docs/抓包分析指南.md`](docs/抓包分析指南.md) |
+| 现场演示脚本 | [`demo/demo_script.md`](demo/demo_script.md) |
+| 方法总览 | [`METHODS.md`](METHODS.md) / [`METHODS.html`](METHODS.html) |
+| 一键抓包 | [`captures/capture.sh`](captures/capture.sh) |
+| 开发者参考 | [`AGENTS.md`](AGENTS.md) |
