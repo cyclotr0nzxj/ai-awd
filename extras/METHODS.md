@@ -60,48 +60,65 @@ mkdir -p demo/screenshots demo/video logs/screenshots
 
 ---
 
-## 三、方法 A：自动 Demo 获取日志和抓包（最快，5 分钟）
+## 三、方法 A：自动 Demo 获取日志和抓包（1 条命令，5 分钟）
 
-> 适用场景：快速生成日志 + pcap 文件用于报告，无需人工操作。
+> 适用场景：快速生成日志 + pcap + 完整交互 transcript，无需人工操作，无需 tcpdump/Wireshark 权限。
+>
+> ⚠️ **不受 macOS SIP 限制**——在协议层直接截获帧，不依赖 BPF/tcpdump。
 
 ### 步骤
 
 ```bash
-# ===== 终端 1：启动服务端 =====
-PYTHONPATH=server python3 -m aiawd_server.main --host 127.0.0.1 --port 9000
-# 看到 "TCP server listening on 127.0.0.1:9000" 即就绪
+# 一条命令，同时完成：启动服务端 + 3 客户端模拟对战 + 生成 pcap + 生成日志
+PYTHONPATH=server python3 extras/capture_demo.py
+```
 
-# ===== 终端 2：启动抓包（先不要按回车） =====
-bash captures/capture.sh
-# 脚本会显示 "抓包进行中..." 并等待
+输出：
+```
+============================================================
+ AIAWD/1.0 Capture Demo
+ PCAP:  captures/aiawd_capture_<ts>.pcap
+ JSONL: captures/aiawd_capture_<ts>.jsonl
+============================================================
 
-# ===== 终端 3：运行 Python 自动演示 =====
-PYTHONPATH=server python3 extras/examples/three_clients_demo.py
-# 输出完整交互过程: HELLO → WELCOME → CREATE_ROOM → JOIN → START → SUBMIT → RANKING
+Server listening on 127.0.0.1:xxxxx
+Alice, Bob, Carol connected.
+Room created: room_001
+Bob joined as player.  Carol joined as spectator.
+Match started: match_001
+ATTACK phase — Alice submits Bob's flag
+Ranking updated — team_a leads.
 
-# ===== 回到终端 2：按回车停止抓包 =====
-# 脚本会显示文件大小和包数量
+============================================================
+ Demo complete.
+ PCAP:  captures/aiawd_capture_<ts>.pcap
+ JSONL: captures/aiawd_capture_<ts>.jsonl
+ Frames captured: 40+
+============================================================
 ```
 
 ### 自动 Demo 产出的文件
 
 | 产出 | 位置 | 说明 |
 |------|------|------|
-| 服务端日志 | `logs/server/events.jsonl` | 完整的 JSONL 事件日志，包含 SERVER_STARTED → CLIENT_CONNECTED → ROOM_CREATED → MATCH_STARTED → FLAG_SUBMITTED → RANKING_UPDATE |
-| 抓包文件 | `captures/aiawd_match_*.pcap` | 标准 pcap 文件，可用 Wireshark 打开 |
-| 终端 transcript | 终端 3 的输出 | Alice/Bob/Carol 三客户端完整消息收发记录 |
+| 服务端日志 | `logs/server/events.jsonl` | 完整 JSONL 事件日志（SERVER_STARTED → … → RANKING_UPDATE） |
+| PCAP 抓包文件 | `captures/aiawd_capture_*.pcap` | **标准 PCAP，Wireshark 可直接打开**，含全部帧 |
+| JSONL 帧日志 | `captures/aiawd_capture_*.jsonl` | 每帧的 ts/dir/type/bytes 记录 |
+| 终端 transcript | 终端输出 | Alice/Bob/Carol 完整收发记录 |
 
 ### 验证产出
 
 ```bash
 # 检查日志
-wc -l logs/server/events.jsonl          # 应该有 20+ 行
-tail -5 logs/server/events.jsonl         # 看最后几条
+wc -l logs/server/events.jsonl                  # 应该有 20+ 行
 
 # 检查抓包
-ls -lh captures/aiawd_match_*.pcap      # 应该 > 1KB
-tcpdump -r captures/aiawd_match_*.pcap -A | grep '"type"' | head -20
-# 应该看到 HELLO, WELCOME, CREATE_ROOM_RES, PHASE_SYNC, RANKING_UPDATE 等
+ls -lh captures/aiawd_capture_*.pcap             # 应该 > 2KB
+open -a Wireshark captures/aiawd_capture_*.pcap   # 图形化分析
+
+# 命令行快速验证
+wc -l captures/aiawd_capture_*.jsonl             # 帧数（40+）
+head -5 captures/aiawd_capture_*.jsonl            # 看前几条帧
 ```
 
 ---
