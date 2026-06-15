@@ -2,7 +2,7 @@ services:
   web:
     build: .
     environment:
-      AIAWD_FLAG: ${AIAWD_FLAG:?AIAWD_FLAG is required}
+      AIAWD_FLAG: ${AIAWD_FLAG:-FLAG{placeholder}}
       AIAWD_ROOM_ID: ${AIAWD_ROOM_ID:-room_unknown}
       AIAWD_TEAM_ID: ${AIAWD_TEAM_ID:-team_unknown}
     ports:
