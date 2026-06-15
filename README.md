@@ -62,7 +62,16 @@ scripts\start-server.bat
 
 看到 `TCP 地址: 0.0.0.0:9000` 就说明跑起来了。
 
-**3. 开打**
+**3. 环境诊断（如果启动失败先跑这个）**
+
+```bash
+# macOS / Windows (Git Bash)
+bash scripts/check-env.sh
+```
+
+自动检测 Python、Node.js、Docker、端口占用、项目文件完整性，并给出具体修复指令。
+
+**4. 开打**
 
 1. **连接页** — 填服务器地址和端口，连接
 2. **大厅页** — 加入已有房间，或创建新房间（选地图和赛制）
