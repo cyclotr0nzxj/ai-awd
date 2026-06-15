@@ -280,8 +280,10 @@ ipcMain.handle("aiawd:agentStart", async (_event, request) => {
   for (const target of targets) {
     if (!target || !target.baseUrl) continue;
     const oppTeam = target.teamId || "";  // team_b, team_c, etc.
+    const isAttack = (request.roomStatus || "") === "ATTACK";
     const action = await adapter._runAgainstAsync(target.baseUrl, (flag, _targetUrl) => {
-      if (!oppTeam) return { ok: false };
+      // Only submit flags during ATTACK phase
+      if (!isAttack || !oppTeam) return { ok: false };
       client.send(
         "SUBMIT_FLAG_REQ",
         { match_id: request.matchId, flag, source: "electron-agent", claimed_target_team_id: oppTeam },
