@@ -87,8 +87,11 @@ EXTRA_ARGS=()
 if [ -n "$ADVERTISE_HOST" ]; then
   EXTRA_ARGS+=("--advertise-host" "$ADVERTISE_HOST")
 fi
-PYTHONPATH=server python3 -m aiawd_server.main \
-  --host "$HOST" \
-  --port "$PORT" \
-  --http-port "$HTTP_PORT" \
-  "${EXTRA_ARGS[@]}"
+if [ -n "$ADVERTISE_HOST" ]; then
+  PYTHONPATH=server python3 -m aiawd_server.main \
+    --host "$HOST" --port "$PORT" --http-port "$HTTP_PORT" \
+    --advertise-host "$ADVERTISE_HOST"
+else
+  PYTHONPATH=server python3 -m aiawd_server.main \
+    --host "$HOST" --port "$PORT" --http-port "$HTTP_PORT"
+fi
