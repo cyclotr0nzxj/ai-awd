@@ -56,8 +56,8 @@ Main-process TCP bridge, preload API, Chinese AI攻防大乱斗 dashboard, first
 ### M11 — HTTP API
 Minimal async HTTP/1.1 server (stdlib only), read-only REST endpoints (`/health`, `/api/v1/targets`, `/api/v1/rooms/*`, `/api/v1/matches/*`), CORS headers, recursive flag redaction, shares state with TCP gateway.
 
-### M12 — Packet capture evidence
-`PcapCollector` — captures HTTP/TCP traffic metadata, writes standard PCAP files + JSON evidence logs, room-scoped filtering, flag path redaction, context manager API.
+### M12 — Packet capture analysis
+`captures/capture.sh` — one-click tcpdump wrapper that auto-detects loopback interface, captures AIAWD/1.0 traffic (port 9000), and outputs standard `.pcap` files openable in Wireshark. Companion guide at `docs/抓包分析指南.md` covers: tcpdump commands, Wireshark Follow TCP Stream, frame hex-to-JSON mapping, broadcast fan-out observation, and report screenshot checklist. See also `captures/README.md`.
 
 ### M13 — Cross-platform packaging
 electron-builder configs: macOS DMG/ZIP (x64+arm64, hardened runtime) and Windows NSIS/portable (x64), macOS entitlements plist, asar compression.
@@ -80,6 +80,12 @@ electron-builder configs: macOS DMG/ZIP (x64+arm64, hardened runtime) and Window
 - `logs/server/events.jsonl`
 - `logs/target_lifecycle/target_lifecycle_evidence.*`
 - `logs/target_lifecycle/target_lifecycle_all_evidence.*`
+- `protocol.md` — course submission protocol spec (root)
+- `docs/抓包分析指南.md` — tcpdump + Wireshark analysis guide
+- `captures/capture.sh` — one-click packet capture script
+- `demo/demo_script.md` — live demo step-by-step script
+- `METHODS.md` / `METHODS.html` — full methods overview
+- `src/` — symlinks to server & client for course submission structure
 
 ## Remaining Product Gaps
 

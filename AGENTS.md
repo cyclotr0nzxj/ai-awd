@@ -22,10 +22,10 @@ Electron App (client/)          Python Server (server/aiawd_server/)
 ## Quick Commands
 
 ```bash
-# Python tests (57)
+# Python tests (54)
 PYTHONPATH=server python3 -m unittest discover -s tests -t . -v
 
-# Node tests (90) — run from client/
+# Node tests (80) — run from client/
 cd client
 node --test test-aiawdProtocol.js test-targetLifecycle.js test-renderer.js \
           test-agentRuntime.js test-adapters.js test-main.js
@@ -159,12 +159,12 @@ Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green acc
 ## Verification Gates
 
 **Server/protocol changes:**
-- Python tests pass (57)
+- Python tests pass (54)
 - `examples/three_clients_demo.py` produces readable transcript
 - Protocol unit tests pass
 
 **Electron/UI changes:**
-- Node tests pass (90)
+- Node tests pass (80)
 - `client/test-renderer.js` covers arena, replay, battle kit, flag redaction, vendor logo resolution
 - Main process owns AIAWD TCP; renderer uses `window.aiawd`
 - `npx electron electronWindowEvidence.js` produces 35 passing assertions
@@ -181,6 +181,20 @@ Immersive Dark. Deep navy (#020617 void, #0f172a surface) with vibrant green acc
 - Windows `.exe` — NSIS installer + portable (x64): built and uploaded
 - GitHub Actions CI: auto-build on `v*` tag push + manual `workflow_dispatch`
 - `.icns` (macOS) + `.ico` (Windows) icons in `client/build/`
+
+## Key Documentation
+
+| Document | Audience | Path |
+|----------|----------|------|
+| Protocol spec (full) | Developers, course submission | `docs/AIAWD协议规格说明.md` |
+| Protocol spec (submission) | Course grading | `protocol.md` (root) |
+| Packet capture guide | Developers, course submission | `docs/抓包分析指南.md` |
+| Capture script | Anyone capturing traffic | `captures/capture.sh` |
+| Live demo script | Presenter | `demo/demo_script.md` |
+| Methods overview | Course submission | `METHODS.md` / `METHODS.html` |
+| Multi-machine deployment | Operators | `docs/multi-machine-deployment.md` |
+| Control plane slice | Developers | `docs/m0-m4-control-plane-slice.md` |
+| Frontends & platforms | Designers, developers | `docs/frontends-and-platforms.md` |
 
 ## Next Steps
 
