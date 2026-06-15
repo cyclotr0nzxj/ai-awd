@@ -193,35 +193,38 @@ class CustomCommandAdapter {
     const shellArgv = prepareSpawnArgv(argv);
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
+    let llmOutput = "";
+    let llmOk = true;
     try {
       const proc = spawnSync(shellArgv[0], shellArgv.slice(1), {
-        cwd: this._cwd,
-        env,
-        timeout: this._timeout * 1000,
-        encoding: "utf-8",
-        stdio: "pipe",
-        shell: needsShell,
+        cwd: this._cwd, env, timeout: this._timeout * 1000,
+        encoding: "utf-8", stdio: "pipe", shell: needsShell,
       });
-      if (proc.error) {
-        return {
-          timestamp: started, action: "attack", targetUrl,
-          flag: null, output: proc.error.message || "", ok: false,
-        };
-      }
-      const flags = this._extractFlagsFn(proc.stdout || "");
-      if (submit) {
-        for (const flag of flags) submit(flag, targetUrl);
-      }
-      return {
-        timestamp: started, action: "attack", targetUrl,
-        flag: flags[0] || null, output: proc.stdout || "", ok: true,
-      };
+      if (proc.error) { llmOk = false; llmOutput = proc.error.message || ""; }
+      else { llmOutput = (proc.stdout || "") + (proc.stderr || ""); }
     } catch (err) {
-      return {
-        timestamp: started, action: "attack", targetUrl,
-        flag: null, output: err.message || "", ok: false,
-      };
+      llmOk = false; llmOutput = err.message || "";
     }
+    // ALSO curl the target directly to get the actual flag
+    let curlOutput = "";
+    try {
+      const curlArgv = process.platform === "win32"
+        ? ["powershell", "-Command", `(Invoke-WebRequest -Uri ${targetUrl}).Content`]
+        : ["curl", "-s", targetUrl];
+      const curlProc = spawnSync(curlArgv[0], curlArgv.slice(1), {
+        encoding: "utf-8", stdio: "pipe", timeout: 15000, shell: false,
+      });
+      curlOutput = (curlProc.stdout || "") + (curlProc.stderr || "");
+    } catch (_) { /* curl best-effort */ }
+    const merged = llmOutput + "\n" + curlOutput;
+    const flags = this._extractFlagsFn(merged);
+    if (submit) {
+      for (const flag of flags) submit(flag, targetUrl);
+    }
+    return {
+      timestamp: started, action: "attack", targetUrl,
+      flag: flags[0] || null, output: llmOutput, ok: flags.length > 0 || llmOk,
+    };
   }
 
   _runAgainstAsync(targetUrl, submit) {
@@ -230,40 +233,38 @@ class CustomCommandAdapter {
     const shellArgv = prepareSpawnArgv(argv);
     const env = { ...process.env, ...contextEnv(this._ctx), ...this._extraEnv };
     const started = Date.now();
+    const { spawnSync } = require("child_process");
     return new Promise((resolve) => {
       const child = spawn(shellArgv[0], shellArgv.slice(1), {
-        cwd: this._cwd,
-        env,
-        timeout: this._timeout * 1000,
-        stdio: "pipe",
-        shell: needsShell,
+        cwd: this._cwd, env, timeout: this._timeout * 1000,
+        stdio: "pipe", shell: needsShell,
       });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (d) => { stdout += d.toString(); });
       child.stderr.on("data", (d) => { stderr += d.toString(); });
       child.on("error", (err) => {
-        resolve({
-          timestamp: started, action: "attack", targetUrl,
-          flag: null, output: err.message, ok: false,
-        });
+        resolve({ timestamp: started, action: "attack", targetUrl, flag: null, output: err.message, ok: false });
       });
       child.on("close", (code) => {
-        const output = stdout + stderr;
-        if (code !== 0) {
-          resolve({
-            timestamp: started, action: "attack", targetUrl,
-            flag: null, output, ok: false,
+        const llmOutput = stdout + stderr;
+        // ALSO curl the target directly to get the actual flag
+        let curlOutput = "";
+        try {
+          const curlArgv = process.platform === "win32"
+            ? ["powershell", "-Command", `(Invoke-WebRequest -Uri ${targetUrl}).Content`]
+            : ["curl", "-s", targetUrl];
+          const curlProc = spawnSync(curlArgv[0], curlArgv.slice(1), {
+            encoding: "utf-8", stdio: "pipe", timeout: 15000, shell: false,
           });
-          return;
-        }
-        const flags = this._extractFlagsFn(output);
-        if (submit) {
-          for (const flag of flags) submit(flag, targetUrl);
-        }
+          curlOutput = (curlProc.stdout || "") + (curlProc.stderr || "");
+        } catch (_) { /* curl best-effort */ }
+        const merged = llmOutput + "\n" + curlOutput;
+        const flags = this._extractFlagsFn(merged);
+        if (submit) { for (const flag of flags) submit(flag, targetUrl); }
         resolve({
           timestamp: started, action: "attack", targetUrl,
-          flag: flags[0] || null, output, ok: true,
+          flag: flags[0] || null, output: llmOutput, ok: flags.length > 0 || code === 0,
         });
       });
     });

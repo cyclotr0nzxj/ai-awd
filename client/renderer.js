@@ -79,7 +79,7 @@ function buildAgentCommand(runtime, modelDisplayName, phase, apiKey = "") {
   switch ((runtime || "").toLowerCase().trim()) {
     case "openclaw":
     case "openclaw-local": {
-      const cmd = ["openclaw", "agent", "run", "-m", prompt];
+      const cmd = ["openclaw", "infer", "model", "run", "--local", "--json", "--prompt", prompt];
       if (model) cmd.push("--model", openClawModelRefFor(apiKey, model));
       return cmd;
     }
