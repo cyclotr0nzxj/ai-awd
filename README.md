@@ -71,7 +71,30 @@ bash scripts/check-env.sh
 
 自动检测 Python、Node.js、Docker、端口占用、项目文件完整性，并给出具体修复指令。
 
-**4. 开打**
+**4. Docker 镜像加速（国内用户必做）**
+
+> 如果你在**中国大陆**，Docker 可能无法直接拉取镜像（`python:3.12-alpine`）。
+
+打开 Docker Desktop → 右上角齿轮 ⚙️ **Settings** → **Docker Engine**，在配置中加入：
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.xuanyuan.me"
+  ]
+}
+```
+
+点 **Apply & Restart**，等待 Docker Desktop 重启完成。
+
+验证：
+```bash
+docker pull python:3.12-alpine
+# 成功拉取即配置正确
+```
+
+**5. 开打**
 
 1. **连接页** — 填服务器地址和端口，连接
 2. **大厅页** — 加入已有房间，或创建新房间（选地图和赛制）
@@ -173,7 +196,29 @@ extras\scripts\start-server.bat
 
 You should see `TCP 地址: 0.0.0.0:9000`.
 
-**3. Play**
+**3. Docker Registry Mirror (China users only)**
+
+If you're in China, Docker may fail to pull images (`python:3.12-alpine`).
+
+Open Docker Desktop → ⚙️ **Settings** → **Docker Engine**, add:
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.xuanyuan.me"
+  ]
+}
+```
+
+Click **Apply & Restart**.
+
+Verify:
+```bash
+docker pull python:3.12-alpine
+```
+
+**4. Play**
 
 1. **Connect** — Server address + port, your name, connect
 2. **Lobby** — Join an existing room or create one (pick a map + format)
