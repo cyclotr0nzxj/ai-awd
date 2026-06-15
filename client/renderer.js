@@ -560,11 +560,15 @@ function handleMessage(message) {
       // Auto-target-lifecycle: install and start target on config receipt
       if (message.payload?.target_runtime?.project_name) {
         addEvent("TARGET_AUTO_SETUP", { message: "自动安装并启动本地靶机" });
-        // Chain: install → start
+        // Chain: stop (clean old) → install → start
         const runtime = message.payload.target_runtime;
         const flag = state._targetFlag || message.payload.flag;
         setTimeout(async () => {
           try {
+            // Clean up old containers from previous matches to free ports
+            state.targetActionStatus = { state: "running", action: "stop", message: "清理旧靶机容器..." };
+            render();
+            await window.aiawd.runTargetAction({ action: "stop", runtime, flag }).catch(() => {});
             state.targetActionStatus = { state: "running", action: "install", message: "自动安装靶机中..." };
             render();
             await window.aiawd.runTargetAction({ action: "install", runtime, flag });
@@ -620,6 +624,12 @@ function handleMessage(message) {
       if (state.match?.phase === "FINISHED" && state.role === "player") {
         agentStop();
         addEvent("MATCH_FINISHED_AUTO", { message: "比赛结束，Agent 自动停止" });
+        // Stop Docker targets to free ports for next match
+        const runtime = state.configs[0]?.target_runtime;
+        const flag = state._targetFlag;
+        if (runtime?.project_name) {
+          window.aiawd.runTargetAction({ action: "stop", runtime, flag }).catch(() => {});
+        }
       }
       break;
     case "RANKING_UPDATE":
