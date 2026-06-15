@@ -64,7 +64,9 @@ async function runTargetAction(request, options = {}) {
       stderr: outputTail(result.stderr),
     });
     if (exitCode !== 0) {
-      throw new TargetLifecycleError("COMMAND_FAILED", `${ACTION_LABELS[action]}失败：${argv.join(" ")}`);
+      const detail = (result.stderr || result.stdout || "").trim();
+      throw new TargetLifecycleError("COMMAND_FAILED",
+        `${ACTION_LABELS[action]}失败：${argv.join(" ")}${detail ? "\n" + detail.slice(-500) : ""}`);
   }
 }
 
