@@ -178,113 +178,102 @@ npx electron .
 
 ---
 
-## 五、截图和录屏清单
+## 五、现有素材清单
 
-### 5.1 需要截的图（共 10 张）
+### 5.1 人工实战截图 — macOS（`demo/screenshots/实战截图mac/`）
 
-| 编号 | 内容 | 用于报告哪个章节 | 截图方法 |
-|------|------|-----------------|---------|
-| ① | 两个客户端连接成功 | 第 8 章 — 测试过程 | 两窗口并列，Cmd+Shift+4 |
-| ② | 创建房间弹窗 | 第 8 章 — 测试过程 | 截创建房间界面 |
-| ③ | 大厅页房间列表 | 第 8 章 — 测试过程 | 截 lobby 页面 |
-| ④ | 房间页双方已准备 | 第 8 章 — 测试过程 | 截 room 页面 |
-| ⑤ | 大乱斗页 — 攻击阶段（含排行榜+动画） | 第 8 章 — 测试过程 | 截 battle 页面 |
-| ⑥ | 结算页 — 最终排名 | 第 8 章 — 测试过程 | 截 results 页面 |
-| ⑦ | 终端日志输出 | 第 7 章 — 日志记录 | `tail -20 logs/server/events.jsonl` 截终端 |
-| ⑧ | Wireshark Follow TCP Stream | 第 7 章 — 抓包分析 | Wireshark 里截 |
-| ⑨ | Wireshark 单帧 HEX+JSON 对照 | 第 7 章 — 抓包分析 | Wireshark 选中 HELLO 包截 |
-| ⑩ | Wireshark 广播扇出（同一条 RANKING_UPDATE 出现在多个 TCP stream） | 第 7 章 — 抓包分析 | Wireshark 中对比截 |
+| 文件 | 内容 | 对应报告章节 |
+|------|------|-------------|
+| `connect_mac.png` | 连接页 | 第 8 章 |
+| `server_mac.png` | 服务端启动 | 第 8 章 |
+| `lobby_mac.png` | 大厅页 | 第 8 章 |
+| `room_create.png` | 创建房间 | 第 8 章 |
+| `room_mac.png` | 房间页（准备状态） | 第 8 章 |
+| `start_mac.png` | 开始大乱斗 | 第 8 章 |
+| `result1.png` / `result2.png` | 结算页排名 | 第 8 章 |
 
-### 5.2 录屏内容（1 段，约 3-5 分钟）
+### 5.2 人工实战截图 — Windows（`demo/screenshots/实战截图win/`）
 
-**录屏范围**：从步骤 5（点「开始大乱斗」）到步骤 8（结算页），全程录制。
+| 文件 | 内容 | 对应报告章节 |
+|------|------|-------------|
+| `connect_win.png` | 连接页 | 第 8 章 |
+| `lobby_win.png` | 大厅页 | 第 8 章 |
+| `create_win.png` | 创建房间 | 第 8 章 |
+| `room_win.png` | 房间页 | 第 8 章 |
+| `ready_win.png` | 准备就绪 | 第 8 章 |
+| `battle_win.png` | 大乱斗攻击阶段 | 第 8 章 |
 
-**录屏要点**：
-- 包含两个客户端窗口（或至少包含房主窗口全程）
-- 确保能看到阶段标签变化（大厅 → 准备 → 加固 → 攻防 → 结束）
-- 确保能看到得分弹出动画和排行榜实时刷新
-- 确保能看到 Agent 活动日志滚动
+### 5.3 自动 Demo（`demo/screenshots/autodemo/`）
 
-**macOS 录屏操作**：
-1. 打开 QuickTime Player
-2. File → New Screen Recording
-3. 选择录制区域（拖选 Electron 窗口）
-4. 点录制按钮开始
-5. 比赛结束后点菜单栏停止按钮
-6. 保存到 `demo/video/battle_demo.mov`
+| 文件 | 内容 |
+|------|------|
+| `capture_jsonl1.png` / `capture_jsonl2.png` | 帧日志 |
+| `events1.png` / `events2.png` | 服务端事件日志 |
+| `pcap1.png` / `pcap2.png` | pcap 验证 |
 
-### 5.3 Wireshark 截图操作（3 张）
+### 5.4 抓包分析（`demo/screenshots/抓包分析/`）
 
-```bash
-# 1. 打开 pcap 文件
-open -a Wireshark captures/aiawd_capture_*.pcap
+| 文件 | 内容 | 对应报告章节 |
+|------|------|-------------|
+| `wireshark-stream.png` | Follow TCP Stream 全览 | 第 7 章 — ⑧ |
+| `wireshark-frame.png` | 单帧 HEX+JSON 对照 | 第 7 章 — ⑨ |
 
-# 2. 截图 ⑧ — Follow TCP Stream
-#    Filter 栏输入: tcp.port == 9000
-#    右键任意包 → Follow → TCP Stream
-#    截图整个弹窗
+### 5.5 实战日志（`demo/screenshots/实战日志/`）
 
-# 3. 截图 ⑨ — 单帧 HEX+JSON 对照
-#    在 TCP Stream 窗口选一条 HELLO 消息
-#    回到主窗口，选中对应的 TCP 包
-#    下半区展开 "AIAWD/1.0" 或 "Data" 层
-#    截图显示前 4 字节长度头 + JSON body
+| 文件 | 内容 | 对应报告章节 |
+|------|------|-------------|
+| `events1_real.png` | 服务端事件日志（异常处理记录） | 第 6 章、第 8 章 |
+| `events2_real.png` | 服务端事件日志（攻陷+拒绝详情） | 第 6 章、第 8 章 |
 
-# 4. 截图 ⑩ — 广播扇出
-#    Follow TCP Stream 时分别选不同的 client stream
-#    对比同一时间戳的 RANKING_UPDATE 消息
-#    截图并列对比
-```
+### 5.6 录屏（`demo/video/battle_demo.mov`）
+
+完整对战录屏（约 489MB），覆盖连接 → 创建 → 加入 → 准备 → 战斗 → 结算全流程，用于现场演示环节 2「实时交互」播放。
 
 ---
 
-## 六、demo/ 目录最终结构
+## 六、demo/ 目录结构（实际）
 
 ```
 demo/
-├── demo_script.md          现场演示操作脚本（已有）
-├── screenshots/            人工对战截图（你放入）
-│   ├── 01-connect.png          两个客户端连接成功
-│   ├── 02-create-room.png      创建房间
-│   ├── 03-lobby.png            大厅房间列表
-│   ├── 04-room-ready.png       房间页双方准备
-│   ├── 05-battle.png           大乱斗攻击阶段
-│   ├── 06-results.png          结算页排名
-│   ├── 07-terminal-log.png     终端日志输出
-│   ├── 08-wireshark-stream.png Wireshark TCP Stream
-│   ├── 09-wireshark-frame.png  Wireshark 单帧对照
-│   └── 10-wireshark-fanout.png Wireshark 广播扇出
+├── demo_script.md              现场演示操作脚本
+├── README.md                   目录说明
+├── screenshots/
+│   ├── 实战截图mac/             macOS 客户端截图（8 张）
+│   ├── 实战截图win/             Windows 客户端截图（6 张）
+│   ├── autodemo/               自动 Demo 输出截图（6 张）
+│   ├── 抓包分析/               Wireshark 截图（2 张）
+│   └── 实战日志/               服务端日志截图（2 张）
 └── video/
-    └── battle_demo.mov         完整对战录屏（3-5 分钟）
+    └── battle_demo.mov          完整对战录屏（489MB）
 ```
 
 ---
 
-## 七、现场演示方案（用提前录好的素材）
+## 七、现场演示方案
 
-课程要求现场演示 5 个环节。你可以选择**提前录屏 + 现场播放 + 口述解说**的方式，避免现场翻车。
+> 策略：**录屏单独放 + 截图整合进 PPT + 口述解说**，避免现场网络/环境翻车。
 
 ### 演示流程
 
-| 环节 | 时长 | 内容 | 素材 |
+| 环节 | 时间 | 内容 | 方式 |
 |------|------|------|------|
-| 1 | 1 min | 启动服务端 + 两个客户端 | 播放录屏开头，或现场 `python3 -m aiawd_server.main` + 开两个 Electron |
-| 2 | 2 min | 实时交互过程 | 播放录屏核心段（创建房间→战斗→结算） |
-| 3 | 1 min | 日志展示 | 打开终端，`tail -20 logs/server/events.jsonl`，逐条解释 |
-| 4 | 1 min | 协议文档 | 打开 `protocol.md`，讲解一条 HELLO 消息的字段 |
-| 5 | 2 min | 抓包分析 | 打开 Wireshark，展示 Follow TCP Stream + 单帧对照 |
+| 1 | 1 min | 启动服务端 + 两个客户端 | PPT 放服务端终端截图 + macOS/Windows 连接截图 |
+| 2 | 2 min | 实时交互过程 | **播放 `demo/video/battle_demo.mov`**（创建房间→战斗→结算） |
+| 3 | 1 min | 服务端日志展示 | PPT 放 `实战日志/events1_real.png` + `events2_real.png`，标注关键事件 |
+| 4 | 1 min | 协议文档中的消息 | PPT 放 `protocol.md` 中 HELLO 消息截图，逐字段标注 |
+| 5 | 2 min | 抓包分析 | PPT 放 `抓包分析/wireshark-stream.png` + `wireshark-frame.png`，标注帧结构 |
 
-### 口述逐字稿要点
+### 口述逐字稿
 
-**环节 1**：「我们的系统采用 C/S 架构。服务端基于 Python asyncio 实现，监听 TCP 9000 端口。两个客户端是基于 Electron 的桌面应用，通过 AIAWD/1.0 自定义协议连接服务端。」
+**环节 1**：「我们的系统采用 C/S 架构。服务端基于 Python asyncio 实现，监听 TCP 9000 端口。两个客户端是基于 Electron 的桌面应用，通过 AIAWD/1.0 自定义协议连接服务端。左边是 macOS，右边是 Windows，展示了跨平台能力。」
 
-**环节 2**：「现在看到两个客户端通过服务端实现实时交互。房主创建房间后，服务端立即广播 ROOM_UPDATE。队友加入后，双方都能实时看到对方的准备状态。比赛开始后，PHASE_SYNC 每 5 秒同步阶段，RANKING_UPDATE 在每次 Flag 提交后实时刷新排名。服务端是所有状态的唯一权威来源。」
+**环节 2**：「请看录屏——房主创建房间后，服务端立即广播 ROOM_UPDATE。队友加入后，双方都能实时看到对方的准备状态。比赛开始后，PHASE_SYNC 每 5 秒同步阶段，RANKING_UPDATE 在每次 Flag 提交后实时刷新排名。注意这里 Alice 攻陷了 Bob 的靶机，得分+100，排名立即变化。服务端是所有状态的唯一权威来源。」
 
-**环节 3**：「这是服务端的 JSONL 格式事件日志。可以看到 SERVER_STARTED → CLIENT_CONNECTED → ROOM_CREATED → MATCH_STARTED → FLAG_SUBMITTED 全部关键事件被记录。每条日志包含时间戳、事件类型和详细 payload。Flag 明文自动脱敏。」
+**环节 3**：「这是服务端 JSONL 格式事件日志。可以看到完整的生命周期：SERVER_STARTED → CLIENT_CONNECTED → ROOM_CREATED → ROOM_JOINED → MATCH_STARTED → FLAG_SUBMITTED。特别注意这里——67 次 Flag 提交中，INVALID_PHASE 19 次、INVALID_FLAG 32 次、SELF_FLAG 2 次、DUPLICATE_FLAG 13 次，只有 1 次 OK。充分展示了系统异常处理能力。」
 
-**环节 4**：「这是我们自定义协议 AIAWD/1.0 的消息结构。每条消息都是 JSON 对象，包含 v（协议版本）、type（消息类型）、seq（序列号）、client_id、payload（载荷）。以 HELLO 为例：v=1 表示协议版本 1，type=HELLO 表示握手消息，payload 携带客户端名称、操作系统和能力列表。」
+**环节 4**：「这是我们自定义协议 AIAWD/1.0 的消息结构。每条消息都是 JSON 对象。以 HELLO 为例：v=1 表示协议版本，type=HELLO 表示握手，payload 携带 display_name、platform、capabilities。seq 配合 client_id 实现幂等去重。共定义了 28 种消息类型，覆盖握手、心跳、房间管理、比赛控制、Flag 提交全流程。」
 
-**环节 5**：「这是用 Wireshark 打开的抓包文件。可以看到每条 AIAWD 消息的前 4 字节是大端序长度前缀，后面是 UTF-8 JSON 明文。Follow TCP Stream 可以一次性看到完整的交互过程——从 HELLO 握手到 SUBMIT_FLAG 提交到 RANKING_UPDATE 排名更新。注意观察同一条 RANKING_UPDATE 被广播到了房间内所有客户端——这就是广播扇出机制。」
+**环节 5**：「这是 Wireshark 抓包分析。每帧前 4 字节是大端长度前缀，后续是 UTF-8 JSON 明文。Follow TCP Stream 能看到完整交互序列。特别注意广播扇出——同一条 RANKING_UPDATE 被服务端同时写入多个客户端的 TCP stream，保证所有人看到的状态一致。」
 
 ---
 
