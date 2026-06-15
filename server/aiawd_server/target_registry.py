@@ -80,7 +80,7 @@ class TargetRegistry:
                         "reset": "docker compose down -v && docker compose up -d",
                     },
                     "compose": {
-                        "file": "targets/real_ctf_web_awd_02/docker-compose.yml",
+                        "file": "extras/targets/real_ctf_web_awd_02/docker-compose.yml",
                         "project_prefix": "aiawd",
                         "services": ["web"],
                     },
@@ -136,7 +136,7 @@ class TargetRegistry:
                         "reset": "docker compose down -v && docker compose up -d",
                     },
                     "compose": {
-                        "file": "targets/real_ctf_web_awd_01/docker-compose.yml",
+                        "file": "extras/targets/real_ctf_web_awd_01/docker-compose.yml",
                         "project_prefix": "aiawd",
                         "services": ["web", "db"],
                     },
@@ -194,7 +194,7 @@ class TargetRegistry:
                         "reset": "docker compose down -v && docker compose up -d",
                     },
                     "compose": {
-                        "file": "targets/pwn_awd_echo_01/docker-compose.yml",
+                        "file": "extras/targets/pwn_awd_echo_01/docker-compose.yml",
                         "project_prefix": "aiawd",
                         "services": ["pwn"],
                     },
@@ -251,7 +251,7 @@ class TargetRegistry:
                         "reset": "docker compose down -v && docker compose up -d",
                     },
                     "compose": {
-                        "file": "targets/crypto_awd_oracle_01/docker-compose.yml",
+                        "file": "extras/targets/crypto_awd_oracle_01/docker-compose.yml",
                         "project_prefix": "aiawd",
                         "services": ["oracle"],
                     },
