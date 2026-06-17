@@ -38,7 +38,7 @@
 - **或命令行启动**：
   ```bash
   git clone https://github.com/cyclotr0nzxj/ai-awd.git
-  cd ai-awd/extras/client
+  cd ai-awd/client
   npm install
   npm start
   ```
@@ -117,7 +117,7 @@ bash extras/scripts/start-server.sh
 
 ```bash
 # 服务器上（两个终端）
-PYTHONPATH=extras/server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
+PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
 bore local 9000 --to bore.pub
 # 输出：listening at bore.pub:57893
 ```
@@ -142,9 +142,9 @@ bore local 9000 --to bore.pub
 
 ```bash
 bash extras/scripts/demo.sh                                      # 全部验证
-PYTHONPATH=extras/server python3 -m unittest discover -s extras/tests -t . -v   # 54 tests
-cd extras/client && node --test test-*.js                                  # 80 tests
-cd extras/client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
+PYTHONPATH=server python3 -m unittest discover -s extras/tests -t . -v   # 54 tests
+cd client && node --test test-*.js                                  # 80 tests
+cd client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 ```
 
 详见 [extras/AGENTS.md](extras/AGENTS.md) · MIT License
@@ -174,7 +174,7 @@ cd extras/client && npm run dist:mac   # 打包 → AI-AWD Arena-*.dmg
 - **Or run from source**:
   ```bash
   git clone https://github.com/cyclotr0nzxj/ai-awd.git
-  cd ai-awd/extras/client
+  cd ai-awd/client
   npm install
   npm start
   ```
@@ -241,7 +241,7 @@ bash extras/scripts/start-server.sh
 
 ```bash
 # On the server machine (two terminals)
-PYTHONPATH=extras/server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
+PYTHONPATH=server python3 -m aiawd_server.main --host 0.0.0.0 --port 9000
 bore local 9000 --to bore.pub
 # Output: listening at bore.pub:57893
 ```
@@ -266,9 +266,9 @@ Capture opponent's flag → **+100 pts** · Your flag captured → **-50 pts** �
 
 ```bash
 bash extras/scripts/demo.sh                                             # full suite
-PYTHONPATH=extras/server python3 -m unittest discover -s extras/tests -t . -v      # 54 tests
-cd extras/client && node --test test-*.js                                     # 80 tests
-cd extras/client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
+PYTHONPATH=server python3 -m unittest discover -s extras/tests -t . -v      # 54 tests
+cd client && node --test test-*.js                                     # 80 tests
+cd client && npm run dist:mac   # package → AI-AWD Arena-*.dmg
 ```
 
 See [extras/AGENTS.md](extras/AGENTS.md) · MIT License
