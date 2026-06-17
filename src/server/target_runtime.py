@@ -1,0 +1,214 @@
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable
+from urllib.parse import urlparse
+from urllib.request import urlopen
+
+from .target_registry import TargetTemplate
+
+
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+class TargetRuntimeError(ValueError):
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+@dataclass(frozen=True, slots=True)
+class TargetCommand:
+    name: str
+    argv: list[list[str]]
+    cwd: Path
+    env: dict[str, str]
+
+    def public_snapshot(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "argv": self.argv,
+            "cwd": str(self.cwd),
+            "env": {key: ("FLAG{已隐藏}" if key == "AIAWD_FLAG" else value) for key, value in self.env.items()},
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class TargetInstance:
+    template_id: str
+    room_id: str
+    team_id: str
+    project_name: str
+    compose_file: Path
+    base_url: str
+    health_url: str
+    healthcheck: dict[str, Any]
+    env: dict[str, str]
+    commands: dict[str, TargetCommand]
+
+    def public_snapshot(self) -> dict[str, Any]:
+        return {
+            "template_id": self.template_id,
+            "room_id": self.room_id,
+            "team_id": self.team_id,
+            "project_name": self.project_name,
+            "compose_file": str(self.compose_file),
+            "base_url": self.base_url,
+            "health_url": self.health_url,
+            "healthcheck": self.healthcheck,
+            "commands": {name: command.public_snapshot() for name, command in self.commands.items()},
+        }
+
+
+class TargetRuntime:
+    def __init__(self, *, root: Path | None = None) -> None:
+        self.root = (root or Path.cwd()).resolve()
+
+    def plan_instance(
+        self,
+        template: TargetTemplate,
+        *,
+        room_id: str,
+        team_id: str,
+        flag: str,
+        host: str = "127.0.0.1",
+        port: int,
+    ) -> TargetInstance:
+        self._validate_template(template)
+        self._validate_id("room_id", room_id)
+        self._validate_id("team_id", team_id)
+        if host not in LOCAL_HOSTS:
+            raise TargetRuntimeError("OUT_OF_SCOPE_HOST", "靶机只能绑定本机地址")
+        if port <= 0 or port > 65535:
+            raise TargetRuntimeError("BAD_PORT", "靶机端口不合法")
+
+        manifest = template.manifest_snapshot()
+        compose = manifest["compose"]
+        # Validate the compose file exists on the server (absolute path for fs check)
+        compose_abs = (self.root / compose["file"]).resolve()
+        try:
+            compose_abs.relative_to(self.root)
+        except ValueError as exc:
+            raise TargetRuntimeError("BAD_COMPOSE", "compose 文件必须位于项目目录内") from exc
+        if not compose_abs.exists():
+            raise TargetRuntimeError("MISSING_COMPOSE", "compose 文件不存在")
+        # Use RELATIVE paths — each client resolves against its own repo root
+        compose_rel = Path(compose["file"])
+        compose_cwd_rel = compose_rel.parent
+        project_name = f"{compose.get('project_prefix', 'aiawd')}_{room_id}_{team_id}"
+        base_url = f"http://{host}:{port}"
+        healthcheck = manifest.get("healthcheck") or {}
+        hc_type = healthcheck.get("type", "http")
+        health_path = healthcheck.get("path", "/")
+        health_url = f"{base_url}{health_path}" if hc_type == "http" else f"tcp://{host}:{port}"
+        env = {
+            "AIAWD_ROOM_ID": room_id,
+            "AIAWD_TEAM_ID": team_id,
+            "AIAWD_HTTP_PORT": str(port),
+            "AIAWD_FLAG": flag,
+        }
+        command_specs = {
+            "install": [["build"]],
+            "start": [["up", "-d"]],
+            "stop": [["down"]],
+            "reset": [["down", "-v"], ["up", "-d"]],
+        }
+        commands = {
+            name: TargetCommand(
+                name=name,
+                argv=self._compose_argv(project_name, compose_rel, steps),
+                cwd=compose_cwd_rel,
+                env=env,
+            )
+            for name, steps in command_specs.items()
+        }
+        return TargetInstance(
+            template_id=template.template_id,
+            room_id=room_id,
+            team_id=team_id,
+            project_name=project_name,
+            compose_file=compose_rel,
+            base_url=base_url,
+            health_url=health_url,
+            healthcheck=healthcheck,
+            env=env,
+            commands=commands,
+        )
+
+    def run(self, command: TargetCommand, *, runner: Callable[..., Any] = subprocess.run) -> Any:
+        results = []
+        env = {**os.environ, **command.env}
+        cwd = command.cwd if command.cwd.is_absolute() else (self.root / command.cwd).resolve()
+        for argv in command.argv:
+            for token in argv:
+                if token in {";", "&&", "||", "|"}:
+                    raise TargetRuntimeError("UNSAFE_COMMAND", "Docker 命令必须使用 argv 列表，不能包含 shell 控制符")
+            results.append(runner(argv, cwd=cwd, env=env, check=True, shell=False))
+        return results
+
+    def check_health(self, instance: TargetInstance, *, opener: Callable[..., Any] = urlopen, timeout: float | None = None) -> bool:
+        parsed = urlparse(instance.health_url)
+        if parsed.scheme == "tcp":
+            return self._check_tcp_health(instance, timeout=timeout)
+        if parsed.scheme != "http" or parsed.hostname not in LOCAL_HOSTS:
+            raise TargetRuntimeError("OUT_OF_SCOPE_HEALTHCHECK", "健康检查只能访问本机靶机")
+        response = opener(instance.health_url, timeout=timeout or 5)
+        status = getattr(response, "status", 200)
+        return 200 <= int(status) < 300
+
+    def _check_tcp_health(self, instance: TargetInstance, *, timeout: float | None = None) -> bool:
+        import socket
+
+        parsed = urlparse(instance.health_url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 0
+        if host not in LOCAL_HOSTS or port <= 0:
+            raise TargetRuntimeError("OUT_OF_SCOPE_HEALTHCHECK", "TCP 健康检查只能访问本机")
+        try:
+            sock = socket.create_connection((host, port), timeout=timeout or 5)
+            sock.settimeout(timeout or 5)
+            try:
+                send_text = str(instance.healthcheck.get("send", "HEALTH"))
+                sock.sendall(send_text.encode("utf-8"))
+                data = sock.recv(1024)
+                ok_prefix = data.decode("utf-8", errors="replace").strip()
+                expect = str(instance.healthcheck.get("expect", "OK"))
+                return ok_prefix.startswith(expect)
+            finally:
+                sock.close()
+        except OSError:
+            return False
+
+    def _compose_argv(self, project_name: str, compose_file: Path, steps: list[list[str]]) -> list[list[str]]:
+        prefix = ["docker", "compose", "-p", project_name, "-f", str(compose_file)]
+        return [[*prefix, *step] for step in steps]
+
+    def _validate_template(self, template: TargetTemplate) -> None:
+        manifest = template.manifest_snapshot()
+        if template.runtime != "docker-compose" or manifest.get("runtime") != "docker-compose":
+            raise TargetRuntimeError("UNSUPPORTED_RUNTIME", "当前仅支持 Docker Compose 靶机")
+        security = manifest.get("security") or {}
+        if security.get("no_public_targets") is not True or security.get("allowed_scope") != "room_only":
+            raise TargetRuntimeError("UNSAFE_TARGET", "靶机必须声明 room_only 且禁止 public targets")
+        healthcheck = manifest.get("healthcheck") or {}
+        hc_type = healthcheck.get("type")
+        if hc_type == "http":
+            if not str(healthcheck.get("path", "")).startswith("/"):
+                raise TargetRuntimeError("BAD_HEALTHCHECK", "HTTP 健康检查必须声明 path")
+        elif hc_type == "tcp":
+            if not healthcheck.get("send") or not healthcheck.get("expect"):
+                raise TargetRuntimeError("BAD_HEALTHCHECK", "TCP 健康检查必须声明 send 和 expect")
+        else:
+            raise TargetRuntimeError("BAD_HEALTHCHECK", "靶机必须声明本机 HTTP 或 TCP healthcheck")
+        compose = manifest.get("compose") or {}
+        if not compose.get("file"):
+            raise TargetRuntimeError("BAD_COMPOSE", "靶机缺少 compose 文件配置")
+
+    def _validate_id(self, name: str, value: str) -> None:
+        if not SAFE_ID.match(value):
+            raise TargetRuntimeError("BAD_IDENTIFIER", f"{name} 只能包含字母、数字、下划线和短横线")

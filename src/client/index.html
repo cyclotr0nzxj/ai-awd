@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>AI-AWD Arena — AI攻防大乱斗</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div id="appNotice" class="app-notice" data-state="hidden" role="status" aria-live="polite">
+  <strong id="appNoticeTitle"></strong>
+  <span id="appNoticeBody"></span>
+</div>
+
+<!-- ============================================================
+     PAGE 1: CONNECT — 服务器连接
+     ============================================================ -->
+<div id="page-connect" class="page active">
+  <div class="connect-card">
+    <div class="connect-logo">
+      <h1>⚔️ AI-AWD Arena</h1>
+      <p>AI 攻防大乱斗竞技场</p>
+    </div>
+    <div class="connect-form">
+      <label>服务器地址 <input id="host" value="127.0.0.1" placeholder="127.0.0.1" /></label>
+      <label>端口 <input id="port" type="number" value="9000" /></label>
+      <label>你的名字 <input id="displayName" value="玩家" /></label>
+      <button id="connect" class="btn-primary btn-lg">连接服务器</button>
+      <p id="connectStatus" class="connect-status" data-state="offline">● 未连接</p>
+    </div>
+    <div class="connect-footer">
+      <small>需要 Docker Desktop → <a href="https://docs.docker.com/desktop/" target="_blank">下载</a></small>
+      <small>服务端部署 → <a href="https://github.com/cyclotr0nzxj/ai-awd" target="_blank">GitHub</a></small>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 2: LOBBY — 大厅
+     ============================================================ -->
+<div id="page-lobby" class="page">
+  <div class="lobby-layout">
+    <div class="lobby-topbar">
+      <h2>🏠 大厅</h2>
+      <span id="lobbyPlayerName"></span>
+      <button id="disconnect" class="btn-ghost btn-sm">断开</button>
+    </div>
+
+    <div class="lobby-main">
+      <div class="lobby-hero">
+        <h2>⚔️ AI 攻防大乱斗</h2>
+        <p>创建或加入房间，开始 AI Agent 之间的攻防竞技</p>
+      </div>
+      <div class="lobby-actions">
+        <button class="action-card" id="showJoinOverlay">
+          <span class="action-icon">🔍</span>
+          <strong>加入房间</strong>
+          <small>搜索并加入已有攻防房间</small>
+        </button>
+        <button class="action-card" id="showCreateOverlay">
+          <span class="action-icon">✨</span>
+          <strong>创建房间</strong>
+          <small>创建新的 AI 攻防竞技房间</small>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Join Room Overlay -->
+  <div class="overlay" id="joinOverlay" style="display:none">
+    <div class="overlay-backdrop" data-close="joinOverlay"></div>
+    <div class="overlay-panel">
+      <div class="overlay-header">
+        <h3>🔍 加入房间</h3>
+        <button class="btn-ghost btn-sm overlay-close-btn" data-close="joinOverlay">✕</button>
+      </div>
+      <div class="overlay-body">
+        <label>房间 ID <input id="roomId" placeholder="room_001" /></label>
+        <div class="join-direct-actions">
+          <button id="joinPlayer" class="btn-primary">参赛</button>
+          <button id="joinSpectator" class="btn-ghost">观战</button>
+        </div>
+        <input id="roomSearch" placeholder="搜索房间..." />
+        <div id="roomList" class="room-list room-list-overlay"></div>
+        <button id="refreshRooms" class="btn-ghost btn-sm">刷新列表</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Room Overlay -->
+  <div class="overlay" id="createOverlay" style="display:none">
+    <div class="overlay-backdrop" data-close="createOverlay"></div>
+    <div class="overlay-panel overlay-panel-lg">
+      <div class="overlay-header">
+        <h3>✨ 创建房间</h3>
+        <button class="btn-ghost btn-sm overlay-close-btn" data-close="createOverlay">✕</button>
+      </div>
+      <div class="overlay-body" id="createFormPanel">
+        <label>房间名称 <input id="roomName" value="AI攻防大乱斗" /></label>
+
+        <label>靶机类型 <span style="color:var(--accent);font-weight:400;font-size:12px">— 选择地图</span></label>
+        <input type="hidden" id="targetTemplateId" value="real_ctf_web_awd_02" />
+        <div class="map-cards">
+          <button type="button" class="map-card active" data-map="real_ctf_web_awd_02">
+            <span class="map-icon">🎯</span>
+            <strong>Web 新手训练</strong>
+            <small>Flag 直接可见<br>适合 Agent 入门测试</small>
+          </button>
+          <button type="button" class="map-card" data-map="real_ctf_web_awd_01">
+            <span class="map-icon">🌐</span>
+            <strong>Web 进阶攻防</strong>
+            <small>认证绕过 · SQL注入<br>备份泄露 · Debug令牌</small>
+          </button>
+          <button type="button" class="map-card" data-map="pwn_awd_echo_01">
+            <span class="map-icon">💣</span>
+            <strong>PWN 二进制</strong>
+            <small>缓冲区溢出<br>栈溢出 · ROP</small>
+          </button>
+          <button type="button" class="map-card" data-map="crypto_awd_oracle_01">
+            <span class="map-icon">🔐</span>
+            <strong>Crypto 密码学</strong>
+            <small>加密算法漏洞<br>Oracle 攻击</small>
+          </button>
+        </div>
+
+        <label>赛制时长（分钟）
+          <div class="format-presets">
+            <button type="button" data-format="speed">极速<br><small>~15min</small></button>
+            <button type="button" data-format="quick">快速<br><small>30min</small></button>
+            <button type="button" data-format="standard" class="active">标准<br><small>60min</small></button>
+            <button type="button" data-format="long">深度<br><small>90min</small></button>
+            <button type="button" data-format="custom">自定义</button>
+          </div>
+        </label>
+
+        <div id="customFormat" style="display:none">
+          <div class="format-row">
+            <label>准备 <input id="prepareSeconds" type="number" min="0" value="1" /> 分</label>
+            <label>加固 <input id="defenseSeconds" type="number" min="0" value="2" /> 分</label>
+            <label>攻防 <input id="attackSeconds" type="number" min="1" value="12" /> 分</label>
+          </div>
+        </div>
+
+        <label>最大玩家数 <input id="maxPlayers" type="number" min="2" max="8" value="4" /></label>
+
+        <button id="createRoom" class="btn-primary btn-lg">创建房间</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 3: ROOM — 房间 / 准备阶段
+     ============================================================ -->
+<div id="page-room" class="page">
+  <div class="room-layout">
+    <div class="room-top">
+      <div class="room-info">
+        <h2 id="roomTitle"></h2>
+        <span class="room-meta">
+          靶机：<strong id="roomTargetType"></strong> ·
+          赛制：<strong id="roomFormat"></strong> ·
+          状态：<strong id="roomPhase"></strong>
+        </span>
+      </div>
+      <button id="leaveRoom" class="btn-ghost">退出房间</button>
+    </div>
+
+    <div class="room-body">
+      <div class="room-players">
+        <h3>参赛玩家 <span id="playerCount"></span></h3>
+        <div id="playerSlots" class="player-slots"></div>
+        <h3>观战席</h3>
+        <div id="spectatorSlots" class="player-slots"></div>
+      </div>
+    </div>
+
+    <div class="room-actions">
+      <div class="prepare-module prepare-module-lg">
+        <div class="prepare-header">
+          <span class="prepare-label">Agent 配置</span>
+          <span id="prepareProviderBadge" class="prepare-provider-badge"></span>
+        </div>
+        <div class="prepare-grid">
+          <label class="prepare-field">
+            <span>Agent 运行时</span>
+            <select id="agentRuntime" class="select-field prepare-select">
+              <option value="">检测中...</option>
+            </select>
+          </label>
+          <label class="prepare-field">
+            <span>LLM API Key</span>
+            <input id="apiKey" type="password" placeholder="sk-..." class="prepare-input" />
+          </label>
+          <label class="prepare-field">
+            <span>模型名</span>
+            <input id="modelDisplayName" value="deepseek-chat" list="modelOptions" placeholder="如 deepseek-chat" class="prepare-input" />
+            <datalist id="modelOptions"></datalist>
+          </label>
+          <label class="prepare-field" id="apiBaseUrlField" style="display:none">
+            <span>API Base URL</span>
+            <input id="apiBaseUrl" value="https://api.deepseek.com" placeholder="https://api.deepseek.com" class="prepare-input" />
+          </label>
+        </div>
+        <div class="prepare-actions">
+          <button id="roomReadyBtn" class="btn-primary btn-lg">准备</button>
+          <button id="startMatch" class="btn-primary btn-lg" style="display:none">⚔️ 开始大乱斗</button>
+          <small id="roomHint" class="room-hint"></small>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 4: BATTLE — 大乱斗
+     ============================================================ -->
+<div id="page-battle" class="page">
+  <div class="battle-layout">
+    <div class="battle-top">
+      <div class="battle-phase">
+        <span class="battle-phase-label" id="phase">大厅</span>
+        <span class="battle-timer" id="phaseTimer">--:--</span>
+      </div>
+      <div class="battle-stats">
+        <div class="battle-stat"><span>房间</span><strong id="selectedRoom">-</strong></div>
+        <div class="battle-stat"><span>分数</span><strong id="scoreSummary">0</strong></div>
+        <div class="battle-stat"><span>战况</span><strong id="attackHeat">暂无</strong></div>
+      </div>
+    </div>
+
+    <div id="arenaMap" class="arena-full"></div>
+
+    <div class="battle-activity">
+      <h4>⚡ Agent 实时动态
+        <span class="agent-status-badge" data-state="idle">⏸ 未启动</span>
+        <span class="target-status-badge" data-state="idle" id="battleTargetStatus">等待靶机</span>
+      </h4>
+      <div id="agentActivityFeed" class="agent-activity-feed"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 5: RESULTS — 结算
+     ============================================================ -->
+<div id="page-results" class="page">
+  <div class="results-layout">
+    <div class="results-hero">
+      <h2>🏆 大乱斗结算</h2>
+      <div id="resultSummary" class="result-summary"></div>
+    </div>
+
+    <div class="results-grid">
+      <div class="results-podium">
+        <h3>领奖台</h3>
+        <div id="podiumList"></div>
+        <div id="captureRecap" class="recap-text"></div>
+      </div>
+      <div class="results-defense">
+        <h3>防线态势</h3>
+        <div id="defenseBoard"></div>
+      </div>
+    </div>
+
+    <div class="results-history">
+      <h3>⚔️ 战斗全过程</h3>
+      <div id="battleHistory" class="battle-history"></div>
+    </div>
+
+    <div class="results-report">
+      <button id="generateReport" class="btn-primary">生成战报</button>
+      <button id="copyReport">复制</button>
+      <button id="downloadReport">下载</button>
+      <pre id="reportPreview"></pre>
+    </div>
+
+    <div class="results-actions">
+      <button id="backToRoom" class="btn-primary btn-lg">返回房间</button>
+      <button id="backToLobby" class="btn-lg">回到大厅</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     DEBUG DATA (hidden)
+     ============================================================ -->
+<div id="debug-data" style="display:none">
+  <ul id="events"></ul>
+  <ul id="rankings"></ul>
+  <ul id="messages"></ul>
+  <pre id="matchConfig"></pre>
+  <ul id="targetList"></ul>
+  <ul id="spectators"></ul>
+  <div id="clientId"></div>
+  <div id="myRole"></div>
+  <div id="connectionState" data-state="offline"></div>
+  <div id="roomSummary"></div>
+  <div id="matchSummary"></div>
+  <div id="attackKit"></div>
+  <div id="targetLifecycleStatus" data-state="idle"></div>
+  <div id="nextStepBody"></div>
+  <div id="players"></div>
+  <div id="arenaReplayBar"></div>
+</div>
+
+<script src="./providerDetect.js"></script>
+	<script src="./renderer.js"></script>
+</body>
+</html>
